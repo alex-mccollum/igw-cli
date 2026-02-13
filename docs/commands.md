@@ -30,10 +30,21 @@ igw call \
   --path /data/api/v1/gateway-info
 ```
 
+Call by operationId:
+
+```bash
+igw call \
+  --gateway-url http://127.0.0.1:8088 \
+  --api-key "$IGNITION_API_TOKEN" \
+  --spec-file ../autoperspective/openapi.json \
+  --op gatewayInfo
+```
+
 Config:
 
 ```bash
 igw config set --gateway-url http://127.0.0.1:8088
+igw config set --auto-gateway
 igw config set --api-key-stdin < token.txt
 igw config show
 ```

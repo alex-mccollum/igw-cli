@@ -9,7 +9,7 @@
 
 ## Commands
 - `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
-- `igw call`: generic HTTP executor for Ignition endpoints.
+- `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
 - `igw config set|show`: local config management.
 - `igw doctor`: connectivity + auth checks.
 
@@ -73,6 +73,8 @@ Set config once:
 ```bash
 igw config set --gateway-url http://127.0.0.1:8088
 igw config set --api-key-stdin < token.txt
+# WSL helper:
+igw config set --auto-gateway
 ```
 
 Check config (token is masked):
@@ -85,6 +87,15 @@ Run connectivity/auth checks:
 
 ```bash
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
+```
+
+Call by operationId from local spec:
+
+```bash
+igw call \
+  --spec-file ../autoperspective/openapi.json \
+  --op gatewayInfo \
+  --json
 ```
 
 ## Exit Codes

@@ -17,6 +17,7 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
   - `6`: auth failures (`401`, `403`)
   - `7`: network/transport and non-auth HTTP failures
 - Config precedence: flags > env > config file.
+- Config supports WSL host auto-detection via `config set --auto-gateway`.
 
 ## Dependency Policy
 MVP uses Go standard library only.
@@ -25,3 +26,4 @@ MVP uses Go standard library only.
 - Query a committed or local OpenAPI JSON snapshot.
 - Do not depend on runtime `/openapi` availability.
 - Keep `call` generic and use `api` commands for endpoint lookup.
+- `call --op <operationId>` resolves method/path from local spec for ergonomic calls.
