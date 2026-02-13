@@ -704,6 +704,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Name:    "gateway_url",
 			OK:      false,
 			Message: uerr.Error(),
+			Hint:    "Use a full URL like http://<windows-host-ip>:8088",
 		})
 		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
 	}
@@ -720,6 +721,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Name:    "tcp_connect",
 			OK:      false,
 			Message: uerr.Error(),
+			Hint:    "Gateway URL must include a valid host and scheme",
 		})
 		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
 	}
@@ -730,7 +732,8 @@ func (c *CLI) runDoctor(args []string) error {
 		checks = append(checks, doctorCheck{
 			Name:    "tcp_connect",
 			OK:      false,
-			Message: fmt.Sprintf("%s (if running from WSL, verify Windows host IP and firewall rules)", nerr.Error()),
+			Message: nerr.Error(),
+			Hint:    doctorHintForError(nerr),
 		})
 		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nerr)
 	}
@@ -756,6 +759,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Name:    "gateway_info",
 			OK:      false,
 			Message: err.Error(),
+			Hint:    doctorHintForError(err),
 		})
 		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
 	}
@@ -773,6 +777,7 @@ type doctorCheck struct {
 	Name    string `json:"name"`
 	OK      bool   `json:"ok"`
 	Message string `json:"message"`
+	Hint    string `json:"hint,omitempty"`
 }
 
 type doctorEnvelope struct {
@@ -808,6 +813,10 @@ func (c *CLI) printDoctorResult(jsonOutput bool, gatewayURL string, checks []doc
 		if !check.OK {
 			state = "fail"
 		}
+		if check.Hint != "" {
+			fmt.Fprintf(c.Out, "%s\t%s\t%s\thint: %s\n", state, check.Name, check.Message, check.Hint)
+			continue
+		}
 		fmt.Fprintf(c.Out, "%s\t%s\t%s\n", state, check.Name, check.Message)
 	}
 
@@ -815,6 +824,29 @@ func (c *CLI) printDoctorResult(jsonOutput bool, gatewayURL string, checks []doc
 		fmt.Fprintln(c.Err, err.Error())
 	}
 	return err
+}
+
+func doctorHintForError(err error) string {
+	var statusErr *igwerr.StatusError
+	if errors.As(err, &statusErr) {
+		switch statusErr.StatusCode {
+		case http.StatusUnauthorized:
+			return "401 indicates a missing or invalid token. Re-check your API key."
+		case http.StatusForbidden:
+			return "403 indicates permission mapping or secure-connection restrictions. Ensure token security levels are included in Gateway Read permissions."
+		}
+	}
+
+	var transportErr *igwerr.TransportError
+	if errors.As(err, &transportErr) && transportErr.Timeout {
+		return "If this is WSL2 -> Windows, allow inbound TCP 8088 on interface alias \"vEthernet (WSL (Hyper-V firewall))\"."
+	}
+
+	if errors.As(err, &transportErr) {
+		return "Check gateway host/port reachability and local firewall rules."
+	}
+
+	return ""
 }
 
 func dialAddress(gatewayURL *url.URL) (string, error) {
