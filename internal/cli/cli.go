@@ -7,7 +7,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -49,6 +51,8 @@ func (c *CLI) Execute(args []string) error {
 		return c.runCall(args[1:])
 	case "config":
 		return c.runConfig(args[1:])
+	case "doctor":
+		return c.runDoctor(args[1:])
 	case "help", "-h", "--help":
 		c.printRootUsage()
 		return nil
@@ -293,6 +297,7 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "Commands:")
 	fmt.Fprintln(c.Err, "  call   Execute generic Ignition Gateway API request")
 	fmt.Fprintln(c.Err, "  config Manage local configuration")
+	fmt.Fprintln(c.Err, "  doctor Check connectivity and auth")
 }
 
 func (c *CLI) runConfig(args []string) error {
@@ -409,4 +414,197 @@ func (c *CLI) runConfigShow(args []string) error {
 	fmt.Fprintf(c.Out, "gateway_url\t%s\n", cfg.GatewayURL)
 	fmt.Fprintf(c.Out, "token\t%s\n", config.MaskToken(cfg.Token))
 	return nil
+}
+
+func (c *CLI) runDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var gatewayURL string
+	var apiKey string
+	var apiKeyStdin bool
+	var timeout time.Duration
+	var jsonOutput bool
+
+	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
+	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.DurationVar(&timeout, "timeout", 5*time.Second, "Check timeout")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	if apiKeyStdin {
+		if apiKey != "" {
+			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
+		}
+		tokenBytes, err := io.ReadAll(c.In)
+		if err != nil {
+			return igwerr.NewTransportError(err)
+		}
+		apiKey = strings.TrimSpace(string(tokenBytes))
+	}
+
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+	resolved := config.Resolve(cfg, c.Getenv, gatewayURL, apiKey)
+
+	if strings.TrimSpace(resolved.GatewayURL) == "" {
+		return &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"}
+	}
+	if strings.TrimSpace(resolved.Token) == "" {
+		return &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"}
+	}
+	if timeout <= 0 {
+		return &igwerr.UsageError{Msg: "--timeout must be positive"}
+	}
+
+	checks := make([]doctorCheck, 0, 3)
+
+	parsedURL, err := url.Parse(resolved.GatewayURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		uerr := &igwerr.UsageError{Msg: "invalid gateway URL"}
+		checks = append(checks, doctorCheck{
+			Name:    "gateway_url",
+			OK:      false,
+			Message: uerr.Error(),
+		})
+		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
+	}
+	checks = append(checks, doctorCheck{
+		Name:    "gateway_url",
+		OK:      true,
+		Message: "parsed",
+	})
+
+	addr, addrErr := dialAddress(parsedURL)
+	if addrErr != nil {
+		uerr := &igwerr.UsageError{Msg: addrErr.Error()}
+		checks = append(checks, doctorCheck{
+			Name:    "tcp_connect",
+			OK:      false,
+			Message: uerr.Error(),
+		})
+		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
+	}
+
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		nerr := igwerr.NewTransportError(err)
+		checks = append(checks, doctorCheck{
+			Name:    "tcp_connect",
+			OK:      false,
+			Message: fmt.Sprintf("%s (if running from WSL, verify Windows host IP and firewall rules)", nerr.Error()),
+		})
+		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nerr)
+	}
+	_ = conn.Close()
+	checks = append(checks, doctorCheck{
+		Name:    "tcp_connect",
+		OK:      true,
+		Message: addr,
+	})
+
+	client := &gateway.Client{
+		BaseURL: resolved.GatewayURL,
+		Token:   resolved.Token,
+		HTTP:    c.HTTPClient,
+	}
+	resp, err := client.Call(context.Background(), gateway.CallRequest{
+		Method:  http.MethodGet,
+		Path:    "/data/api/v1/gateway-info",
+		Timeout: timeout,
+	})
+	if err != nil {
+		checks = append(checks, doctorCheck{
+			Name:    "gateway_info",
+			OK:      false,
+			Message: err.Error(),
+		})
+		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+	}
+
+	checks = append(checks, doctorCheck{
+		Name:    "gateway_info",
+		OK:      true,
+		Message: fmt.Sprintf("status %d", resp.StatusCode),
+	})
+
+	return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nil)
+}
+
+type doctorCheck struct {
+	Name    string `json:"name"`
+	OK      bool   `json:"ok"`
+	Message string `json:"message"`
+}
+
+type doctorEnvelope struct {
+	OK         bool          `json:"ok"`
+	Code       int           `json:"code,omitempty"`
+	Error      string        `json:"error,omitempty"`
+	GatewayURL string        `json:"gatewayURL"`
+	Checks     []doctorCheck `json:"checks"`
+}
+
+func (c *CLI) printDoctorResult(jsonOutput bool, gatewayURL string, checks []doctorCheck, err error) error {
+	if jsonOutput {
+		payload := doctorEnvelope{
+			OK:         err == nil,
+			GatewayURL: gatewayURL,
+			Checks:     checks,
+		}
+		if err != nil {
+			payload.Code = igwerr.ExitCode(err)
+			payload.Error = err.Error()
+		}
+
+		enc := json.NewEncoder(c.Out)
+		enc.SetIndent("", "  ")
+		if encodeErr := enc.Encode(payload); encodeErr != nil {
+			return igwerr.NewTransportError(encodeErr)
+		}
+		return err
+	}
+
+	for _, check := range checks {
+		state := "ok"
+		if !check.OK {
+			state = "fail"
+		}
+		fmt.Fprintf(c.Out, "%s\t%s\t%s\n", state, check.Name, check.Message)
+	}
+
+	if err != nil {
+		fmt.Fprintln(c.Err, err.Error())
+	}
+	return err
+}
+
+func dialAddress(gatewayURL *url.URL) (string, error) {
+	host := strings.TrimSpace(gatewayURL.Hostname())
+	if host == "" {
+		return "", fmt.Errorf("gateway URL host is empty")
+	}
+
+	port := strings.TrimSpace(gatewayURL.Port())
+	if port == "" {
+		switch strings.ToLower(gatewayURL.Scheme) {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return "", fmt.Errorf("unsupported URL scheme %q", gatewayURL.Scheme)
+		}
+	}
+
+	return net.JoinHostPort(host, port), nil
 }
