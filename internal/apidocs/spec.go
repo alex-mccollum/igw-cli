@@ -134,6 +134,33 @@ func Search(ops []Operation, query string) []Operation {
 	return filtered
 }
 
+func FilterByOperationID(ops []Operation, operationID string) []Operation {
+	operationID = strings.TrimSpace(operationID)
+	if operationID == "" {
+		return nil
+	}
+
+	exact := make([]Operation, 0, 2)
+	for _, op := range ops {
+		if op.OperationID == operationID {
+			exact = append(exact, op)
+		}
+	}
+	if len(exact) > 0 {
+		return exact
+	}
+
+	lowerOperationID := strings.ToLower(operationID)
+	fallback := make([]Operation, 0, 2)
+	for _, op := range ops {
+		if strings.ToLower(op.OperationID) == lowerOperationID {
+			fallback = append(fallback, op)
+		}
+	}
+
+	return fallback
+}
+
 func operationContains(op Operation, query string) bool {
 	if strings.Contains(strings.ToLower(op.Method), query) {
 		return true

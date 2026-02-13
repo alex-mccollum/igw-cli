@@ -68,6 +68,29 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestFilterByOperationID(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	got := FilterByOperationID(ops, "gatewayInfo")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(got))
+	}
+	if got[0].Path != "/data/api/v1/gateway-info" || got[0].Method != "GET" {
+		t.Fatalf("unexpected operation: %+v", got[0])
+	}
+
+	insensitive := FilterByOperationID(ops, "gatewayinfo")
+	if len(insensitive) != 1 {
+		t.Fatalf("expected case-insensitive fallback to match one result, got %d", len(insensitive))
+	}
+}
+
 func writeSpec(t *testing.T, content string) string {
 	t.Helper()
 

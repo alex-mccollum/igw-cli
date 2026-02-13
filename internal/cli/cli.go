@@ -76,6 +76,8 @@ func (c *CLI) runCall(args []string) error {
 		gatewayURL     string
 		apiKey         string
 		apiKeyStdin    bool
+		op             string
+		specFile       string
 		method         string
 		path           string
 		body           string
@@ -90,6 +92,8 @@ func (c *CLI) runCall(args []string) error {
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.StringVar(&op, "op", "", "OpenAPI operationId to call")
+	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file (used with --op)")
 	fs.StringVar(&method, "method", "", "HTTP method")
 	fs.StringVar(&path, "path", "", "API path")
 	fs.Var(&queries, "query", "Query parameter key=value (repeatable)")
@@ -124,6 +128,32 @@ func (c *CLI) runCall(args []string) error {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)})
 	}
 	resolved := config.Resolve(cfg, c.Getenv, gatewayURL, apiKey)
+
+	if strings.TrimSpace(op) != "" {
+		if strings.TrimSpace(method) != "" || strings.TrimSpace(path) != "" {
+			return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
+		}
+
+		ops, loadErr := loadAPIOperations(specFile)
+		if loadErr != nil {
+			return c.printCallError(jsonOutput, loadErr)
+		}
+
+		matches := apidocs.FilterByOperationID(ops, op)
+		if len(matches) == 0 {
+			return c.printCallError(jsonOutput, &igwerr.UsageError{
+				Msg: fmt.Sprintf("operationId %q not found in spec %q", strings.TrimSpace(op), strings.TrimSpace(specFile)),
+			})
+		}
+		if len(matches) > 1 {
+			return c.printCallError(jsonOutput, &igwerr.UsageError{
+				Msg: fmt.Sprintf("operationId %q is ambiguous (%d matches): %s", strings.TrimSpace(op), len(matches), formatOperationMatches(matches)),
+			})
+		}
+
+		method = matches[0].Method
+		path = matches[0].Path
+	}
 
 	if strings.TrimSpace(resolved.GatewayURL) == "" {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"})
@@ -523,6 +553,27 @@ func loadAPIOperations(specFile string) ([]apidocs.Operation, error) {
 	}
 
 	return ops, nil
+}
+
+func formatOperationMatches(ops []apidocs.Operation) string {
+	if len(ops) == 0 {
+		return ""
+	}
+
+	limit := len(ops)
+	if limit > 3 {
+		limit = 3
+	}
+
+	parts := make([]string, 0, limit+1)
+	for i := 0; i < limit; i++ {
+		parts = append(parts, fmt.Sprintf("%s %s", ops[i].Method, ops[i].Path))
+	}
+	if len(ops) > limit {
+		parts = append(parts, fmt.Sprintf("+%d more", len(ops)-limit))
+	}
+
+	return strings.Join(parts, "; ")
 }
 
 func (c *CLI) runConfigSet(args []string) error {
