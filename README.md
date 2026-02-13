@@ -8,6 +8,7 @@
 - Stable exit codes for automation.
 
 ## Commands
+- `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
 - `igw call`: generic HTTP executor for Ignition endpoints.
 - `igw config set|show`: local config management.
 - `igw doctor`: connectivity + auth checks.
@@ -26,6 +27,26 @@ Config file path:
 - `${XDG_CONFIG_HOME:-~/.config}/igw/config.json` on Linux/macOS
 
 ## Examples
+List endpoints from a local OpenAPI snapshot:
+
+```bash
+igw api list --spec-file ../autoperspective/openapi.json --path-contains gateway
+```
+
+Show one endpoint contract:
+
+```bash
+igw api show \
+  --spec-file ../autoperspective/openapi.json \
+  --path /data/api/v1/gateway-info
+```
+
+Search endpoint docs:
+
+```bash
+igw api search --spec-file ../autoperspective/openapi.json --query scan
+```
+
 Call gateway info:
 
 ```bash

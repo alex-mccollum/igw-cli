@@ -4,9 +4,10 @@
 A thin CLI wrapper around the Ignition Gateway HTTP API.
 
 ## MVP Commands
-1. `call`
-2. `config set|show`
-3. `doctor`
+1. `api list|show|search`
+2. `call`
+3. `config set|show`
+4. `doctor`
 
 ## Contracts
 - Auth header: `X-Ignition-API-Token`.
@@ -19,3 +20,8 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 
 ## Dependency Policy
 MVP uses Go standard library only.
+
+## OpenAPI Discovery Model
+- Query a committed or local OpenAPI JSON snapshot.
+- Do not depend on runtime `/openapi` availability.
+- Keep `call` generic and use `api` commands for endpoint lookup.
