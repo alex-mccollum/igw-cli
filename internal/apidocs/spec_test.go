@@ -1,0 +1,80 @@
+package apidocs
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+const testSpec = `{
+  "openapi": "3.0.0",
+  "paths": {
+    "/data/api/v1/scan/projects": {
+      "post": {
+        "operationId": "scanProjects",
+        "summary": "Scan projects",
+        "description": "Trigger a scan",
+        "tags": ["gateway", "scan"]
+      }
+    },
+    "/data/api/v1/gateway-info": {
+      "get": {
+        "operationId": "gatewayInfo",
+        "summary": "Gateway info",
+        "description": "Get gateway info",
+        "tags": ["gateway"]
+      },
+      "parameters": []
+    }
+  }
+}`
+
+func TestLoadOperations(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	if len(ops) != 2 {
+		t.Fatalf("expected 2 operations, got %d", len(ops))
+	}
+
+	if ops[0].Path != "/data/api/v1/gateway-info" || ops[0].Method != "GET" {
+		t.Fatalf("unexpected first operation: %+v", ops[0])
+	}
+	if ops[1].Path != "/data/api/v1/scan/projects" || ops[1].Method != "POST" {
+		t.Fatalf("unexpected second operation: %+v", ops[1])
+	}
+}
+
+func TestSearch(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	got := Search(ops, "scan")
+	if len(got) != 1 {
+		t.Fatalf("expected one search result, got %d", len(got))
+	}
+	if got[0].OperationID != "scanProjects" {
+		t.Fatalf("unexpected search result: %+v", got[0])
+	}
+}
+
+func writeSpec(t *testing.T, content string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "openapi.json")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write spec: %v", err)
+	}
+	return path
+}

@@ -1,0 +1,123 @@
+package cli
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/alex-mccollum/igw-cli/internal/igwerr"
+)
+
+const apiSpecFixture = `{
+  "openapi": "3.0.0",
+  "paths": {
+    "/data/api/v1/scan/projects": {
+      "post": {
+        "operationId": "scanProjects",
+        "summary": "Scan projects",
+        "description": "Trigger a scan",
+        "tags": ["gateway", "scan"]
+      }
+    },
+    "/data/api/v1/gateway-info": {
+      "get": {
+        "operationId": "gatewayInfo",
+        "summary": "Gateway info",
+        "description": "Get gateway info",
+        "tags": ["gateway"]
+      }
+    }
+  }
+}`
+
+func TestAPIList(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: &errOut,
+	}
+
+	err := c.Execute([]string{"api", "list", "--spec-file", specPath})
+	if err != nil {
+		t.Fatalf("api list failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "GET\t/data/api/v1/gateway-info\tgatewayInfo") {
+		t.Fatalf("missing gateway info operation: %q", got)
+	}
+	if !strings.Contains(got, "POST\t/data/api/v1/scan/projects\tscanProjects") {
+		t.Fatalf("missing scan operation: %q", got)
+	}
+}
+
+func TestAPIShowMissingPath(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	c := &CLI{
+		Out: new(bytes.Buffer),
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "show", "--spec-file", specPath, "--path", "/does/not/exist"})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestAPISearchJSON(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "search", "--spec-file", specPath, "--query", "scan", "--json"})
+	if err != nil {
+		t.Fatalf("api search failed: %v", err)
+	}
+
+	var payload struct {
+		Count      int `json:"count"`
+		Operations []struct {
+			OperationID string `json:"operationId"`
+		} `json:"operations"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("parse json output: %v", err)
+	}
+	if payload.Count != 1 || len(payload.Operations) != 1 {
+		t.Fatalf("unexpected count payload: %+v", payload)
+	}
+	if payload.Operations[0].OperationID != "scanProjects" {
+		t.Fatalf("unexpected operation id: %+v", payload.Operations[0])
+	}
+}
+
+func writeAPISpec(t *testing.T, content string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "openapi.json")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write spec: %v", err)
+	}
+
+	return path
+}
