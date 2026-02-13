@@ -18,21 +18,23 @@ import (
 )
 
 type CLI struct {
-	In         io.Reader
-	Out        io.Writer
-	Err        io.Writer
-	Getenv     func(string) string
-	ReadConfig func() (config.File, error)
-	HTTPClient *http.Client
+	In          io.Reader
+	Out         io.Writer
+	Err         io.Writer
+	Getenv      func(string) string
+	ReadConfig  func() (config.File, error)
+	WriteConfig func(config.File) error
+	HTTPClient  *http.Client
 }
 
 func New() *CLI {
 	return &CLI{
-		In:         os.Stdin,
-		Out:        os.Stdout,
-		Err:        os.Stderr,
-		Getenv:     os.Getenv,
-		ReadConfig: config.Read,
+		In:          os.Stdin,
+		Out:         os.Stdout,
+		Err:         os.Stderr,
+		Getenv:      os.Getenv,
+		ReadConfig:  config.Read,
+		WriteConfig: config.Write,
 	}
 }
 
@@ -45,6 +47,8 @@ func (c *CLI) Execute(args []string) error {
 	switch args[0] {
 	case "call":
 		return c.runCall(args[1:])
+	case "config":
+		return c.runConfig(args[1:])
 	case "help", "-h", "--help":
 		c.printRootUsage()
 		return nil
@@ -288,4 +292,121 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "")
 	fmt.Fprintln(c.Err, "Commands:")
 	fmt.Fprintln(c.Err, "  call   Execute generic Ignition Gateway API request")
+	fmt.Fprintln(c.Err, "  config Manage local configuration")
+}
+
+func (c *CLI) runConfig(args []string) error {
+	if len(args) == 0 {
+		fmt.Fprintln(c.Err, "Usage: igw config <set|show> [flags]")
+		return &igwerr.UsageError{Msg: "required config subcommand"}
+	}
+
+	switch args[0] {
+	case "set":
+		return c.runConfigSet(args[1:])
+	case "show":
+		return c.runConfigShow(args[1:])
+	default:
+		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown config subcommand %q", args[0])}
+	}
+}
+
+func (c *CLI) runConfigSet(args []string) error {
+	fs := flag.NewFlagSet("config set", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var gatewayURL string
+	var apiKey string
+	var apiKeyStdin bool
+
+	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
+	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	if apiKeyStdin {
+		if apiKey != "" {
+			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
+		}
+		tokenBytes, err := io.ReadAll(c.In)
+		if err != nil {
+			return igwerr.NewTransportError(err)
+		}
+		apiKey = strings.TrimSpace(string(tokenBytes))
+	}
+
+	if strings.TrimSpace(gatewayURL) == "" && strings.TrimSpace(apiKey) == "" {
+		return &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"}
+	}
+
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+
+	if strings.TrimSpace(gatewayURL) != "" {
+		cfg.GatewayURL = strings.TrimSpace(gatewayURL)
+	}
+	if strings.TrimSpace(apiKey) != "" {
+		cfg.Token = strings.TrimSpace(apiKey)
+	}
+
+	if c.WriteConfig == nil {
+		return &igwerr.UsageError{Msg: "config writer is not configured"}
+	}
+	if err := c.WriteConfig(cfg); err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+	}
+
+	path, pathErr := config.Path()
+	if pathErr == nil {
+		fmt.Fprintf(c.Out, "saved config: %s\n", path)
+	} else {
+		fmt.Fprintln(c.Out, "saved config")
+	}
+
+	return nil
+}
+
+func (c *CLI) runConfigShow(args []string) error {
+	fs := flag.NewFlagSet("config show", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var jsonOutput bool
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+
+	if jsonOutput {
+		payload := map[string]string{
+			"gatewayURL":  cfg.GatewayURL,
+			"tokenMasked": config.MaskToken(cfg.Token),
+		}
+		enc := json.NewEncoder(c.Out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(payload); err != nil {
+			return igwerr.NewTransportError(err)
+		}
+		return nil
+	}
+
+	fmt.Fprintf(c.Out, "gateway_url\t%s\n", cfg.GatewayURL)
+	fmt.Fprintf(c.Out, "token\t%s\n", config.MaskToken(cfg.Token))
+	return nil
 }
