@@ -18,26 +18,29 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
+	"github.com/alex-mccollum/igw-cli/internal/wsl"
 )
 
 type CLI struct {
-	In          io.Reader
-	Out         io.Writer
-	Err         io.Writer
-	Getenv      func(string) string
-	ReadConfig  func() (config.File, error)
-	WriteConfig func(config.File) error
-	HTTPClient  *http.Client
+	In              io.Reader
+	Out             io.Writer
+	Err             io.Writer
+	Getenv          func(string) string
+	ReadConfig      func() (config.File, error)
+	WriteConfig     func(config.File) error
+	DetectWSLHostIP func() (string, string, error)
+	HTTPClient      *http.Client
 }
 
 func New() *CLI {
 	return &CLI{
-		In:          os.Stdin,
-		Out:         os.Stdout,
-		Err:         os.Stderr,
-		Getenv:      os.Getenv,
-		ReadConfig:  config.Read,
-		WriteConfig: config.Write,
+		In:              os.Stdin,
+		Out:             os.Stdout,
+		Err:             os.Stderr,
+		Getenv:          os.Getenv,
+		ReadConfig:      config.Read,
+		WriteConfig:     config.Write,
+		DetectWSLHostIP: wsl.DetectWindowsHostIP,
 	}
 }
 
@@ -527,10 +530,12 @@ func (c *CLI) runConfigSet(args []string) error {
 	fs.SetOutput(c.Err)
 
 	var gatewayURL string
+	var autoGateway bool
 	var apiKey string
 	var apiKeyStdin bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.BoolVar(&autoGateway, "auto-gateway", false, "Detect Windows host IP from WSL and set gateway URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
 
@@ -550,6 +555,24 @@ func (c *CLI) runConfigSet(args []string) error {
 			return igwerr.NewTransportError(err)
 		}
 		apiKey = strings.TrimSpace(string(tokenBytes))
+	}
+
+	if autoGateway && strings.TrimSpace(gatewayURL) != "" {
+		return &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"}
+	}
+
+	if autoGateway {
+		if c.DetectWSLHostIP == nil {
+			return &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"}
+		}
+
+		hostIP, source, detectErr := c.DetectWSLHostIP()
+		if detectErr != nil {
+			return &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)}
+		}
+
+		gatewayURL = fmt.Sprintf("http://%s:8088", hostIP)
+		fmt.Fprintf(c.Out, "auto-detected gateway URL from %s: %s\n", source, gatewayURL)
 	}
 
 	if strings.TrimSpace(gatewayURL) == "" && strings.TrimSpace(apiKey) == "" {
