@@ -12,6 +12,12 @@ Test:
 go test ./...
 ```
 
+Version:
+
+```bash
+igw version
+```
+
 API docs discovery:
 
 ```bash

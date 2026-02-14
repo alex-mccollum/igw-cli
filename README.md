@@ -7,6 +7,19 @@
 - Generic API execution first (`call`).
 - Stable exit codes for automation.
 
+## Install
+
+From source:
+
+```bash
+go install github.com/alex-mccollum/igw-cli/cmd/igw@latest
+```
+
+From GitHub Releases:
+
+- Download the archive for your OS/architecture.
+- Extract it and place `igw` (or `igw.exe`) on your `PATH`.
+
 ## Commands
 - `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
@@ -126,6 +139,12 @@ igw restart tasks --profile dev --json
 igw restart gateway --profile dev --yes --json
 ```
 
+Check CLI version/build metadata:
+
+```bash
+igw version
+```
+
 Enable bash completion:
 
 ```bash
@@ -177,3 +196,7 @@ go build -trimpath -ldflags="-s -w" -o bin/igw ./cmd/igw
 ```bash
 go test ./...
 ```
+
+## Releasing
+
+See `docs/releasing.md` for tag-based release steps and artifact naming.
