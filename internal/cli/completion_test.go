@@ -28,6 +28,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "igw config profile list") {
 		t.Fatalf("missing profile-aware completion in script")
 	}
+	if !strings.Contains(script, "version") {
+		t.Fatalf("missing version completion entry")
+	}
 	if !strings.Contains(script, "list download loggers logger level-reset") || !strings.Contains(script, "generate status download") {
 		t.Fatalf("missing new command completion entries")
 	}

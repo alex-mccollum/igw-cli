@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/apidocs"
+	"github.com/alex-mccollum/igw-cli/internal/buildinfo"
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
@@ -76,6 +77,8 @@ func (c *CLI) Execute(args []string) error {
 		return c.runGateway(args[1:])
 	case "scan":
 		return c.runScan(args[1:])
+	case "version", "--version", "-v":
+		return c.runVersion(args[1:])
 	case "help", "-h", "--help":
 		c.printRootUsage()
 		return nil
@@ -415,6 +418,7 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "  restart Restart task/gateway helpers")
 	fmt.Fprintln(c.Err, "  scan   Convenience scan commands")
 	fmt.Fprintln(c.Err, "  tags   Tag import/export helpers")
+	fmt.Fprintln(c.Err, "  version Print build version information")
 }
 
 func (c *CLI) runConfig(args []string) error {
@@ -647,6 +651,14 @@ func (c *CLI) runCompletion(args []string) error {
 	default:
 		return &igwerr.UsageError{Msg: "unsupported shell (supported: bash)"}
 	}
+}
+
+func (c *CLI) runVersion(args []string) error {
+	if len(args) > 0 {
+		return &igwerr.UsageError{Msg: "usage: igw version"}
+	}
+	fmt.Fprintf(c.Out, "igw version %s\n", buildinfo.Long())
+	return nil
 }
 
 func (c *CLI) runAPIList(args []string) error {
@@ -1540,7 +1552,7 @@ _igw_completion() {
   esac
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "api backup call completion config diagnostics doctor gateway help logs restart scan tags" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "api backup call completion config diagnostics doctor gateway help logs restart scan tags version" -- "${cur}") )
     return 0
   fi
 
