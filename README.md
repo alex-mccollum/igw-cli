@@ -20,6 +20,22 @@ From GitHub Releases:
 - Download the archive for your OS/architecture.
 - Extract it and place `igw` (or `igw.exe`) on your `PATH`.
 
+## Quickstart (60 Seconds)
+
+```bash
+# 1) Set your gateway URL
+igw config set --gateway-url http://127.0.0.1:8088
+
+# 2) Set your API key
+igw config set --api-key-stdin < token.txt
+
+# 3) Verify connectivity and permissions
+igw doctor
+
+# 4) Run a read call
+igw gateway info --json
+```
+
 ## Commands
 - `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
@@ -184,6 +200,19 @@ igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
 - `2`: usage/config errors
 - `6`: auth failures (`401`, `403`)
 - `7`: network/transport and non-auth HTTP failures
+
+## Compatibility Policy
+
+- Exit codes are stable within minor releases.
+- JSON output field names are stable within minor releases.
+- Breaking CLI or output contract changes are introduced only in a major release.
+
+## Versioning Policy
+
+- Releases follow semantic versioning: `vMAJOR.MINOR.PATCH`.
+- `PATCH`: bug fixes and non-breaking internal/doc changes.
+- `MINOR`: new backward-compatible commands/flags/behavior.
+- `MAJOR`: breaking behavior or output contract changes.
 
 ## Build
 
