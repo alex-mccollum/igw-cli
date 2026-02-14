@@ -56,6 +56,8 @@ func (c *CLI) Execute(args []string) error {
 		return c.runCall(args[1:])
 	case "api":
 		return c.runAPI(args[1:])
+	case "completion":
+		return c.runCompletion(args[1:])
 	case "config":
 		return c.runConfig(args[1:])
 	case "doctor":
@@ -393,6 +395,7 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "Commands:")
 	fmt.Fprintln(c.Err, "  api    Query local OpenAPI documentation")
 	fmt.Fprintln(c.Err, "  call   Execute generic Ignition Gateway API request")
+	fmt.Fprintln(c.Err, "  completion Output shell completion script")
 	fmt.Fprintln(c.Err, "  config Manage local configuration")
 	fmt.Fprintln(c.Err, "  doctor Check connectivity and auth")
 	fmt.Fprintln(c.Err, "  gateway Convenience gateway commands")
@@ -611,6 +614,23 @@ func (c *CLI) runAPI(args []string) error {
 		return c.runAPISearch(args[1:])
 	default:
 		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown api subcommand %q", args[0])}
+	}
+}
+
+func (c *CLI) runCompletion(args []string) error {
+	if len(args) != 1 {
+		return &igwerr.UsageError{Msg: "usage: igw completion <bash>"}
+	}
+
+	switch strings.TrimSpace(args[0]) {
+	case "bash":
+		_, err := io.WriteString(c.Out, bashCompletionScript())
+		if err != nil {
+			return igwerr.NewTransportError(err)
+		}
+		return nil
+	default:
+		return &igwerr.UsageError{Msg: "unsupported shell (supported: bash)"}
 	}
 }
 
@@ -1425,6 +1445,79 @@ func isIdempotentMethod(method string) bool {
 	default:
 		return false
 	}
+}
+
+func bashCompletionScript() string {
+	return `# bash completion for igw
+_igw_profiles() {
+  igw config profile list 2>/dev/null | awk 'NR>1 {print $2}'
+}
+
+_igw_completion() {
+  local cur prev cmd1 cmd2
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  cmd1="${COMP_WORDS[1]}"
+  cmd2="${COMP_WORDS[2]}"
+
+  case "${prev}" in
+    --profile)
+      COMPREPLY=( $(compgen -W "$(_igw_profiles)" -- "${cur}") )
+      return 0
+      ;;
+    --method)
+      COMPREPLY=( $(compgen -W "GET POST PUT PATCH DELETE HEAD OPTIONS" -- "${cur}") )
+      return 0
+      ;;
+    completion)
+      COMPREPLY=( $(compgen -W "bash" -- "${cur}") )
+      return 0
+      ;;
+    config)
+      COMPREPLY=( $(compgen -W "set show profile" -- "${cur}") )
+      return 0
+      ;;
+    gateway)
+      COMPREPLY=( $(compgen -W "info" -- "${cur}") )
+      return 0
+      ;;
+    scan)
+      COMPREPLY=( $(compgen -W "projects" -- "${cur}") )
+      return 0
+      ;;
+    api)
+      COMPREPLY=( $(compgen -W "list show search" -- "${cur}") )
+      return 0
+      ;;
+    profile)
+      if [[ "${cmd1}" == "config" ]]; then
+        COMPREPLY=( $(compgen -W "add use list" -- "${cur}") )
+        return 0
+      fi
+      ;;
+  esac
+
+  if [[ ${COMP_CWORD} -eq 1 ]]; then
+    COMPREPLY=( $(compgen -W "api call completion config doctor gateway help scan" -- "${cur}") )
+    return 0
+  fi
+
+  if [[ "${cmd1}" == "config" && ${COMP_CWORD} -eq 2 ]]; then
+    COMPREPLY=( $(compgen -W "set show profile" -- "${cur}") )
+    return 0
+  fi
+
+  if [[ "${cmd1}" == "config" && "${cmd2}" == "profile" && ${COMP_CWORD} -eq 3 ]]; then
+    COMPREPLY=( $(compgen -W "add use list" -- "${cur}") )
+    return 0
+  fi
+
+  COMPREPLY=( $(compgen -W "--profile --gateway-url --api-key --api-key-stdin --timeout --json --include-headers --spec-file --op --method --path --query --header --body --content-type --yes --dry-run --retry --retry-backoff --out" -- "${cur}") )
+}
+
+complete -F _igw_completion igw
+`
 }
 
 func dialAddress(gatewayURL *url.URL) (string, error) {
