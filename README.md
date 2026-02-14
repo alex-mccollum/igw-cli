@@ -20,20 +20,43 @@ From GitHub Releases:
 - Download the archive for your OS/architecture.
 - Extract it and place `igw` (or `igw.exe`) on your `PATH`.
 
-## Quickstart (60 Seconds)
+Verify install:
 
 ```bash
-# 1) Set your gateway URL
-igw config set --gateway-url http://127.0.0.1:8088
+igw version
+```
 
-# 2) Set your API key
-igw config set --api-key-stdin < token.txt
+## Quickstart (60 Seconds)
+
+The commands in this section are examples. Replace placeholder values for your environment.
+
+Assumptions:
+- You can reach your Ignition Gateway.
+- You have an Ignition API token with the permissions you need.
+- Commands below use `bash` syntax.
+
+```bash
+# Example values (replace these)
+export IGW_GATEWAY_URL="http://127.0.0.1:8088"
+export IGW_TOKEN_FILE="$HOME/.config/igw/token.txt"
+
+# 1) Set your gateway URL
+igw config set --gateway-url "$IGW_GATEWAY_URL"
+
+# 2) Set your API key from a local file
+igw config set --api-key-stdin < "$IGW_TOKEN_FILE"
 
 # 3) Verify connectivity and permissions
 igw doctor
 
 # 4) Run a read call
 igw gateway info --json
+```
+
+If you are in WSL and Ignition is running on Windows host:
+
+```bash
+igw config set --auto-gateway
 ```
 
 ## Commands
@@ -63,6 +86,8 @@ Config file path:
 - `${XDG_CONFIG_HOME:-~/.config}/igw/config.json` on Linux/macOS
 
 ## Examples
+All commands below are examples. Replace placeholder values such as `http://127.0.0.1:8088`, `/path/to/openapi.json`, and token inputs.
+
 List endpoints from a local OpenAPI snapshot:
 
 ```bash
