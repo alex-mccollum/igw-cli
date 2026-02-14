@@ -3,7 +3,7 @@
 `igw` is a lightweight CLI wrapper for the Ignition Gateway API.
 
 ## Principles
-- Standard library only for MVP.
+- Default to the Go standard library; add third-party dependencies only when they provide clear, durable value.
 - Generic API execution first (`call`).
 - Stable exit codes for automation.
 
