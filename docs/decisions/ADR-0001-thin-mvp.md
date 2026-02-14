@@ -4,16 +4,16 @@
 Accepted
 
 ## Context
-This repository starts from zero and needs a practical, automatable API wrapper.
+This repository started from zero and needed a practical, automatable API wrapper with minimal operational overhead.
 
 ## Decision
-Build a thin CLI first with:
-- Generic `call` command.
-- Minimal `config set|show` command.
-- Lightweight `doctor` command.
-- Standard library only for MVP.
+Build and keep a thin CLI architecture with:
+- A generic `call` command as the execution core.
+- Standard library dependencies only for MVP.
+- Stable automation contracts (exit codes, JSON mode, mutation confirmation).
+- A small set of selective convenience wrappers that delegate to `call`.
 
 ## Consequences
 - Fast to implement and maintain.
 - Stable interfaces for scripting.
-- Endpoint-specific ergonomics are deferred.
+- Endpoint ergonomics are added only for high-value workflows, while keeping the core generic.
