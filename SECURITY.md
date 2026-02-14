@@ -5,7 +5,7 @@
 If you discover a security issue, please report it privately before opening a
 public issue.
 
-- Email: `alex.mccollum.dev@gmail.com`
+- Email: `contact@mccollum.dev`
 - Subject: `igw-cli security report`
 
 Please include:
