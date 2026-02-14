@@ -40,6 +40,15 @@ igw call \
   --op gatewayInfo
 ```
 
+Mutation safety + automation:
+
+```bash
+igw call --method POST --path /data/api/v1/scan/projects --yes
+igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
+igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
+igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
+```
+
 Config:
 
 ```bash
@@ -49,8 +58,24 @@ igw config set --api-key-stdin < token.txt
 igw config show
 ```
 
+Profiles:
+
+```bash
+igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --use
+igw config profile add stage --gateway-url http://10.0.1.5:8088 --api-key-stdin
+igw config profile list
+igw config profile use stage
+```
+
 Doctor:
 
 ```bash
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
+```
+
+Convenience wrappers:
+
+```bash
+igw gateway info --profile dev --json
+igw scan projects --profile dev --yes
 ```
