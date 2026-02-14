@@ -26,6 +26,9 @@ run_cmd "$BIN_PATH" config show
 run_cmd "$BIN_PATH" doctor --timeout "$TIMEOUT" "${PROFILE_ARGS[@]}"
 run_cmd "$BIN_PATH" gateway info --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
 run_cmd "$BIN_PATH" call --method GET --path /data/api/v1/gateway-info --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
+run_cmd "$BIN_PATH" logs list --timeout "$TIMEOUT" --query limit=5 --json "${PROFILE_ARGS[@]}"
+run_cmd "$BIN_PATH" diagnostics bundle status --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
+run_cmd "$BIN_PATH" restart tasks --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
 
 if [[ -f "$SPEC_FILE" ]]; then
   run_cmd "$BIN_PATH" api search --spec-file "$SPEC_FILE" --query gateway-info
@@ -33,4 +36,3 @@ if [[ -f "$SPEC_FILE" ]]; then
 fi
 
 echo "Smoke checks passed."
-

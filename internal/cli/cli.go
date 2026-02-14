@@ -60,6 +60,16 @@ func (c *CLI) Execute(args []string) error {
 		return c.runCompletion(args[1:])
 	case "config":
 		return c.runConfig(args[1:])
+	case "logs":
+		return c.runLogs(args[1:])
+	case "diagnostics":
+		return c.runDiagnostics(args[1:])
+	case "backup":
+		return c.runBackup(args[1:])
+	case "tags":
+		return c.runTags(args[1:])
+	case "restart":
+		return c.runRestart(args[1:])
 	case "doctor":
 		return c.runDoctor(args[1:])
 	case "gateway":
@@ -394,12 +404,17 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "")
 	fmt.Fprintln(c.Err, "Commands:")
 	fmt.Fprintln(c.Err, "  api    Query local OpenAPI documentation")
+	fmt.Fprintln(c.Err, "  backup Gateway backup export/restore")
 	fmt.Fprintln(c.Err, "  call   Execute generic Ignition Gateway API request")
 	fmt.Fprintln(c.Err, "  completion Output shell completion script")
 	fmt.Fprintln(c.Err, "  config Manage local configuration")
+	fmt.Fprintln(c.Err, "  diagnostics Diagnostics bundle helpers")
 	fmt.Fprintln(c.Err, "  doctor Check connectivity and auth")
 	fmt.Fprintln(c.Err, "  gateway Convenience gateway commands")
+	fmt.Fprintln(c.Err, "  logs   Gateway log helpers")
+	fmt.Fprintln(c.Err, "  restart Restart task/gateway helpers")
 	fmt.Fprintln(c.Err, "  scan   Convenience scan commands")
+	fmt.Fprintln(c.Err, "  tags   Tag import/export helpers")
 }
 
 func (c *CLI) runConfig(args []string) error {
@@ -1482,6 +1497,32 @@ _igw_completion() {
       COMPREPLY=( $(compgen -W "info" -- "${cur}") )
       return 0
       ;;
+    logs)
+      COMPREPLY=( $(compgen -W "list download loggers logger level-reset" -- "${cur}") )
+      return 0
+      ;;
+    diagnostics)
+      COMPREPLY=( $(compgen -W "bundle" -- "${cur}") )
+      return 0
+      ;;
+    backup)
+      COMPREPLY=( $(compgen -W "export restore" -- "${cur}") )
+      return 0
+      ;;
+    tags)
+      COMPREPLY=( $(compgen -W "export import" -- "${cur}") )
+      return 0
+      ;;
+    restart)
+      COMPREPLY=( $(compgen -W "tasks gateway" -- "${cur}") )
+      return 0
+      ;;
+    bundle)
+      if [[ "${cmd1}" == "diagnostics" ]]; then
+        COMPREPLY=( $(compgen -W "generate status download" -- "${cur}") )
+        return 0
+      fi
+      ;;
     scan)
       COMPREPLY=( $(compgen -W "projects" -- "${cur}") )
       return 0
@@ -1499,7 +1540,7 @@ _igw_completion() {
   esac
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "api call completion config doctor gateway help scan" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "api backup call completion config diagnostics doctor gateway help logs restart scan tags" -- "${cur}") )
     return 0
   fi
 
@@ -1513,7 +1554,7 @@ _igw_completion() {
     return 0
   fi
 
-  COMPREPLY=( $(compgen -W "--profile --gateway-url --api-key --api-key-stdin --timeout --json --include-headers --spec-file --op --method --path --query --header --body --content-type --yes --dry-run --retry --retry-backoff --out" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "--profile --gateway-url --api-key --api-key-stdin --timeout --json --include-headers --spec-file --op --method --path --query --header --body --content-type --yes --dry-run --retry --retry-backoff --out --in --provider --type --collision-policy --name --level --restore-disabled --disable-temp-project-backup --rename-enabled --include-peer-local --recursive --include-udts" -- "${cur}") )
 }
 
 complete -F _igw_completion igw
