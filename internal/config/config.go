@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -14,8 +15,21 @@ const (
 )
 
 type File struct {
+	GatewayURL    string             `json:"gatewayURL,omitempty"`
+	Token         string             `json:"token,omitempty"`
+	ActiveProfile string             `json:"activeProfile,omitempty"`
+	Profiles      map[string]Profile `json:"profiles,omitempty"`
+}
+
+type Profile struct {
 	GatewayURL string `json:"gatewayURL,omitempty"`
 	Token      string `json:"token,omitempty"`
+}
+
+type Effective struct {
+	GatewayURL string `json:"gatewayURL,omitempty"`
+	Token      string `json:"token,omitempty"`
+	Profile    string `json:"profile,omitempty"`
 }
 
 func Dir() (string, error) {
@@ -92,22 +106,48 @@ func Write(cfg File) error {
 }
 
 func Resolve(fileCfg File, getenv func(string) string, flagGatewayURL string, flagToken string) File {
-	out := fileCfg
+	effective, _ := ResolveWithProfile(fileCfg, getenv, flagGatewayURL, flagToken, "")
+	return File{
+		GatewayURL: effective.GatewayURL,
+		Token:      effective.Token,
+	}
+}
 
-	if v := getenv(EnvGatewayURL); v != "" {
+func ResolveWithProfile(fileCfg File, getenv func(string) string, flagGatewayURL string, flagToken string, profile string) (Effective, error) {
+	out := Effective{
+		GatewayURL: strings.TrimSpace(fileCfg.GatewayURL),
+		Token:      strings.TrimSpace(fileCfg.Token),
+	}
+
+	profile = strings.TrimSpace(profile)
+	if profile == "" {
+		profile = strings.TrimSpace(fileCfg.ActiveProfile)
+	}
+	if profile != "" {
+		profileCfg, ok := fileCfg.Profiles[profile]
+		if !ok {
+			return Effective{}, fmt.Errorf("profile %q not found", profile)
+		}
+
+		out.GatewayURL = strings.TrimSpace(profileCfg.GatewayURL)
+		out.Token = strings.TrimSpace(profileCfg.Token)
+		out.Profile = profile
+	}
+
+	if v := strings.TrimSpace(getenv(EnvGatewayURL)); v != "" {
 		out.GatewayURL = v
 	}
-	if v := getenv(EnvToken); v != "" {
+	if v := strings.TrimSpace(getenv(EnvToken)); v != "" {
 		out.Token = v
 	}
-	if flagGatewayURL != "" {
-		out.GatewayURL = flagGatewayURL
+	if v := strings.TrimSpace(flagGatewayURL); v != "" {
+		out.GatewayURL = v
 	}
-	if flagToken != "" {
-		out.Token = flagToken
+	if v := strings.TrimSpace(flagToken); v != "" {
+		out.Token = v
 	}
 
-	return out
+	return out, nil
 }
 
 func MaskToken(token string) string {

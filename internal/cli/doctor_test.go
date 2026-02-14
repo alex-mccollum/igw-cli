@@ -16,12 +16,16 @@ func TestDoctorSuccess(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/data/api/v1/gateway-info" {
+		switch r.URL.Path {
+		case "/data/api/v1/gateway-info":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"name":"gateway"}`))
+		case "/data/api/v1/scan/projects":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		default:
 			http.NotFound(w, r)
-			return
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"name":"gateway"}`))
 	}))
 	defer srv.Close()
 

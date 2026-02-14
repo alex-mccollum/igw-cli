@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -59,6 +60,10 @@ func (c *CLI) Execute(args []string) error {
 		return c.runConfig(args[1:])
 	case "doctor":
 		return c.runDoctor(args[1:])
+	case "gateway":
+		return c.runGateway(args[1:])
+	case "scan":
+		return c.runScan(args[1:])
 	case "help", "-h", "--help":
 		c.printRootUsage()
 		return nil
@@ -76,12 +81,18 @@ func (c *CLI) runCall(args []string) error {
 		gatewayURL     string
 		apiKey         string
 		apiKeyStdin    bool
+		profile        string
 		op             string
 		specFile       string
 		method         string
 		path           string
 		body           string
 		contentType    string
+		dryRun         bool
+		yes            bool
+		retry          int
+		retryBackoff   time.Duration
+		outPath        string
 		timeout        time.Duration
 		jsonOutput     bool
 		includeHeaders bool
@@ -92,6 +103,7 @@ func (c *CLI) runCall(args []string) error {
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.StringVar(&profile, "profile", "", "Config profile name")
 	fs.StringVar(&op, "op", "", "OpenAPI operationId to call")
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file (used with --op)")
 	fs.StringVar(&method, "method", "", "HTTP method")
@@ -100,6 +112,11 @@ func (c *CLI) runCall(args []string) error {
 	fs.Var(&headers, "header", "Request header key:value (repeatable)")
 	fs.StringVar(&body, "body", "", "Request body, @file, or - for stdin")
 	fs.StringVar(&contentType, "content-type", "", "Content-Type header value")
+	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
+	fs.BoolVar(&yes, "yes", false, "Confirm mutating requests (POST/PUT/PATCH/DELETE)")
+	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
+	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
+	fs.StringVar(&outPath, "out", "", "Write response body to file")
 	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
 	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers in output")
@@ -123,11 +140,10 @@ func (c *CLI) runCall(args []string) error {
 		apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
-	cfg, err := c.ReadConfig()
+	resolved, err := c.resolveRuntimeConfig(profile, gatewayURL, apiKey)
 	if err != nil {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)})
+		return c.printCallError(jsonOutput, err)
 	}
-	resolved := config.Resolve(cfg, c.Getenv, gatewayURL, apiKey)
 
 	if strings.TrimSpace(op) != "" {
 		if strings.TrimSpace(method) != "" || strings.TrimSpace(path) != "" {
@@ -170,6 +186,29 @@ func (c *CLI) runCall(args []string) error {
 	if timeout <= 0 {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--timeout must be positive"})
 	}
+	if retry < 0 {
+		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--retry must be >= 0"})
+	}
+	if retry > 0 && retryBackoff <= 0 {
+		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
+	}
+
+	method = strings.ToUpper(strings.TrimSpace(method))
+	path = strings.TrimSpace(path)
+
+	if dryRun {
+		queries = append(queries, "dryRun=true")
+	}
+	if isMutatingMethod(method) && !yes {
+		return c.printCallError(jsonOutput, &igwerr.UsageError{
+			Msg: fmt.Sprintf("method %s requires --yes confirmation", method),
+		})
+	}
+	if retry > 0 && !isIdempotentMethod(method) {
+		return c.printCallError(jsonOutput, &igwerr.UsageError{
+			Msg: fmt.Sprintf("--retry is only supported for idempotent methods; got %s", method),
+		})
+	}
 
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
@@ -187,16 +226,26 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	resp, err := client.Call(context.Background(), gateway.CallRequest{
-		Method:      strings.ToUpper(strings.TrimSpace(method)),
-		Path:        strings.TrimSpace(path),
-		Query:       queries,
-		Headers:     headers,
-		Body:        bodyBytes,
-		ContentType: contentType,
-		Timeout:     timeout,
+		Method:       method,
+		Path:         path,
+		Query:        queries,
+		Headers:      headers,
+		Body:         bodyBytes,
+		ContentType:  contentType,
+		Timeout:      timeout,
+		Retry:        retry,
+		RetryBackoff: retryBackoff,
 	})
 	if err != nil {
 		return c.printCallError(jsonOutput, err)
+	}
+
+	bodyFile := ""
+	if strings.TrimSpace(outPath) != "" {
+		if writeErr := os.WriteFile(outPath, resp.Body, 0o600); writeErr != nil {
+			return c.printCallError(jsonOutput, igwerr.NewTransportError(writeErr))
+		}
+		bodyFile = outPath
 	}
 
 	if jsonOutput {
@@ -207,9 +256,10 @@ func (c *CLI) runCall(args []string) error {
 				URL:    resp.URL,
 			},
 			Response: callJSONResponse{
-				Status:  resp.StatusCode,
-				Headers: maybeHeaders(resp.Headers, includeHeaders),
-				Body:    string(resp.Body),
+				Status:   resp.StatusCode,
+				Headers:  maybeHeaders(resp.Headers, includeHeaders),
+				Body:     string(resp.Body),
+				BodyFile: bodyFile,
 			},
 		})
 	}
@@ -222,6 +272,11 @@ func (c *CLI) runCall(args []string) error {
 			}
 		}
 		fmt.Fprintln(c.Out)
+	}
+
+	if bodyFile != "" {
+		fmt.Fprintf(c.Out, "saved response body: %s\n", bodyFile)
+		return nil
 	}
 
 	if len(resp.Body) > 0 {
@@ -299,9 +354,10 @@ type callJSONRequest struct {
 }
 
 type callJSONResponse struct {
-	Status  int                 `json:"status"`
-	Headers map[string][]string `json:"headers,omitempty"`
-	Body    string              `json:"body"`
+	Status   int                 `json:"status"`
+	Headers  map[string][]string `json:"headers,omitempty"`
+	Body     string              `json:"body"`
+	BodyFile string              `json:"bodyFile,omitempty"`
 }
 
 func maybeHeaders(headers http.Header, include bool) map[string][]string {
@@ -339,11 +395,13 @@ func (c *CLI) printRootUsage() {
 	fmt.Fprintln(c.Err, "  call   Execute generic Ignition Gateway API request")
 	fmt.Fprintln(c.Err, "  config Manage local configuration")
 	fmt.Fprintln(c.Err, "  doctor Check connectivity and auth")
+	fmt.Fprintln(c.Err, "  gateway Convenience gateway commands")
+	fmt.Fprintln(c.Err, "  scan   Convenience scan commands")
 }
 
 func (c *CLI) runConfig(args []string) error {
 	if len(args) == 0 {
-		fmt.Fprintln(c.Err, "Usage: igw config <set|show> [flags]")
+		fmt.Fprintln(c.Err, "Usage: igw config <set|show|profile> [flags]")
 		return &igwerr.UsageError{Msg: "required config subcommand"}
 	}
 
@@ -352,8 +410,189 @@ func (c *CLI) runConfig(args []string) error {
 		return c.runConfigSet(args[1:])
 	case "show":
 		return c.runConfigShow(args[1:])
+	case "profile":
+		return c.runConfigProfile(args[1:])
 	default:
 		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown config subcommand %q", args[0])}
+	}
+}
+
+func (c *CLI) runGateway(args []string) error {
+	if len(args) == 0 {
+		fmt.Fprintln(c.Err, "Usage: igw gateway <info> [flags]")
+		return &igwerr.UsageError{Msg: "required gateway subcommand"}
+	}
+
+	switch args[0] {
+	case "info":
+		return c.runGatewayInfo(args[1:])
+	default:
+		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown gateway subcommand %q", args[0])}
+	}
+}
+
+func (c *CLI) runGatewayInfo(args []string) error {
+	fs := flag.NewFlagSet("gateway info", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var (
+		gatewayURL     string
+		apiKey         string
+		profile        string
+		apiKeyStdin    bool
+		timeout        time.Duration
+		jsonOutput     bool
+		includeHeaders bool
+		retry          int
+		retryBackoff   time.Duration
+		outPath        string
+	)
+
+	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
+	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.StringVar(&profile, "profile", "", "Config profile name")
+	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
+	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers")
+	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
+	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
+	fs.StringVar(&outPath, "out", "", "Write response body to file")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	callArgs := []string{
+		"--method", "GET",
+		"--path", "/data/api/v1/gateway-info",
+		"--timeout", timeout.String(),
+		"--retry", fmt.Sprintf("%d", retry),
+		"--retry-backoff", retryBackoff.String(),
+	}
+	if gatewayURL != "" {
+		callArgs = append(callArgs, "--gateway-url", gatewayURL)
+	}
+	if apiKey != "" {
+		callArgs = append(callArgs, "--api-key", apiKey)
+	}
+	if apiKeyStdin {
+		callArgs = append(callArgs, "--api-key-stdin")
+	}
+	if profile != "" {
+		callArgs = append(callArgs, "--profile", profile)
+	}
+	if jsonOutput {
+		callArgs = append(callArgs, "--json")
+	}
+	if includeHeaders {
+		callArgs = append(callArgs, "--include-headers")
+	}
+	if outPath != "" {
+		callArgs = append(callArgs, "--out", outPath)
+	}
+
+	return c.runCall(callArgs)
+}
+
+func (c *CLI) runScan(args []string) error {
+	if len(args) == 0 {
+		fmt.Fprintln(c.Err, "Usage: igw scan <projects> [flags]")
+		return &igwerr.UsageError{Msg: "required scan subcommand"}
+	}
+
+	switch args[0] {
+	case "projects":
+		return c.runScanProjects(args[1:])
+	default:
+		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown scan subcommand %q", args[0])}
+	}
+}
+
+func (c *CLI) runScanProjects(args []string) error {
+	fs := flag.NewFlagSet("scan projects", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var (
+		gatewayURL     string
+		apiKey         string
+		profile        string
+		apiKeyStdin    bool
+		timeout        time.Duration
+		jsonOutput     bool
+		includeHeaders bool
+		yes            bool
+		dryRun         bool
+	)
+
+	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
+	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.StringVar(&profile, "profile", "", "Config profile name")
+	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
+	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers")
+	fs.BoolVar(&yes, "yes", false, "Confirm mutating request")
+	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	callArgs := []string{
+		"--method", "POST",
+		"--path", "/data/api/v1/scan/projects",
+		"--timeout", timeout.String(),
+	}
+	if gatewayURL != "" {
+		callArgs = append(callArgs, "--gateway-url", gatewayURL)
+	}
+	if apiKey != "" {
+		callArgs = append(callArgs, "--api-key", apiKey)
+	}
+	if apiKeyStdin {
+		callArgs = append(callArgs, "--api-key-stdin")
+	}
+	if profile != "" {
+		callArgs = append(callArgs, "--profile", profile)
+	}
+	if jsonOutput {
+		callArgs = append(callArgs, "--json")
+	}
+	if includeHeaders {
+		callArgs = append(callArgs, "--include-headers")
+	}
+	if dryRun {
+		callArgs = append(callArgs, "--dry-run")
+	}
+	if yes {
+		callArgs = append(callArgs, "--yes")
+	}
+
+	return c.runCall(callArgs)
+}
+
+func (c *CLI) runConfigProfile(args []string) error {
+	if len(args) == 0 {
+		fmt.Fprintln(c.Err, "Usage: igw config profile <add|use|list> [flags]")
+		return &igwerr.UsageError{Msg: "required config profile subcommand"}
+	}
+
+	switch args[0] {
+	case "add":
+		return c.runConfigProfileAdd(args[1:])
+	case "use":
+		return c.runConfigProfileUse(args[1:])
+	case "list":
+		return c.runConfigProfileList(args[1:])
+	default:
+		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown config profile subcommand %q", args[0])}
 	}
 }
 
@@ -582,11 +821,13 @@ func (c *CLI) runConfigSet(args []string) error {
 
 	var gatewayURL string
 	var autoGateway bool
+	var profileName string
 	var apiKey string
 	var apiKeyStdin bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.BoolVar(&autoGateway, "auto-gateway", false, "Detect Windows host IP from WSL and set gateway URL")
+	fs.StringVar(&profileName, "profile", "", "Profile to update instead of default config")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
 
@@ -635,11 +876,27 @@ func (c *CLI) runConfigSet(args []string) error {
 		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
 	}
 
-	if strings.TrimSpace(gatewayURL) != "" {
-		cfg.GatewayURL = strings.TrimSpace(gatewayURL)
-	}
-	if strings.TrimSpace(apiKey) != "" {
-		cfg.Token = strings.TrimSpace(apiKey)
+	profileName = strings.TrimSpace(profileName)
+	if profileName != "" {
+		if cfg.Profiles == nil {
+			cfg.Profiles = map[string]config.Profile{}
+		}
+
+		profileCfg := cfg.Profiles[profileName]
+		if strings.TrimSpace(gatewayURL) != "" {
+			profileCfg.GatewayURL = strings.TrimSpace(gatewayURL)
+		}
+		if strings.TrimSpace(apiKey) != "" {
+			profileCfg.Token = strings.TrimSpace(apiKey)
+		}
+		cfg.Profiles[profileName] = profileCfg
+	} else {
+		if strings.TrimSpace(gatewayURL) != "" {
+			cfg.GatewayURL = strings.TrimSpace(gatewayURL)
+		}
+		if strings.TrimSpace(apiKey) != "" {
+			cfg.Token = strings.TrimSpace(apiKey)
+		}
 	}
 
 	if c.WriteConfig == nil {
@@ -654,6 +911,9 @@ func (c *CLI) runConfigSet(args []string) error {
 		fmt.Fprintf(c.Out, "saved config: %s\n", path)
 	} else {
 		fmt.Fprintln(c.Out, "saved config")
+	}
+	if profileName != "" {
+		fmt.Fprintf(c.Out, "updated profile: %s\n", profileName)
 	}
 
 	return nil
@@ -679,9 +939,23 @@ func (c *CLI) runConfigShow(args []string) error {
 	}
 
 	if jsonOutput {
-		payload := map[string]string{
-			"gatewayURL":  cfg.GatewayURL,
-			"tokenMasked": config.MaskToken(cfg.Token),
+		type profileView struct {
+			GatewayURL  string `json:"gatewayURL,omitempty"`
+			TokenMasked string `json:"tokenMasked,omitempty"`
+		}
+		profiles := map[string]profileView{}
+		for name, profile := range cfg.Profiles {
+			profiles[name] = profileView{
+				GatewayURL:  profile.GatewayURL,
+				TokenMasked: config.MaskToken(profile.Token),
+			}
+		}
+		payload := map[string]any{
+			"gatewayURL":    cfg.GatewayURL,
+			"tokenMasked":   config.MaskToken(cfg.Token),
+			"activeProfile": cfg.ActiveProfile,
+			"profiles":      profiles,
+			"profileCount":  len(profiles),
 		}
 		enc := json.NewEncoder(c.Out)
 		enc.SetIndent("", "  ")
@@ -693,6 +967,206 @@ func (c *CLI) runConfigShow(args []string) error {
 
 	fmt.Fprintf(c.Out, "gateway_url\t%s\n", cfg.GatewayURL)
 	fmt.Fprintf(c.Out, "token\t%s\n", config.MaskToken(cfg.Token))
+	if strings.TrimSpace(cfg.ActiveProfile) != "" {
+		fmt.Fprintf(c.Out, "active_profile\t%s\n", cfg.ActiveProfile)
+	}
+	if len(cfg.Profiles) > 0 {
+		for name, profile := range cfg.Profiles {
+			fmt.Fprintf(c.Out, "profile\t%s\t%s\t%s\n", name, profile.GatewayURL, config.MaskToken(profile.Token))
+		}
+	}
+	return nil
+}
+
+func (c *CLI) runConfigProfileAdd(args []string) error {
+	if len(args) == 0 {
+		return &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"}
+	}
+	name := strings.TrimSpace(args[0])
+	if strings.HasPrefix(name, "-") || name == "" {
+		return &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"}
+	}
+
+	fs := flag.NewFlagSet("config profile add", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var gatewayURL string
+	var autoGateway bool
+	var apiKey string
+	var apiKeyStdin bool
+	var makeActive bool
+
+	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
+	fs.BoolVar(&autoGateway, "auto-gateway", false, "Detect Windows host IP from WSL and set gateway URL")
+	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
+	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.BoolVar(&makeActive, "use", false, "Set added profile as active profile")
+
+	if err := fs.Parse(args[1:]); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	if apiKeyStdin {
+		if apiKey != "" {
+			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
+		}
+		tokenBytes, err := io.ReadAll(c.In)
+		if err != nil {
+			return igwerr.NewTransportError(err)
+		}
+		apiKey = strings.TrimSpace(string(tokenBytes))
+	}
+
+	if autoGateway && strings.TrimSpace(gatewayURL) != "" {
+		return &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"}
+	}
+	if autoGateway {
+		if c.DetectWSLHostIP == nil {
+			return &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"}
+		}
+		hostIP, _, detectErr := c.DetectWSLHostIP()
+		if detectErr != nil {
+			return &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)}
+		}
+		gatewayURL = fmt.Sprintf("http://%s:8088", hostIP)
+	}
+
+	if strings.TrimSpace(gatewayURL) == "" && strings.TrimSpace(apiKey) == "" {
+		return &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"}
+	}
+
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+	if cfg.Profiles == nil {
+		cfg.Profiles = map[string]config.Profile{}
+	}
+
+	profile := cfg.Profiles[name]
+	if strings.TrimSpace(gatewayURL) != "" {
+		profile.GatewayURL = strings.TrimSpace(gatewayURL)
+	}
+	if strings.TrimSpace(apiKey) != "" {
+		profile.Token = strings.TrimSpace(apiKey)
+	}
+	cfg.Profiles[name] = profile
+
+	if makeActive {
+		cfg.ActiveProfile = name
+	}
+
+	if c.WriteConfig == nil {
+		return &igwerr.UsageError{Msg: "config writer is not configured"}
+	}
+	if err := c.WriteConfig(cfg); err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+	}
+
+	fmt.Fprintf(c.Out, "saved profile: %s\n", name)
+	if makeActive {
+		fmt.Fprintf(c.Out, "active profile: %s\n", name)
+	}
+	return nil
+}
+
+func (c *CLI) runConfigProfileUse(args []string) error {
+	if len(args) == 0 {
+		return &igwerr.UsageError{Msg: "usage: igw config profile use <name>"}
+	}
+	name := strings.TrimSpace(args[0])
+	if strings.HasPrefix(name, "-") || name == "" {
+		return &igwerr.UsageError{Msg: "usage: igw config profile use <name>"}
+	}
+
+	fs := flag.NewFlagSet("config profile use", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	if err := fs.Parse(args[1:]); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+	if _, ok := cfg.Profiles[name]; !ok {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("profile %q not found", name)}
+	}
+	cfg.ActiveProfile = name
+
+	if c.WriteConfig == nil {
+		return &igwerr.UsageError{Msg: "config writer is not configured"}
+	}
+	if err := c.WriteConfig(cfg); err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+	}
+
+	fmt.Fprintf(c.Out, "active profile: %s\n", name)
+	return nil
+}
+
+func (c *CLI) runConfigProfileList(args []string) error {
+	fs := flag.NewFlagSet("config profile list", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+
+	var jsonOutput bool
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+
+	if err := fs.Parse(args); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
+	}
+	if fs.NArg() > 0 {
+		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+
+	type profileView struct {
+		Name        string `json:"name"`
+		Active      bool   `json:"active"`
+		GatewayURL  string `json:"gatewayURL,omitempty"`
+		TokenMasked string `json:"tokenMasked,omitempty"`
+	}
+
+	views := make([]profileView, 0, len(cfg.Profiles))
+	for name, profile := range cfg.Profiles {
+		views = append(views, profileView{
+			Name:        name,
+			Active:      name == cfg.ActiveProfile,
+			GatewayURL:  profile.GatewayURL,
+			TokenMasked: config.MaskToken(profile.Token),
+		})
+	}
+	sort.Slice(views, func(i, j int) bool {
+		return views[i].Name < views[j].Name
+	})
+
+	if jsonOutput {
+		return writeJSON(c.Out, map[string]any{
+			"activeProfile": cfg.ActiveProfile,
+			"count":         len(views),
+			"profiles":      views,
+		})
+	}
+
+	fmt.Fprintln(c.Out, "ACTIVE\tNAME\tGATEWAY_URL\tTOKEN")
+	for _, view := range views {
+		active := ""
+		if view.Active {
+			active = "*"
+		}
+		fmt.Fprintf(c.Out, "%s\t%s\t%s\t%s\n", active, view.Name, view.GatewayURL, view.TokenMasked)
+	}
+
 	return nil
 }
 
@@ -703,12 +1177,14 @@ func (c *CLI) runDoctor(args []string) error {
 	var gatewayURL string
 	var apiKey string
 	var apiKeyStdin bool
+	var profile string
 	var timeout time.Duration
 	var jsonOutput bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.StringVar(&profile, "profile", "", "Config profile name")
 	fs.DurationVar(&timeout, "timeout", 5*time.Second, "Check timeout")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
@@ -730,11 +1206,10 @@ func (c *CLI) runDoctor(args []string) error {
 		apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
-	cfg, err := c.ReadConfig()
+	resolved, err := c.resolveRuntimeConfig(profile, gatewayURL, apiKey)
 	if err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+		return err
 	}
-	resolved := config.Resolve(cfg, c.Getenv, gatewayURL, apiKey)
 
 	if strings.TrimSpace(resolved.GatewayURL) == "" {
 		return &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"}
@@ -746,7 +1221,7 @@ func (c *CLI) runDoctor(args []string) error {
 		return &igwerr.UsageError{Msg: "--timeout must be positive"}
 	}
 
-	checks := make([]doctorCheck, 0, 3)
+	checks := make([]doctorCheck, 0, 4)
 
 	parsedURL, err := url.Parse(resolved.GatewayURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
@@ -819,6 +1294,26 @@ func (c *CLI) runDoctor(args []string) error {
 		Name:    "gateway_info",
 		OK:      true,
 		Message: fmt.Sprintf("status %d", resp.StatusCode),
+	})
+
+	writeResp, err := client.Call(context.Background(), gateway.CallRequest{
+		Method:  http.MethodPost,
+		Path:    "/data/api/v1/scan/projects",
+		Timeout: timeout,
+	})
+	if err != nil {
+		checks = append(checks, doctorCheck{
+			Name:    "scan_projects",
+			OK:      false,
+			Message: err.Error(),
+			Hint:    doctorHintForError(err),
+		})
+		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+	}
+	checks = append(checks, doctorCheck{
+		Name:    "scan_projects",
+		OK:      true,
+		Message: fmt.Sprintf("status %d", writeResp.StatusCode),
 	})
 
 	return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nil)
@@ -898,6 +1393,38 @@ func doctorHintForError(err error) string {
 	}
 
 	return ""
+}
+
+func (c *CLI) resolveRuntimeConfig(profile string, gatewayURL string, apiKey string) (config.Effective, error) {
+	cfg, err := c.ReadConfig()
+	if err != nil {
+		return config.Effective{}, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+	}
+
+	resolved, err := config.ResolveWithProfile(cfg, c.Getenv, gatewayURL, apiKey, profile)
+	if err != nil {
+		return config.Effective{}, &igwerr.UsageError{Msg: err.Error()}
+	}
+
+	return resolved, nil
+}
+
+func isMutatingMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+func isIdempotentMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodPut, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }
 
 func dialAddress(gatewayURL *url.URL) (string, error) {

@@ -89,6 +89,7 @@ func TestCallBodyVariants(t *testing.T) {
 			"--method", "POST",
 			"--path", "/data/api/v1/scan/projects",
 			"--body", `{"raw":true}`,
+			"--yes",
 		})
 		if err != nil {
 			t.Fatalf("execute: %v", err)
@@ -136,6 +137,7 @@ func TestCallBodyVariants(t *testing.T) {
 			"--method", "POST",
 			"--path", "/data/api/v1/scan/projects",
 			"--body", "@" + bodyPath,
+			"--yes",
 		})
 		if err != nil {
 			t.Fatalf("execute: %v", err)

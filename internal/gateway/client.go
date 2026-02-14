@@ -22,13 +22,15 @@ type Client struct {
 }
 
 type CallRequest struct {
-	Method      string
-	Path        string
-	Query       []string
-	Headers     []string
-	Body        []byte
-	ContentType string
-	Timeout     time.Duration
+	Method       string
+	Path         string
+	Query        []string
+	Headers      []string
+	Body         []byte
+	ContentType  string
+	Timeout      time.Duration
+	Retry        int
+	RetryBackoff time.Duration
 }
 
 type CallResponse struct {
@@ -70,11 +72,6 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 	}
 	parsedURL.RawQuery = values.Encode()
 
-	var bodyReader io.Reader
-	if len(req.Body) > 0 {
-		bodyReader = bytes.NewReader(req.Body)
-	}
-
 	ctxReq := ctx
 	cancel := func() {}
 	if req.Timeout > 0 {
@@ -82,51 +79,90 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 	}
 	defer cancel()
 
-	httpReq, err := http.NewRequestWithContext(ctxReq, req.Method, parsedURL.String(), bodyReader)
-	if err != nil {
-		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("build request: %v", err)}
-	}
-	httpReq.Header.Set(tokenHeader, c.Token)
-
-	if len(req.Body) > 0 && req.ContentType != "" {
-		httpReq.Header.Set("Content-Type", req.ContentType)
-	}
-
-	if err := addHeaders(httpReq.Header, req.Headers); err != nil {
-		return nil, err
-	}
-
 	client := c.HTTP
 	if client == nil {
 		client = &http.Client{}
 	}
 
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return nil, igwerr.NewTransportError(err)
+	attempts := req.Retry + 1
+	if attempts < 1 {
+		attempts = 1
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, igwerr.NewTransportError(err)
+	backoff := req.RetryBackoff
+	if backoff <= 0 {
+		backoff = 250 * time.Millisecond
 	}
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, &igwerr.StatusError{
-			StatusCode: resp.StatusCode,
-			Body:       string(respBody),
-			Hint:       statusHint(resp.StatusCode),
+	var lastErr error
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		var bodyReader io.Reader
+		if len(req.Body) > 0 {
+			bodyReader = bytes.NewReader(req.Body)
 		}
+
+		httpReq, err := http.NewRequestWithContext(ctxReq, req.Method, parsedURL.String(), bodyReader)
+		if err != nil {
+			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("build request: %v", err)}
+		}
+		httpReq.Header.Set(tokenHeader, c.Token)
+
+		if len(req.Body) > 0 && req.ContentType != "" {
+			httpReq.Header.Set("Content-Type", req.ContentType)
+		}
+
+		if err := addHeaders(httpReq.Header, req.Headers); err != nil {
+			return nil, err
+		}
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			lastErr = igwerr.NewTransportError(err)
+			if attempt < attempts {
+				if sleepErr := sleepWithContext(ctxReq, backoff); sleepErr != nil {
+					return nil, sleepErr
+				}
+				continue
+			}
+			return nil, lastErr
+		}
+
+		respBody, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, igwerr.NewTransportError(readErr)
+		}
+
+		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+			statusErr := &igwerr.StatusError{
+				StatusCode: resp.StatusCode,
+				Body:       string(respBody),
+				Hint:       statusHint(resp.StatusCode),
+			}
+			lastErr = statusErr
+			if attempt < attempts && shouldRetryStatus(resp.StatusCode) {
+				if sleepErr := sleepWithContext(ctxReq, backoff); sleepErr != nil {
+					return nil, sleepErr
+				}
+				continue
+			}
+			return nil, statusErr
+		}
+
+		return &CallResponse{
+			Method:     req.Method,
+			URL:        parsedURL.String(),
+			StatusCode: resp.StatusCode,
+			Headers:    resp.Header.Clone(),
+			Body:       respBody,
+		}, nil
 	}
 
-	return &CallResponse{
-		Method:     req.Method,
-		URL:        parsedURL.String(),
-		StatusCode: resp.StatusCode,
-		Headers:    resp.Header.Clone(),
-		Body:       respBody,
-	}, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+
+	return nil, igwerr.NewTransportError(fmt.Errorf("request failed"))
 }
 
 func addQuery(values url.Values, pairs []string) error {
@@ -167,5 +203,21 @@ func statusHint(statusCode int) string {
 		return "token authenticated but lacks permissions or requires secure connections"
 	default:
 		return ""
+	}
+}
+
+func shouldRetryStatus(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return igwerr.NewTransportError(ctx.Err())
+	case <-timer.C:
+		return nil
 	}
 }

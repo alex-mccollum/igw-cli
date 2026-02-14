@@ -141,3 +141,43 @@ func TestCallAuthStatusMapsToAuthExitCode(t *testing.T) {
 		})
 	}
 }
+
+func TestCallRetriesOnServerError(t *testing.T) {
+	t.Parallel()
+
+	var attempts int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts++
+		if attempts < 2 {
+			http.Error(w, "temporary", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	client := &Client{
+		BaseURL: srv.URL,
+		Token:   "secret-token",
+		HTTP:    srv.Client(),
+	}
+
+	resp, err := client.Call(context.Background(), CallRequest{
+		Method:       http.MethodGet,
+		Path:         "/data/api/v1/gateway-info",
+		Timeout:      time.Second,
+		Retry:        1,
+		RetryBackoff: 10 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("call with retry: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempts)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status %d", resp.StatusCode)
+	}
+}
