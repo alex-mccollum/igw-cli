@@ -4,7 +4,7 @@ Project-local operating notes for `igw-cli`.
 
 ## Project Scope
 - Build a lightweight Ignition Gateway API CLI in Go.
-- Keep dependencies to Go standard library for MVP.
+- Default to Go standard library dependencies; add third-party packages only when they provide clear, durable value.
 - Prioritize stable machine-friendly behavior over broad command surface.
 
 ## Canonical Commands

@@ -32,7 +32,7 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 - Wrapper commands delegate to `call` so they share auth/config/timeout/JSON/exit behavior.
 
 ## Dependency Policy
-MVP uses Go standard library only.
+Default to Go standard library dependencies; add third-party packages only when they provide clear, durable value.
 
 ## OpenAPI Discovery Model
 - Query a committed or local OpenAPI JSON snapshot.

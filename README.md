@@ -83,7 +83,8 @@ Environment variables:
 - `IGNITION_API_TOKEN`
 
 Config file path:
-- `${XDG_CONFIG_HOME:-~/.config}/igw/config.json` on Linux/macOS
+- Linux/macOS: `${XDG_CONFIG_HOME:-~/.config}/igw/config.json`
+- Windows: `%AppData%\\igw\\config.json`
 
 ## Examples
 All commands below are examples. Replace placeholder values such as `http://127.0.0.1:8088`, `/path/to/openapi.json`, and token inputs.

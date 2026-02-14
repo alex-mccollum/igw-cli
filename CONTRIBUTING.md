@@ -4,7 +4,7 @@ Thanks for contributing to `igw-cli`.
 
 ## Ground Rules
 
-- Keep the CLI lightweight and Go standard library only for MVP changes.
+- Keep the CLI lightweight; default to the Go standard library and add dependencies only when they provide clear, durable value.
 - Keep behavior machine-friendly and stable for automation.
 - Keep edits small and focused.
 
