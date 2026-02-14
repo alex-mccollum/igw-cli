@@ -37,21 +37,21 @@ Config file path:
 List endpoints from a local OpenAPI snapshot:
 
 ```bash
-igw api list --spec-file ../autoperspective/openapi.json --path-contains gateway
+igw api list --spec-file /path/to/openapi.json --path-contains gateway
 ```
 
 Show one endpoint contract:
 
 ```bash
 igw api show \
-  --spec-file ../autoperspective/openapi.json \
+  --spec-file /path/to/openapi.json \
   --path /data/api/v1/gateway-info
 ```
 
 Search endpoint docs:
 
 ```bash
-igw api search --spec-file ../autoperspective/openapi.json --query scan
+igw api search --spec-file /path/to/openapi.json --query scan
 ```
 
 Call gateway info:
@@ -142,7 +142,7 @@ Call by operationId from local spec:
 
 ```bash
 igw call \
-  --spec-file ../autoperspective/openapi.json \
+  --spec-file /path/to/openapi.json \
   --op gatewayInfo \
   --json
 ```

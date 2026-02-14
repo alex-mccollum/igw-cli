@@ -24,7 +24,7 @@ Constraints:
 - Go standard library only
 - Preserve stable exit codes
 - Keep CLI UX minimal
-- Follow ../agent-playground-rules workflow
+- Follow the project workflow in `AGENTS.md`
 
 Acceptance checks:
 - Run: go test ./...
@@ -144,4 +144,3 @@ Delivery:
 4. Ask for next slice.
 
 Short loops produce better quality than large all-at-once prompts.
-

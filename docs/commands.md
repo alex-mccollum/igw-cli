@@ -15,9 +15,9 @@ go test ./...
 API docs discovery:
 
 ```bash
-igw api list --spec-file ../autoperspective/openapi.json --path-contains gateway
-igw api show --spec-file ../autoperspective/openapi.json --path /data/api/v1/gateway-info
-igw api search --spec-file ../autoperspective/openapi.json --query scan
+igw api list --spec-file /path/to/openapi.json --path-contains gateway
+igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
+igw api search --spec-file /path/to/openapi.json --query scan
 ```
 
 Generic call:
@@ -36,7 +36,7 @@ Call by operationId:
 igw call \
   --gateway-url http://127.0.0.1:8088 \
   --api-key "$IGNITION_API_TOKEN" \
-  --spec-file ../autoperspective/openapi.json \
+  --spec-file /path/to/openapi.json \
   --op gatewayInfo
 ```
 
