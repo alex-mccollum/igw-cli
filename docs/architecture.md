@@ -3,13 +3,18 @@
 ## Goal
 A thin CLI wrapper around the Ignition Gateway HTTP API.
 
-## MVP Commands
+## Core Commands
 1. `api list|show|search`
 2. `call`
-3. `config set|show`
+3. `config set|show|profile`
 4. `doctor`
 5. `gateway info`
 6. `scan projects`
+7. `logs <list|download|loggers|logger set|level-reset>`
+8. `diagnostics bundle <generate|status|download>`
+9. `backup <export|restore>`
+10. `tags <export|import>`
+11. `restart <tasks|gateway>`
 
 ## Contracts
 - Auth header: `X-Ignition-API-Token`.
@@ -24,6 +29,7 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 - Mutating calls require explicit `--yes`.
 - `call` supports optional retries for idempotent methods and `--out` file output.
 - `completion bash` outputs profile-aware shell completion.
+- Wrapper commands delegate to `call` so they share auth/config/timeout/JSON/exit behavior.
 
 ## Dependency Policy
 MVP uses Go standard library only.

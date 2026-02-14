@@ -14,6 +14,11 @@
 - `igw doctor`: connectivity + auth checks (URL, TCP, read access, write access).
 - `igw gateway info`: convenience read wrapper.
 - `igw scan projects`: convenience write wrapper.
+- `igw logs ...`: list/download logs and manage logger levels.
+- `igw diagnostics bundle ...`: generate/status/download diagnostics bundles.
+- `igw backup export|restore`: download or restore gateway backups.
+- `igw tags export|import`: tag import/export helpers.
+- `igw restart tasks|gateway`: restart task status and gateway restart trigger.
 
 ## Configuration Sources
 Precedence is strict:
@@ -105,6 +110,20 @@ Use convenience wrappers:
 ```bash
 igw gateway info --profile dev --json
 igw scan projects --profile dev --yes
+```
+
+Use admin wrappers:
+
+```bash
+igw logs list --profile dev --query limit=5 --json
+igw diagnostics bundle status --profile dev --json
+igw diagnostics bundle generate --profile dev --yes --json
+igw backup export --profile dev --out gateway.gwbk
+igw backup restore --profile dev --in gateway.gwbk --yes
+igw tags export --profile dev --provider default --type json --out tags.json
+igw tags import --profile dev --provider default --type json --collision-policy Overwrite --in tags.json --yes
+igw restart tasks --profile dev --json
+igw restart gateway --profile dev --yes --json
 ```
 
 Enable bash completion:

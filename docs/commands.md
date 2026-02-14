@@ -80,6 +80,34 @@ igw gateway info --profile dev --json
 igw scan projects --profile dev --yes
 ```
 
+Admin wrappers:
+
+```bash
+# Logs
+igw logs list --profile dev --query limit=5 --json
+igw logs download --profile dev --out gateway-logs.zip
+igw logs loggers --profile dev --json
+igw logs logger set --profile dev --name com.inductiveautomation --level DEBUG --yes --json
+igw logs level-reset --profile dev --yes --json
+
+# Diagnostics bundle
+igw diagnostics bundle generate --profile dev --yes --json
+igw diagnostics bundle status --profile dev --json
+igw diagnostics bundle download --profile dev --out diagnostics.zip
+
+# Backups
+igw backup export --profile dev --out gateway.gwbk
+igw backup restore --profile dev --in gateway.gwbk --yes --json
+
+# Tags
+igw tags export --profile dev --provider default --type json --path MyFolder --out tags.json
+igw tags import --profile dev --provider default --type json --collision-policy Overwrite --in tags.json --yes --json
+
+# Restart
+igw restart tasks --profile dev --json
+igw restart gateway --profile dev --yes --json
+```
+
 Shell completion:
 
 ```bash
