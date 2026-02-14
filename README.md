@@ -107,6 +107,18 @@ igw gateway info --profile dev --json
 igw scan projects --profile dev --yes
 ```
 
+Enable bash completion:
+
+```bash
+source <(igw completion bash)
+```
+
+Run end-to-end smoke checks:
+
+```bash
+IGW_PROFILE=dev ./scripts/smoke.sh
+```
+
 Call by operationId from local spec:
 
 ```bash

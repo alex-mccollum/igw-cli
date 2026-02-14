@@ -79,3 +79,15 @@ Convenience wrappers:
 igw gateway info --profile dev --json
 igw scan projects --profile dev --yes
 ```
+
+Shell completion:
+
+```bash
+source <(igw completion bash)
+```
+
+Smoke test script:
+
+```bash
+IGW_PROFILE=dev ./scripts/smoke.sh
+```

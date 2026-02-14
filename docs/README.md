@@ -4,3 +4,4 @@
 - `docs/commands.md`: canonical command examples.
 - `docs/prompting.md`: prompt templates for high-quality task execution.
 - `docs/decisions/`: architecture decision records.
+- `scripts/smoke.sh`: local end-to-end smoke validation script.
