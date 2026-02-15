@@ -1,5 +1,7 @@
 # Commands
 
+This file is the canonical command example reference.
+
 Build:
 
 ```bash
