@@ -100,3 +100,30 @@ func TestParseRequiredEnumFlagErrorMentionsAllowedValues(t *testing.T) {
 		t.Fatalf("expected allowed values in error, got %q", err.Error())
 	}
 }
+
+func TestInferTagImportType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{name: "json", path: "tags.json", want: "json"},
+		{name: "xml upper extension", path: "TAGS.XML", want: "xml"},
+		{name: "csv", path: "/tmp/tags.csv", want: "csv"},
+		{name: "unknown extension", path: "tags.txt", want: ""},
+		{name: "no extension", path: "tags", want: ""},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := inferTagImportType(tc.path)
+			if got != tc.want {
+				t.Fatalf("got %q want %q", got, tc.want)
+			}
+		})
+	}
+}

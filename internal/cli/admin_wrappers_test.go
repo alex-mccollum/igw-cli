@@ -182,7 +182,7 @@ func TestBackupRestoreWrapper(t *testing.T) {
 	}
 }
 
-func TestTagsExportWrapperWritesFile(t *testing.T) {
+func TestTagsExportWrapperDefaultsProviderAndType(t *testing.T) {
 	t.Parallel()
 
 	var gotMethod string
@@ -216,8 +216,6 @@ func TestTagsExportWrapperWritesFile(t *testing.T) {
 		"tags", "export",
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
-		"--provider", "default",
-		"--type", "json",
 		"--path", "MyFolder",
 		"--out", outPath,
 	}); err != nil {
@@ -433,6 +431,96 @@ func TestTagsImportWrapperNormalizesEnumQueries(t *testing.T) {
 	}
 	if !strings.Contains(gotQuery, "collisionPolicy=Overwrite") {
 		t.Fatalf("missing normalized collisionPolicy query: %q", gotQuery)
+	}
+}
+
+func TestTagsImportWrapperDefaultsProviderTypeAndCollisionPolicy(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "tags.json")
+	if err := os.WriteFile(inPath, []byte(`{"tags":[]}`), 0o600); err != nil {
+		t.Fatalf("write tags fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"tags", "import",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--in", inPath,
+		"--yes",
+	}); err != nil {
+		t.Fatalf("tags import failed: %v", err)
+	}
+
+	if !strings.Contains(gotQuery, "provider=default") {
+		t.Fatalf("missing default provider query: %q", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "type=json") {
+		t.Fatalf("missing default/inferred type query: %q", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "collisionPolicy=Abort") {
+		t.Fatalf("missing default collisionPolicy query: %q", gotQuery)
+	}
+}
+
+func TestTagsImportWrapperInfersTypeFromInputExtension(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "tags.xml")
+	if err := os.WriteFile(inPath, []byte(`<tags/>`), 0o600); err != nil {
+		t.Fatalf("write tags fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"tags", "import",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--in", inPath,
+		"--yes",
+	}); err != nil {
+		t.Fatalf("tags import failed: %v", err)
+	}
+
+	if !strings.Contains(gotQuery, "type=xml") {
+		t.Fatalf("missing inferred xml type query: %q", gotQuery)
 	}
 }
 

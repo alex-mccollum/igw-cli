@@ -108,8 +108,9 @@ igw backup export --profile dev --out gateway.gwbk
 igw backup restore --profile dev --in gateway.gwbk --yes --json
 
 # Tags
-igw tags export --profile dev --provider default --type json --path MyFolder --out tags.json
-igw tags import --profile dev --provider default --type json --collision-policy Overwrite --in tags.json --yes --json
+igw tags export --profile dev --out tags.json
+igw tags import --profile dev --in tags.json --yes --json
+igw tags import --profile dev --in tags.json --collision-policy Overwrite --yes --json
 
 # Restart
 igw restart tasks --profile dev --json

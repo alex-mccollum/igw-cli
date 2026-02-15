@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -422,8 +423,8 @@ func (c *CLI) runTagsExport(args []string) error {
 	var includeUdts string
 	var outPath string
 	bindWrapperCommon(fs, &common)
-	fs.StringVar(&provider, "provider", "", "Tag provider name")
-	fs.StringVar(&exportType, "type", "", "Export type: json|xml")
+	fs.StringVar(&provider, "provider", "default", "Tag provider name")
+	fs.StringVar(&exportType, "type", "json", "Export type: json|xml")
 	fs.StringVar(&rootPath, "path", "", "Root tag path")
 	fs.StringVar(&recursive, "recursive", "", "Set recursive query to true/false")
 	fs.StringVar(&includeUdts, "include-udts", "", "Set includeUdts query to true/false")
@@ -435,8 +436,9 @@ func (c *CLI) runTagsExport(args []string) error {
 	if fs.NArg() > 0 {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
 	}
-	if strings.TrimSpace(provider) == "" {
-		return &igwerr.UsageError{Msg: "required: --provider"}
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = "default"
 	}
 	normalizedType, err := parseRequiredEnumFlag("type", exportType, []string{"json", "xml"})
 	if err != nil {
@@ -454,7 +456,7 @@ func (c *CLI) runTagsExport(args []string) error {
 	callArgs := []string{
 		"--method", "GET",
 		"--path", "/data/api/v1/tags/export",
-		"--query", "provider=" + strings.TrimSpace(provider),
+		"--query", "provider=" + provider,
 		"--query", "type=" + normalizedType,
 	}
 	callArgs = append(callArgs, common.callArgs()...)
@@ -485,9 +487,9 @@ func (c *CLI) runTagsImport(args []string) error {
 	var inPath string
 	var yes bool
 	bindWrapperCommon(fs, &common)
-	fs.StringVar(&provider, "provider", "", "Tag provider name")
-	fs.StringVar(&importType, "type", "", "Import type: json|xml|csv")
-	fs.StringVar(&collisionPolicy, "collision-policy", "", "Collision policy: Abort|Overwrite|Rename|Ignore|MergeOverwrite")
+	fs.StringVar(&provider, "provider", "default", "Tag provider name")
+	fs.StringVar(&importType, "type", "", "Import type: json|xml|csv (default: infer from --in extension, fallback json)")
+	fs.StringVar(&collisionPolicy, "collision-policy", "Abort", "Collision policy: Abort|Overwrite|Rename|Ignore|MergeOverwrite")
 	fs.StringVar(&rootPath, "path", "", "Root tag path")
 	fs.StringVar(&inPath, "in", "", "Path to tag import file")
 	fs.BoolVar(&yes, "yes", false, "Confirm mutating request")
@@ -498,19 +500,27 @@ func (c *CLI) runTagsImport(args []string) error {
 	if fs.NArg() > 0 {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
 	}
-	if strings.TrimSpace(provider) == "" {
-		return &igwerr.UsageError{Msg: "required: --provider"}
+	if strings.TrimSpace(inPath) == "" {
+		return &igwerr.UsageError{Msg: "required: --in"}
 	}
-	normalizedType, err := parseRequiredEnumFlag("type", importType, []string{"json", "xml", "csv"})
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = "default"
+	}
+	resolvedType := strings.TrimSpace(importType)
+	if resolvedType == "" {
+		resolvedType = inferTagImportType(inPath)
+		if resolvedType == "" {
+			resolvedType = "json"
+		}
+	}
+	normalizedType, err := parseRequiredEnumFlag("type", resolvedType, []string{"json", "xml", "csv"})
 	if err != nil {
 		return err
 	}
 	normalizedCollisionPolicy, err := parseRequiredEnumFlag("collision-policy", collisionPolicy, []string{"Abort", "Overwrite", "Rename", "Ignore", "MergeOverwrite"})
 	if err != nil {
 		return err
-	}
-	if strings.TrimSpace(inPath) == "" {
-		return &igwerr.UsageError{Msg: "required: --in"}
 	}
 	if !yes {
 		return &igwerr.UsageError{Msg: "required: --yes"}
@@ -519,7 +529,7 @@ func (c *CLI) runTagsImport(args []string) error {
 	callArgs := []string{
 		"--method", "POST",
 		"--path", "/data/api/v1/tags/import",
-		"--query", "provider=" + strings.TrimSpace(provider),
+		"--query", "provider=" + provider,
 		"--query", "type=" + normalizedType,
 		"--query", "collisionPolicy=" + normalizedCollisionPolicy,
 		"--body", "@" + inPath,
@@ -660,5 +670,18 @@ func parseRequiredEnumFlag(flagName string, value string, allowed []string) (str
 	}
 	return "", &igwerr.UsageError{
 		Msg: fmt.Sprintf("invalid value for --%s: %q (allowed: %s)", flagName, normalized, strings.Join(allowed, ", ")),
+	}
+}
+
+func inferTagImportType(path string) string {
+	switch strings.ToLower(filepath.Ext(strings.TrimSpace(path))) {
+	case ".json":
+		return "json"
+	case ".xml":
+		return "xml"
+	case ".csv":
+		return "csv"
+	default:
+		return ""
 	}
 }
