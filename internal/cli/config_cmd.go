@@ -440,6 +440,7 @@ func (c *CLI) runConfigProfileAdd(args []string) error {
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]config.Profile{}
 	}
+	profileCountBefore := len(cfg.Profiles)
 
 	profile := cfg.Profiles[name]
 	if strings.TrimSpace(gatewayURL) != "" {
@@ -451,6 +452,9 @@ func (c *CLI) runConfigProfileAdd(args []string) error {
 	cfg.Profiles[name] = profile
 
 	if makeActive {
+		cfg.ActiveProfile = name
+	} else if strings.TrimSpace(cfg.ActiveProfile) == "" && profileCountBefore == 0 {
+		// First profile becomes active by default to reduce first-run friction.
 		cfg.ActiveProfile = name
 	}
 

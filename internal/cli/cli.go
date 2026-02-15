@@ -23,6 +23,7 @@ type CLI struct {
 	ReadConfig      func() (config.File, error)
 	WriteConfig     func(config.File) error
 	DetectWSLHostIP func() (string, string, error)
+	IsTerminal      func(io.Writer) bool
 	HTTPClient      *http.Client
 }
 
@@ -35,6 +36,7 @@ func New() *CLI {
 		ReadConfig:      config.Read,
 		WriteConfig:     config.Write,
 		DetectWSLHostIP: wsl.DetectWindowsHostIP,
+		IsTerminal:      isWriterTerminal,
 	}
 }
 

@@ -53,3 +53,34 @@ func TestConfigProfileAddUseList(t *testing.T) {
 		t.Fatalf("expected active profile row, got %q", out.String())
 	}
 }
+
+func TestConfigProfileAddFirstProfileBecomesActive(t *testing.T) {
+	t.Parallel()
+
+	var cfg config.File
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return cfg, nil
+		},
+		WriteConfig: func(next config.File) error {
+			cfg = next
+			return nil
+		},
+	}
+
+	if err := c.Execute([]string{
+		"config", "profile", "add", "dev",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "dev-token",
+	}); err != nil {
+		t.Fatalf("profile add failed: %v", err)
+	}
+
+	if cfg.ActiveProfile != "dev" {
+		t.Fatalf("expected first profile to become active, got %q", cfg.ActiveProfile)
+	}
+}

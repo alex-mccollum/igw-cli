@@ -129,3 +129,39 @@ func TestCallUsesSelectedProfileConfig(t *testing.T) {
 		t.Fatalf("expected token from profile, got %q", gotToken)
 	}
 }
+
+func TestCallDefaultsMethodToGET(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+	}); err != nil {
+		t.Fatalf("call failed: %v", err)
+	}
+
+	if gotMethod != http.MethodGet {
+		t.Fatalf("expected default method GET, got %q", gotMethod)
+	}
+}

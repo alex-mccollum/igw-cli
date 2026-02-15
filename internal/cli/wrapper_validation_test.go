@@ -127,3 +127,48 @@ func TestInferTagImportType(t *testing.T) {
 		})
 	}
 }
+
+func TestChooseDefaultOutPath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		explicit    string
+		defaultName string
+		interactive bool
+		want        string
+	}{
+		{
+			name:        "explicit wins",
+			explicit:    "custom.zip",
+			defaultName: "gateway-logs.zip",
+			interactive: true,
+			want:        "custom.zip",
+		},
+		{
+			name:        "interactive uses default",
+			explicit:    "",
+			defaultName: "gateway-logs.zip",
+			interactive: true,
+			want:        "gateway-logs.zip",
+		},
+		{
+			name:        "non interactive leaves stdout",
+			explicit:    "",
+			defaultName: "gateway-logs.zip",
+			interactive: false,
+			want:        "",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := chooseDefaultOutPath(tc.explicit, tc.defaultName, tc.interactive)
+			if got != tc.want {
+				t.Fatalf("got %q want %q", got, tc.want)
+			}
+		})
+	}
+}

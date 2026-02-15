@@ -91,11 +91,15 @@ func (c *CLI) runAPIShow(args []string) error {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		if strings.TrimSpace(path) == "" && fs.NArg() == 1 {
+			path = fs.Arg(0)
+		} else {
+			return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		}
 	}
 
 	if strings.TrimSpace(path) == "" {
-		return &igwerr.UsageError{Msg: "required: --path"}
+		return &igwerr.UsageError{Msg: "required: --path (or one positional path argument)"}
 	}
 
 	ops, err := loadAPIOperations(specFile)

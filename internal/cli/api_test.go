@@ -110,6 +110,27 @@ func TestAPISearchJSON(t *testing.T) {
 	}
 }
 
+func TestAPIShowAcceptsPositionalPath(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "show", "--spec-file", specPath, "/data/api/v1/gateway-info"})
+	if err != nil {
+		t.Fatalf("api show failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "operation_id\tgatewayInfo") {
+		t.Fatalf("expected gatewayInfo output, got %q", out.String())
+	}
+}
+
 func writeAPISpec(t *testing.T, content string) string {
 	t.Helper()
 

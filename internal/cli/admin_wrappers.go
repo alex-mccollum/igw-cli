@@ -146,8 +146,9 @@ func (c *CLI) runLogsDownload(args []string) error {
 
 	callArgs := []string{"--method", "GET", "--path", "/data/api/v1/logs/download"}
 	callArgs = append(callArgs, common.callArgs()...)
-	if strings.TrimSpace(outPath) != "" {
-		callArgs = append(callArgs, "--out", outPath)
+	resolvedOut := chooseDefaultOutPath(outPath, "gateway-logs.zip", c.isInteractiveOutput())
+	if resolvedOut != "" {
+		callArgs = append(callArgs, "--out", resolvedOut)
 	}
 	return c.runCall(callArgs)
 }
@@ -310,8 +311,9 @@ func (c *CLI) runDiagnosticsBundleDownload(args []string) error {
 
 	callArgs := []string{"--method", "GET", "--path", "/data/api/v1/diagnostics/bundle/download"}
 	callArgs = append(callArgs, common.callArgs()...)
-	if strings.TrimSpace(outPath) != "" {
-		callArgs = append(callArgs, "--out", outPath)
+	resolvedOut := chooseDefaultOutPath(outPath, "diagnostics.zip", c.isInteractiveOutput())
+	if resolvedOut != "" {
+		callArgs = append(callArgs, "--out", resolvedOut)
 	}
 	return c.runCall(callArgs)
 }
@@ -343,8 +345,9 @@ func (c *CLI) runBackupExport(args []string) error {
 	if normalizedIncludePeerLocal != "" {
 		callArgs = append(callArgs, "--query", "includePeerLocal="+normalizedIncludePeerLocal)
 	}
-	if strings.TrimSpace(outPath) != "" {
-		callArgs = append(callArgs, "--out", outPath)
+	resolvedOut := chooseDefaultOutPath(outPath, "gateway.gwbk", c.isInteractiveOutput())
+	if resolvedOut != "" {
+		callArgs = append(callArgs, "--out", resolvedOut)
 	}
 	return c.runCall(callArgs)
 }
@@ -684,4 +687,14 @@ func inferTagImportType(path string) string {
 	default:
 		return ""
 	}
+}
+
+func chooseDefaultOutPath(explicitOutPath string, defaultFileName string, interactiveOutput bool) string {
+	if outPath := strings.TrimSpace(explicitOutPath); outPath != "" {
+		return outPath
+	}
+	if interactiveOutput {
+		return defaultFileName
+	}
+	return ""
 }

@@ -25,6 +25,7 @@ API docs discovery:
 ```bash
 igw api list --spec-file /path/to/openapi.json --path-contains gateway
 igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
+igw api show --spec-file /path/to/openapi.json /data/api/v1/gateway-info
 igw api search --spec-file /path/to/openapi.json --query scan
 ```
 
@@ -35,6 +36,12 @@ igw call \
   --gateway-url http://127.0.0.1:8088 \
   --api-key "$IGNITION_API_TOKEN" \
   --method GET \
+  --path /data/api/v1/gateway-info
+
+# Method defaults to GET when omitted.
+igw call \
+  --gateway-url http://127.0.0.1:8088 \
+  --api-key "$IGNITION_API_TOKEN" \
   --path /data/api/v1/gateway-info
 ```
 
@@ -94,6 +101,7 @@ Admin wrappers:
 # Logs
 igw logs list --profile dev --query limit=5 --json
 igw logs download --profile dev --out gateway-logs.zip
+# If --out is omitted on an interactive terminal, defaults to gateway-logs.zip.
 igw logs loggers --profile dev --json
 igw logs logger set --profile dev --name com.inductiveautomation --level DEBUG --yes --json
 igw logs level-reset --profile dev --yes --json
@@ -102,9 +110,11 @@ igw logs level-reset --profile dev --yes --json
 igw diagnostics bundle generate --profile dev --yes --json
 igw diagnostics bundle status --profile dev --json
 igw diagnostics bundle download --profile dev --out diagnostics.zip
+# If --out is omitted on an interactive terminal, defaults to diagnostics.zip.
 
 # Backups
 igw backup export --profile dev --out gateway.gwbk
+# If --out is omitted on an interactive terminal, defaults to gateway.gwbk.
 igw backup restore --profile dev --in gateway.gwbk --yes --json
 
 # Tags

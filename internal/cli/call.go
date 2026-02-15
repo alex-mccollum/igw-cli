@@ -121,11 +121,11 @@ func (c *CLI) runCall(args []string) error {
 	if strings.TrimSpace(resolved.Token) == "" {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
 	}
-	if strings.TrimSpace(method) == "" {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --method"})
-	}
 	if strings.TrimSpace(path) == "" {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --path"})
+	}
+	if strings.TrimSpace(method) == "" {
+		method = http.MethodGet
 	}
 	if timeout <= 0 {
 		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--timeout must be positive"})
