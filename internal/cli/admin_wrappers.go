@@ -210,15 +210,16 @@ func (c *CLI) runLogsLoggerSet(args []string) error {
 	if strings.TrimSpace(name) == "" {
 		return &igwerr.UsageError{Msg: "required: --name"}
 	}
-	if strings.TrimSpace(level) == "" {
-		return &igwerr.UsageError{Msg: "required: --level"}
+	normalizedLevel, err := parseRequiredEnumFlag("level", level, []string{"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"})
+	if err != nil {
+		return err
 	}
 	if !yes {
 		return &igwerr.UsageError{Msg: "required: --yes"}
 	}
 
 	path := "/data/api/v1/logs/loggers/" + url.PathEscape(strings.TrimSpace(name))
-	callArgs := []string{"--method", "POST", "--path", path, "--yes", "--query", "level=" + strings.TrimSpace(level)}
+	callArgs := []string{"--method", "POST", "--path", path, "--yes", "--query", "level=" + normalizedLevel}
 	callArgs = append(callArgs, common.callArgs()...)
 	return c.runCall(callArgs)
 }
@@ -331,11 +332,15 @@ func (c *CLI) runBackupExport(args []string) error {
 	if fs.NArg() > 0 {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
 	}
+	normalizedIncludePeerLocal, err := parseOptionalBoolFlag("include-peer-local", includePeerLocal)
+	if err != nil {
+		return err
+	}
 
 	callArgs := []string{"--method", "GET", "--path", "/data/api/v1/backup"}
 	callArgs = append(callArgs, common.callArgs()...)
-	if strings.TrimSpace(includePeerLocal) != "" {
-		callArgs = append(callArgs, "--query", "includePeerLocal="+strings.TrimSpace(includePeerLocal))
+	if normalizedIncludePeerLocal != "" {
+		callArgs = append(callArgs, "--query", "includePeerLocal="+normalizedIncludePeerLocal)
 	}
 	if strings.TrimSpace(outPath) != "" {
 		callArgs = append(callArgs, "--out", outPath)
@@ -372,6 +377,18 @@ func (c *CLI) runBackupRestore(args []string) error {
 	if !yes {
 		return &igwerr.UsageError{Msg: "required: --yes"}
 	}
+	normalizedRestoreDisabled, err := parseOptionalBoolFlag("restore-disabled", restoreDisabled)
+	if err != nil {
+		return err
+	}
+	normalizedDisableTempProjectBackup, err := parseOptionalBoolFlag("disable-temp-project-backup", disableTempProjectBackup)
+	if err != nil {
+		return err
+	}
+	normalizedRenameEnabled, err := parseOptionalBoolFlag("rename-enabled", renameEnabled)
+	if err != nil {
+		return err
+	}
 
 	callArgs := []string{
 		"--method", "POST",
@@ -381,14 +398,14 @@ func (c *CLI) runBackupRestore(args []string) error {
 		"--yes",
 	}
 	callArgs = append(callArgs, common.callArgs()...)
-	if strings.TrimSpace(restoreDisabled) != "" {
-		callArgs = append(callArgs, "--query", "restoreDisabled="+strings.TrimSpace(restoreDisabled))
+	if normalizedRestoreDisabled != "" {
+		callArgs = append(callArgs, "--query", "restoreDisabled="+normalizedRestoreDisabled)
 	}
-	if strings.TrimSpace(disableTempProjectBackup) != "" {
-		callArgs = append(callArgs, "--query", "disableTempProjectBackup="+strings.TrimSpace(disableTempProjectBackup))
+	if normalizedDisableTempProjectBackup != "" {
+		callArgs = append(callArgs, "--query", "disableTempProjectBackup="+normalizedDisableTempProjectBackup)
 	}
-	if strings.TrimSpace(renameEnabled) != "" {
-		callArgs = append(callArgs, "--query", "renameEnabled="+strings.TrimSpace(renameEnabled))
+	if normalizedRenameEnabled != "" {
+		callArgs = append(callArgs, "--query", "renameEnabled="+normalizedRenameEnabled)
 	}
 	return c.runCall(callArgs)
 }
@@ -421,25 +438,34 @@ func (c *CLI) runTagsExport(args []string) error {
 	if strings.TrimSpace(provider) == "" {
 		return &igwerr.UsageError{Msg: "required: --provider"}
 	}
-	if strings.TrimSpace(exportType) == "" {
-		return &igwerr.UsageError{Msg: "required: --type"}
+	normalizedType, err := parseRequiredEnumFlag("type", exportType, []string{"json", "xml"})
+	if err != nil {
+		return err
+	}
+	normalizedRecursive, err := parseOptionalBoolFlag("recursive", recursive)
+	if err != nil {
+		return err
+	}
+	normalizedIncludeUdts, err := parseOptionalBoolFlag("include-udts", includeUdts)
+	if err != nil {
+		return err
 	}
 
 	callArgs := []string{
 		"--method", "GET",
 		"--path", "/data/api/v1/tags/export",
 		"--query", "provider=" + strings.TrimSpace(provider),
-		"--query", "type=" + strings.TrimSpace(exportType),
+		"--query", "type=" + normalizedType,
 	}
 	callArgs = append(callArgs, common.callArgs()...)
 	if strings.TrimSpace(rootPath) != "" {
 		callArgs = append(callArgs, "--query", "path="+strings.TrimSpace(rootPath))
 	}
-	if strings.TrimSpace(recursive) != "" {
-		callArgs = append(callArgs, "--query", "recursive="+strings.TrimSpace(recursive))
+	if normalizedRecursive != "" {
+		callArgs = append(callArgs, "--query", "recursive="+normalizedRecursive)
 	}
-	if strings.TrimSpace(includeUdts) != "" {
-		callArgs = append(callArgs, "--query", "includeUdts="+strings.TrimSpace(includeUdts))
+	if normalizedIncludeUdts != "" {
+		callArgs = append(callArgs, "--query", "includeUdts="+normalizedIncludeUdts)
 	}
 	if strings.TrimSpace(outPath) != "" {
 		callArgs = append(callArgs, "--out", outPath)
@@ -475,11 +501,13 @@ func (c *CLI) runTagsImport(args []string) error {
 	if strings.TrimSpace(provider) == "" {
 		return &igwerr.UsageError{Msg: "required: --provider"}
 	}
-	if strings.TrimSpace(importType) == "" {
-		return &igwerr.UsageError{Msg: "required: --type"}
+	normalizedType, err := parseRequiredEnumFlag("type", importType, []string{"json", "xml", "csv"})
+	if err != nil {
+		return err
 	}
-	if strings.TrimSpace(collisionPolicy) == "" {
-		return &igwerr.UsageError{Msg: "required: --collision-policy"}
+	normalizedCollisionPolicy, err := parseRequiredEnumFlag("collision-policy", collisionPolicy, []string{"Abort", "Overwrite", "Rename", "Ignore", "MergeOverwrite"})
+	if err != nil {
+		return err
 	}
 	if strings.TrimSpace(inPath) == "" {
 		return &igwerr.UsageError{Msg: "required: --in"}
@@ -492,8 +520,8 @@ func (c *CLI) runTagsImport(args []string) error {
 		"--method", "POST",
 		"--path", "/data/api/v1/tags/import",
 		"--query", "provider=" + strings.TrimSpace(provider),
-		"--query", "type=" + strings.TrimSpace(importType),
-		"--query", "collisionPolicy=" + strings.TrimSpace(collisionPolicy),
+		"--query", "type=" + normalizedType,
+		"--query", "collisionPolicy=" + normalizedCollisionPolicy,
 		"--body", "@" + inPath,
 		"--content-type", "application/octet-stream",
 		"--yes",
@@ -603,4 +631,34 @@ func appendQueryArgs(args []string, query []string) []string {
 		args = append(args, "--query", pair)
 	}
 	return args
+}
+
+func parseOptionalBoolFlag(flagName string, value string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return "", nil
+	}
+	switch normalized {
+	case "true", "false":
+		return normalized, nil
+	default:
+		return "", &igwerr.UsageError{
+			Msg: fmt.Sprintf("invalid value for --%s: %q (expected true or false)", flagName, strings.TrimSpace(value)),
+		}
+	}
+}
+
+func parseRequiredEnumFlag(flagName string, value string, allowed []string) (string, error) {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" {
+		return "", &igwerr.UsageError{Msg: fmt.Sprintf("required: --%s", flagName)}
+	}
+	for _, allowedValue := range allowed {
+		if strings.EqualFold(allowedValue, normalized) {
+			return allowedValue, nil
+		}
+	}
+	return "", &igwerr.UsageError{
+		Msg: fmt.Sprintf("invalid value for --%s: %q (allowed: %s)", flagName, normalized, strings.Join(allowed, ", ")),
+	}
 }

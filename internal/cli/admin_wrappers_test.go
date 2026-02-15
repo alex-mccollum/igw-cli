@@ -303,3 +303,104 @@ func TestRestartGatewayWrapperSetsConfirmQuery(t *testing.T) {
 		t.Fatalf("unexpected query %q", gotQuery)
 	}
 }
+
+func TestLogsLoggerSetWrapperRejectsInvalidLevel(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"logs", "logger", "set",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--name", "com.example",
+		"--level", "VERBOSE",
+		"--yes",
+	})
+	if err == nil {
+		t.Fatalf("expected invalid --level error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestBackupRestoreWrapperRejectsInvalidBoolFlag(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "backup.gwbk")
+	if err := os.WriteFile(inPath, []byte("backup-bytes"), 0o600); err != nil {
+		t.Fatalf("write backup fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"backup", "restore",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--in", inPath,
+		"--yes",
+		"--restore-disabled", "maybe",
+	})
+	if err == nil {
+		t.Fatalf("expected invalid bool flag error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestTagsImportWrapperRejectsInvalidCollisionPolicy(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "tags.json")
+	if err := os.WriteFile(inPath, []byte(`{"tags":[]}`), 0o600); err != nil {
+		t.Fatalf("write tags fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"tags", "import",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--provider", "default",
+		"--type", "json",
+		"--collision-policy", "Replace",
+		"--in", inPath,
+		"--yes",
+	})
+	if err == nil {
+		t.Fatalf("expected invalid collision policy error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
