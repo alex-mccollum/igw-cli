@@ -304,6 +304,138 @@ func TestRestartGatewayWrapperSetsConfirmQuery(t *testing.T) {
 	}
 }
 
+func TestLogsLoggerSetWrapperNormalizesLevel(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"logs", "logger", "set",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--name", "com.example",
+		"--level", "debug",
+		"--yes",
+	}); err != nil {
+		t.Fatalf("logs logger set failed: %v", err)
+	}
+
+	if gotQuery != "level=DEBUG" {
+		t.Fatalf("unexpected normalized query %q", gotQuery)
+	}
+}
+
+func TestBackupRestoreWrapperNormalizesBoolQueries(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "backup.gwbk")
+	if err := os.WriteFile(inPath, []byte("backup-bytes"), 0o600); err != nil {
+		t.Fatalf("write backup fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"backup", "restore",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--in", inPath,
+		"--yes",
+		"--restore-disabled", "TRUE",
+		"--disable-temp-project-backup", "FaLsE",
+	}); err != nil {
+		t.Fatalf("backup restore failed: %v", err)
+	}
+
+	if !strings.Contains(gotQuery, "restoreDisabled=true") {
+		t.Fatalf("missing normalized restoreDisabled query: %q", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "disableTempProjectBackup=false") {
+		t.Fatalf("missing normalized disableTempProjectBackup query: %q", gotQuery)
+	}
+}
+
+func TestTagsImportWrapperNormalizesEnumQueries(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	inPath := filepath.Join(dir, "tags.json")
+	if err := os.WriteFile(inPath, []byte(`{"tags":[]}`), 0o600); err != nil {
+		t.Fatalf("write tags fixture: %v", err)
+	}
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"tags", "import",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--provider", "default",
+		"--type", "JSON",
+		"--collision-policy", "overwrite",
+		"--in", inPath,
+		"--yes",
+	}); err != nil {
+		t.Fatalf("tags import failed: %v", err)
+	}
+
+	if !strings.Contains(gotQuery, "type=json") {
+		t.Fatalf("missing normalized type query: %q", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "collisionPolicy=Overwrite") {
+		t.Fatalf("missing normalized collisionPolicy query: %q", gotQuery)
+	}
+}
+
 func TestLogsLoggerSetWrapperRejectsInvalidLevel(t *testing.T) {
 	t.Parallel()
 
