@@ -10,6 +10,17 @@ permissions:
   contents: read
 
 jobs:
+  docs:
+    name: Docs Consistency
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Verify command docs consistency
+        run: ./scripts/check-command-docs.sh
+
   test-and-build:
     name: Test and Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
