@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/config"
+	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
 
 func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
@@ -164,6 +165,157 @@ func TestAPISyncFallsBackToOpenAPIJSONPath(t *testing.T) {
 
 	if !strings.Contains(strings.TrimSpace(out.String()), "/openapi.json") {
 		t.Fatalf("expected /openapi.json source url, got %q", out.String())
+	}
+}
+
+func TestAPISyncSelectValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{
+			name:    "select requires json",
+			args:    []string{"api", "sync", "--select", "ok"},
+			wantErr: "required: --json when using --select",
+		},
+		{
+			name:    "raw requires json",
+			args:    []string{"api", "sync", "--select", "ok", "--raw"},
+			wantErr: "required: --json when using --raw",
+		},
+		{
+			name:    "raw requires exactly one select",
+			args:    []string{"api", "sync", "--json", "--select", "ok", "--select", "code", "--raw"},
+			wantErr: "required: exactly one --select when using --raw",
+		},
+		{
+			name:    "raw and compact invalid",
+			args:    []string{"api", "sync", "--json", "--select", "ok", "--raw", "--compact"},
+			wantErr: "cannot use --raw with --compact",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := &CLI{
+				In:     strings.NewReader(""),
+				Out:    new(bytes.Buffer),
+				Err:    new(bytes.Buffer),
+				Getenv: func(string) string { return "" },
+				ReadConfig: func() (config.File, error) {
+					return config.File{}, nil
+				},
+			}
+
+			err := c.Execute(tc.args)
+			if err == nil {
+				t.Fatalf("expected usage error")
+			}
+			if code := igwerr.ExitCode(err); code != 2 {
+				t.Fatalf("unexpected exit code %d", code)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestAPISyncErrorEnvelopeSubsetSelection(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"api", "sync",
+		"--json",
+		"--select", "code",
+		"--select", "error",
+		"--gateway-url", "http://127.0.0.1:8088",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode json: %v", decodeErr)
+	}
+	if int(payload["code"].(float64)) != 2 {
+		t.Fatalf("unexpected subset code %#v", payload["code"])
+	}
+	if !strings.Contains(payload["error"].(string), "required: --api-key") {
+		t.Fatalf("unexpected subset error %#v", payload["error"])
+	}
+}
+
+func TestAPISyncInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/openapi" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(apiSpecFixture))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"api", "sync",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--select", "missing.path",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode json: %v", decodeErr)
+	}
+	if int(payload["code"].(float64)) != 2 {
+		t.Fatalf("unexpected code %#v", payload["code"])
+	}
+	if !strings.Contains(payload["error"].(string), "invalid --select path") {
+		t.Fatalf("unexpected error %#v", payload["error"])
 	}
 }
 

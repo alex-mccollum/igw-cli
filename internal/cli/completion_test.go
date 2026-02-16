@@ -43,6 +43,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "--compact") {
 		t.Fatalf("missing --compact completion flag")
 	}
+	if strings.Contains(script, "--field") || strings.Contains(script, "--fields") {
+		t.Fatalf("found deprecated --field/--fields completion flags")
+	}
 }
 
 func TestCompletionUnsupportedShell(t *testing.T) {

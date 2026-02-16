@@ -123,3 +123,40 @@ func TestGatewayInfoWrapperPropagatesFieldsAndCompact(t *testing.T) {
 		t.Fatalf("unexpected response.status %#v", payload["response.status"])
 	}
 }
+
+func TestGatewayInfoWrapperPropagatesRawSelect(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"gateway", "info",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--select", "response.status",
+		"--raw",
+	}); err != nil {
+		t.Fatalf("gateway info failed: %v", err)
+	}
+
+	if out.String() != "200\n" {
+		t.Fatalf("unexpected raw output %q", out.String())
+	}
+}

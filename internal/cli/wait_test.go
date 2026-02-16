@@ -170,6 +170,65 @@ func TestWaitTimeoutMapsToNetworkExitCode(t *testing.T) {
 	}
 }
 
+func TestWaitSelectValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{
+			name:    "select requires json",
+			args:    []string{"wait", "gateway", "--select", "ready"},
+			wantErr: "required: --json when using --select",
+		},
+		{
+			name:    "raw requires json",
+			args:    []string{"wait", "gateway", "--select", "ready", "--raw"},
+			wantErr: "required: --json when using --raw",
+		},
+		{
+			name:    "raw requires exactly one select",
+			args:    []string{"wait", "gateway", "--json", "--select", "ready", "--select", "target", "--raw"},
+			wantErr: "required: exactly one --select when using --raw",
+		},
+		{
+			name:    "raw and compact invalid",
+			args:    []string{"wait", "gateway", "--json", "--select", "ready", "--raw", "--compact"},
+			wantErr: "cannot use --raw with --compact",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := &CLI{
+				In:     strings.NewReader(""),
+				Out:    new(bytes.Buffer),
+				Err:    new(bytes.Buffer),
+				Getenv: func(string) string { return "" },
+				ReadConfig: func() (config.File, error) {
+					return config.File{}, nil
+				},
+			}
+
+			err := c.Execute(tc.args)
+			if err == nil {
+				t.Fatalf("expected usage error")
+			}
+			if code := igwerr.ExitCode(err); code != 2 {
+				t.Fatalf("unexpected exit code %d", code)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 func TestWaitDiagnosticsBundleFailedStateExitsImmediately(t *testing.T) {
 	t.Parallel()
 
@@ -236,6 +295,90 @@ func TestWaitGatewayAuthFailureExitsImmediately(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("expected no retries on auth failure, got %d calls", calls)
+	}
+}
+
+func TestWaitErrorEnvelopeSubsetSelection(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := testWaitCLI(t, srv, &out)
+
+	err := c.Execute([]string{
+		"wait", "gateway",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--select", "code",
+		"--select", "error",
+	})
+	if err == nil {
+		t.Fatalf("expected auth failure")
+	}
+	if code := igwerr.ExitCode(err); code != 6 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode json: %v", decodeErr)
+	}
+	if int(payload["code"].(float64)) != 6 {
+		t.Fatalf("unexpected subset code %#v", payload["code"])
+	}
+	if !strings.Contains(payload["error"].(string), "http 401") {
+		t.Fatalf("unexpected subset error %#v", payload["error"])
+	}
+}
+
+func TestWaitInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"name":"gateway"}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := testWaitCLI(t, srv, &out)
+
+	err := c.Execute([]string{
+		"wait", "gateway",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--select", "missing.path",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode json: %v", decodeErr)
+	}
+	if int(payload["code"].(float64)) != 2 {
+		t.Fatalf("unexpected code %#v", payload["code"])
+	}
+	if !strings.Contains(payload["error"].(string), "invalid --select path") {
+		t.Fatalf("unexpected error %#v", payload["error"])
 	}
 }
 

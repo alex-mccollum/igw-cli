@@ -233,6 +233,55 @@ func TestCallJSONSelectRawExtractionFromErrorEnvelope(t *testing.T) {
 	}
 }
 
+func TestCallJSONSelectSubsetFromErrorEnvelope(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`forbidden`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--select", "code",
+		"--select", "error",
+	})
+	if err == nil {
+		t.Fatalf("expected auth failure")
+	}
+	if code := igwerr.ExitCode(err); code != 6 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode json: %v", decodeErr)
+	}
+	if int(payload["code"].(float64)) != 6 {
+		t.Fatalf("unexpected subset code %#v", payload["code"])
+	}
+	if !strings.Contains(payload["error"].(string), "http 403") {
+		t.Fatalf("unexpected subset error %#v", payload["error"])
+	}
+}
+
 func TestCallJSONSelectSubsetExtraction(t *testing.T) {
 	t.Parallel()
 
