@@ -7,7 +7,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
@@ -29,103 +28,6 @@ func (c *CLI) runConfig(args []string) error {
 	default:
 		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown config subcommand %q", args[0])}
 	}
-}
-
-func (c *CLI) runGateway(args []string) error {
-	if len(args) == 0 {
-		fmt.Fprintln(c.Err, "Usage: igw gateway <info> [flags]")
-		return &igwerr.UsageError{Msg: "required gateway subcommand"}
-	}
-
-	switch args[0] {
-	case "info":
-		return c.runGatewayInfo(args[1:])
-	default:
-		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown gateway subcommand %q", args[0])}
-	}
-}
-
-func (c *CLI) runGatewayInfo(args []string) error {
-	fs := flag.NewFlagSet("gateway info", flag.ContinueOnError)
-	fs.SetOutput(c.Err)
-
-	var common wrapperCommon
-	var retry int
-	var retryBackoff time.Duration
-	var outPath string
-	bindWrapperCommon(fs, &common)
-	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
-	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
-	fs.StringVar(&outPath, "out", "", "Write response body to file")
-
-	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
-	}
-	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
-	}
-
-	callArgs := []string{
-		"--method", "GET",
-		"--path", "/data/api/v1/gateway-info",
-		"--timeout", common.timeout.String(),
-		"--retry", fmt.Sprintf("%d", retry),
-		"--retry-backoff", retryBackoff.String(),
-	}
-	callArgs = append(callArgs, common.callArgsExcludingTimeout()...)
-	if outPath != "" {
-		callArgs = append(callArgs, "--out", outPath)
-	}
-
-	return c.runCall(callArgs)
-}
-
-func (c *CLI) runScan(args []string) error {
-	if len(args) == 0 {
-		fmt.Fprintln(c.Err, "Usage: igw scan <projects> [flags]")
-		return &igwerr.UsageError{Msg: "required scan subcommand"}
-	}
-
-	switch args[0] {
-	case "projects":
-		return c.runScanProjects(args[1:])
-	default:
-		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown scan subcommand %q", args[0])}
-	}
-}
-
-func (c *CLI) runScanProjects(args []string) error {
-	fs := flag.NewFlagSet("scan projects", flag.ContinueOnError)
-	fs.SetOutput(c.Err)
-
-	var common wrapperCommon
-	var yes bool
-	var dryRun bool
-	bindWrapperCommon(fs, &common)
-	fs.BoolVar(&yes, "yes", false, "Confirm mutating request")
-	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
-
-	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
-	}
-	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
-	}
-
-	callArgs := []string{
-		"--method", "POST",
-		"--path", "/data/api/v1/scan/projects",
-		"--timeout", common.timeout.String(),
-	}
-	callArgs = append(callArgs, common.callArgsExcludingTimeout()...)
-	if dryRun {
-		callArgs = append(callArgs, "--dry-run")
-	}
-	if yes {
-		callArgs = append(callArgs, "--yes")
-	}
-
-	return c.runCall(callArgs)
 }
 
 func (c *CLI) runConfigProfile(args []string) error {
