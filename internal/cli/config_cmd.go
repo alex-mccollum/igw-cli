@@ -49,26 +49,11 @@ func (c *CLI) runGatewayInfo(args []string) error {
 	fs := flag.NewFlagSet("gateway info", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
 
-	var (
-		gatewayURL     string
-		apiKey         string
-		profile        string
-		apiKeyStdin    bool
-		timeout        time.Duration
-		jsonOutput     bool
-		includeHeaders bool
-		retry          int
-		retryBackoff   time.Duration
-		outPath        string
-	)
-
-	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
-	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
-	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
-	fs.StringVar(&profile, "profile", "", "Config profile name")
-	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
-	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
-	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers")
+	var common wrapperCommon
+	var retry int
+	var retryBackoff time.Duration
+	var outPath string
+	bindWrapperCommon(fs, &common)
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
@@ -83,28 +68,11 @@ func (c *CLI) runGatewayInfo(args []string) error {
 	callArgs := []string{
 		"--method", "GET",
 		"--path", "/data/api/v1/gateway-info",
-		"--timeout", timeout.String(),
+		"--timeout", common.timeout.String(),
 		"--retry", fmt.Sprintf("%d", retry),
 		"--retry-backoff", retryBackoff.String(),
 	}
-	if gatewayURL != "" {
-		callArgs = append(callArgs, "--gateway-url", gatewayURL)
-	}
-	if apiKey != "" {
-		callArgs = append(callArgs, "--api-key", apiKey)
-	}
-	if apiKeyStdin {
-		callArgs = append(callArgs, "--api-key-stdin")
-	}
-	if profile != "" {
-		callArgs = append(callArgs, "--profile", profile)
-	}
-	if jsonOutput {
-		callArgs = append(callArgs, "--json")
-	}
-	if includeHeaders {
-		callArgs = append(callArgs, "--include-headers")
-	}
+	callArgs = append(callArgs, common.callArgsExcludingTimeout()...)
 	if outPath != "" {
 		callArgs = append(callArgs, "--out", outPath)
 	}
@@ -130,25 +98,10 @@ func (c *CLI) runScanProjects(args []string) error {
 	fs := flag.NewFlagSet("scan projects", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
 
-	var (
-		gatewayURL     string
-		apiKey         string
-		profile        string
-		apiKeyStdin    bool
-		timeout        time.Duration
-		jsonOutput     bool
-		includeHeaders bool
-		yes            bool
-		dryRun         bool
-	)
-
-	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
-	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
-	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
-	fs.StringVar(&profile, "profile", "", "Config profile name")
-	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
-	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
-	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers")
+	var common wrapperCommon
+	var yes bool
+	var dryRun bool
+	bindWrapperCommon(fs, &common)
 	fs.BoolVar(&yes, "yes", false, "Confirm mutating request")
 	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
 
@@ -162,26 +115,9 @@ func (c *CLI) runScanProjects(args []string) error {
 	callArgs := []string{
 		"--method", "POST",
 		"--path", "/data/api/v1/scan/projects",
-		"--timeout", timeout.String(),
+		"--timeout", common.timeout.String(),
 	}
-	if gatewayURL != "" {
-		callArgs = append(callArgs, "--gateway-url", gatewayURL)
-	}
-	if apiKey != "" {
-		callArgs = append(callArgs, "--api-key", apiKey)
-	}
-	if apiKeyStdin {
-		callArgs = append(callArgs, "--api-key-stdin")
-	}
-	if profile != "" {
-		callArgs = append(callArgs, "--profile", profile)
-	}
-	if jsonOutput {
-		callArgs = append(callArgs, "--json")
-	}
-	if includeHeaders {
-		callArgs = append(callArgs, "--include-headers")
-	}
+	callArgs = append(callArgs, common.callArgsExcludingTimeout()...)
 	if dryRun {
 		callArgs = append(callArgs, "--dry-run")
 	}

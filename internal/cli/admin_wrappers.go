@@ -618,6 +618,12 @@ func (w wrapperCommon) callArgs() []string {
 	args := []string{
 		"--timeout", w.timeout.String(),
 	}
+	args = append(args, w.callArgsExcludingTimeout()...)
+	return args
+}
+
+func (w wrapperCommon) callArgsExcludingTimeout() []string {
+	args := make([]string, 0, 10)
 	if strings.TrimSpace(w.gatewayURL) != "" {
 		args = append(args, "--gateway-url", strings.TrimSpace(w.gatewayURL))
 	}
