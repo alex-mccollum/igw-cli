@@ -102,7 +102,7 @@ func TestGatewayInfoWrapperPropagatesFieldsAndCompact(t *testing.T) {
 		"--api-key", "secret",
 		"--json",
 		"--compact",
-		"--fields", "response.status",
+		"--select", "response.status",
 	}); err != nil {
 		t.Fatalf("gateway info failed: %v", err)
 	}

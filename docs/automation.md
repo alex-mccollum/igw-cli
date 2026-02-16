@@ -44,18 +44,18 @@ igw call --path /data/api/v1/gateway-info --json
 igw call --method POST --path /data/api/v1/scan/projects --yes --json
 ```
 
-Single-field extraction (for shell variables or quick checks):
+Single-value extraction (for shell variables or quick checks):
 
 ```bash
-igw call --path /data/api/v1/gateway-info --json --field response.status
-igw doctor --json --field checks.2.ok
+igw call --path /data/api/v1/gateway-info --json --select response.status --raw
+igw doctor --json --select checks.2.ok --raw
 ```
 
 Subset extraction and compact JSON:
 
 ```bash
-igw call --path /data/api/v1/gateway-info --json --fields ok,response.status
-igw doctor --json --fields ok,checks.0.name --compact
+igw call --path /data/api/v1/gateway-info --json --select ok --select response.status
+igw doctor --json --select ok --select checks.0.name --compact
 ```
 
 Artifacts:
@@ -71,15 +71,16 @@ Operational wait checks:
 ```bash
 igw wait gateway --interval 2s --wait-timeout 2m --json
 igw wait diagnostics-bundle --interval 2s --wait-timeout 5m --json
-igw wait restart-tasks --interval 2s --wait-timeout 3m --json --field attempts
+igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts --raw
 ```
 
 ## Notes
 
 - `doctor` is read-only by default; add `--check-write` for write checks.
 - `call` defaults `--method` to `GET` when `--path` is provided.
-- `--field` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
-- `--fields` requires `--json` and accepts comma-separated selectors.
+- `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
+- Repeat `--select` for multiple selections.
+- `--raw` requires exactly one `--select`.
 - `--compact` requires `--json` and removes pretty indentation.
 - API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 - If no default spec is present, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.

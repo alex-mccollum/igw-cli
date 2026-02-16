@@ -33,7 +33,6 @@ func (c *CLI) runCall(args []string) error {
 		retry        int
 		retryBackoff time.Duration
 		outPath      string
-		fieldPath    string
 		queries      stringList
 		headers      stringList
 	)
@@ -52,13 +51,12 @@ func (c *CLI) runCall(args []string) error {
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
-	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 
-	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, fieldPath, common.fieldsCSV)
+	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, common.rawOutput, common.selectors)
 	if selectErr != nil {
 		return c.printCallError(common.jsonOutput, selectionErrorOptions(selectOpts), selectErr)
 	}

@@ -166,7 +166,7 @@ func TestCallDefaultsMethodToGET(t *testing.T) {
 	}
 }
 
-func TestCallFieldRequiresJSON(t *testing.T) {
+func TestCallSelectRequiresJSON(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -184,7 +184,7 @@ func TestCallFieldRequiresJSON(t *testing.T) {
 		"--gateway-url", "http://127.0.0.1:8088",
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
-		"--field", "response.status",
+		"--select", "response.status",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -192,12 +192,12 @@ func TestCallFieldRequiresJSON(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "required: --json when using --field") {
+	if !strings.Contains(err.Error(), "required: --json when using --select") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestCallFieldsRequireJSON(t *testing.T) {
+func TestCallRawRequiresJSON(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -215,7 +215,8 @@ func TestCallFieldsRequireJSON(t *testing.T) {
 		"--gateway-url", "http://127.0.0.1:8088",
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
-		"--fields", "response.status,ok",
+		"--select", "response.status",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -223,7 +224,7 @@ func TestCallFieldsRequireJSON(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "required: --json when using --fields") {
+	if !strings.Contains(err.Error(), "required: --json when using --raw") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -259,7 +260,7 @@ func TestCallCompactRequiresJSON(t *testing.T) {
 	}
 }
 
-func TestCallFieldAndFieldsMutuallyExclusive(t *testing.T) {
+func TestCallRawRequiresExactlyOneSelect(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -278,8 +279,9 @@ func TestCallFieldAndFieldsMutuallyExclusive(t *testing.T) {
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
 		"--json",
-		"--field", "response.status",
-		"--fields", "ok",
+		"--select", "response.status",
+		"--select", "ok",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -287,7 +289,41 @@ func TestCallFieldAndFieldsMutuallyExclusive(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "use only one of --field or --fields") {
+	if !strings.Contains(err.Error(), "required: exactly one --select when using --raw") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCallRawAndCompactAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--select", "response.status",
+		"--raw",
+		"--compact",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "cannot use --raw with --compact") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

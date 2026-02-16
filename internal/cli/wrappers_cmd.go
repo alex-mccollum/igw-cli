@@ -699,7 +699,8 @@ type wrapperCommon struct {
 	timeout        time.Duration
 	jsonOutput     bool
 	compactJSON    bool
-	fieldsCSV      string
+	selectors      stringList
+	rawOutput      bool
 	includeHeaders bool
 }
 
@@ -715,7 +716,8 @@ func bindWrapperCommonWithDefaults(fs *flag.FlagSet, common *wrapperCommon, time
 	fs.DurationVar(&common.timeout, "timeout", timeoutDefault, "Request timeout")
 	fs.BoolVar(&common.jsonOutput, "json", false, "Print JSON envelope")
 	fs.BoolVar(&common.compactJSON, "compact", false, "Print compact one-line JSON (requires --json)")
-	fs.StringVar(&common.fieldsCSV, "fields", "", "Extract subset object from JSON output using comma-separated selectors (requires --json)")
+	fs.Var(&common.selectors, "select", "Select JSON path from output (repeatable, requires --json)")
+	fs.BoolVar(&common.rawOutput, "raw", false, "Print selected value as plain text (requires --json and exactly one --select)")
 	if includeHeaders {
 		fs.BoolVar(&common.includeHeaders, "include-headers", false, "Include response headers")
 	}
@@ -749,8 +751,13 @@ func (w wrapperCommon) callArgsExcludingTimeout() []string {
 	if w.compactJSON {
 		args = append(args, "--compact")
 	}
-	if strings.TrimSpace(w.fieldsCSV) != "" {
-		args = append(args, "--fields", strings.TrimSpace(w.fieldsCSV))
+	for _, selector := range w.selectors {
+		if strings.TrimSpace(selector) != "" {
+			args = append(args, "--select", strings.TrimSpace(selector))
+		}
+	}
+	if w.rawOutput {
+		args = append(args, "--raw")
 	}
 	if w.includeHeaders {
 		args = append(args, "--include-headers")

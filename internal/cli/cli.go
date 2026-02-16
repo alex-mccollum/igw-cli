@@ -188,7 +188,7 @@ func bashCompletionScript() string {
 	flags := strings.Join([]string{
 		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--include-headers",
 		"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
-		"--dry-run", "--retry", "--retry-backoff", "--out", "--field", "--fields", "--compact", "--in", "--provider", "--type", "--collision-policy",
+		"--dry-run", "--retry", "--retry-backoff", "--out", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy",
 		"--interval", "--wait-timeout", "--openapi-path",
 		"--check-write",
 		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",

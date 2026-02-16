@@ -9,53 +9,59 @@ import (
 )
 
 type jsonSelectOptions struct {
-	compact bool
-	field   string
-	fields  []string
+	compact   bool
+	raw       bool
+	selectors []string
 }
 
-func newJSONSelectOptions(jsonOutput, compact bool, fieldPath, fieldsCSV string) (jsonSelectOptions, error) {
+func newJSONSelectOptions(jsonOutput, compact, raw bool, selectors []string) (jsonSelectOptions, error) {
 	opts := jsonSelectOptions{
 		compact: compact,
-		field:   strings.TrimSpace(fieldPath),
+		raw:     raw,
 	}
 
-	fields, err := parseJSONFieldsCSV(fieldsCSV)
+	normalized, err := normalizeJSONSelectors(selectors)
 	if err != nil {
 		return opts, err
 	}
-	opts.fields = fields
+	opts.selectors = normalized
 
 	if opts.compact && !jsonOutput {
 		return opts, &igwerr.UsageError{Msg: "required: --json when using --compact"}
 	}
-	if opts.field != "" && !jsonOutput {
-		return opts, &igwerr.UsageError{Msg: "required: --json when using --field"}
+	if opts.raw && !jsonOutput {
+		return opts, &igwerr.UsageError{Msg: "required: --json when using --raw"}
 	}
-	if len(opts.fields) > 0 && !jsonOutput {
-		return opts, &igwerr.UsageError{Msg: "required: --json when using --fields"}
+	if len(opts.selectors) > 0 && !jsonOutput {
+		return opts, &igwerr.UsageError{Msg: "required: --json when using --select"}
 	}
-	if opts.field != "" && len(opts.fields) > 0 {
-		return opts, &igwerr.UsageError{Msg: "use only one of --field or --fields"}
+	if opts.raw && len(opts.selectors) != 1 {
+		return opts, &igwerr.UsageError{Msg: "required: exactly one --select when using --raw"}
+	}
+	if opts.raw && opts.compact {
+		return opts, &igwerr.UsageError{Msg: "cannot use --raw with --compact"}
 	}
 
 	return opts, nil
 }
 
-func parseJSONFieldsCSV(raw string) ([]string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
+func normalizeJSONSelectors(selectors []string) ([]string, error) {
+	if len(selectors) == 0 {
 		return nil, nil
 	}
 
-	parts := strings.Split(raw, ",")
 	seen := map[string]struct{}{}
-	out := make([]string, 0, len(parts))
+	out := make([]string, 0, len(selectors))
 
-	for _, part := range parts {
-		selector := strings.TrimSpace(part)
+	for _, raw := range selectors {
+		selector := strings.TrimSpace(raw)
 		if selector == "" {
-			return nil, &igwerr.UsageError{Msg: "invalid --fields list: empty selector"}
+			return nil, &igwerr.UsageError{Msg: "invalid --select value: empty selector"}
+		}
+		if strings.Contains(selector, ",") {
+			return nil, &igwerr.UsageError{
+				Msg: fmt.Sprintf("invalid --select value %q: commas are not supported; repeat --select for multiple selectors", selector),
+			}
 		}
 		if _, exists := seen[selector]; exists {
 			continue
@@ -68,11 +74,11 @@ func parseJSONFieldsCSV(raw string) ([]string, error) {
 }
 
 func printJSONSelection(w io.Writer, payload any, opts jsonSelectOptions) error {
-	if opts.field != "" {
-		extracted, err := extractJSONField(payload, opts.field)
+	if opts.raw {
+		extracted, err := extractJSONField(payload, opts.selectors[0])
 		if err != nil {
 			return &igwerr.UsageError{
-				Msg: fmt.Sprintf("invalid --field path %q: %v", opts.field, err),
+				Msg: fmt.Sprintf("invalid --select path %q: %v", opts.selectors[0], err),
 			}
 		}
 		if _, err := fmt.Fprintln(w, extracted); err != nil {
@@ -81,8 +87,8 @@ func printJSONSelection(w io.Writer, payload any, opts jsonSelectOptions) error 
 		return nil
 	}
 
-	if len(opts.fields) > 0 {
-		values, err := selectJSONFields(payload, opts.fields)
+	if len(opts.selectors) > 0 {
+		values, err := selectJSONFields(payload, opts.selectors)
 		if err != nil {
 			return err
 		}

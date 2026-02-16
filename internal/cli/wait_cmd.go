@@ -40,11 +40,9 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 	var common wrapperCommon
 	var interval time.Duration
 	var waitTimeout time.Duration
-	var fieldPath string
 	bindWrapperCommonWithDefaults(fs, &common, 8*time.Second, false)
 	fs.DurationVar(&interval, "interval", 2*time.Second, "Polling interval")
 	fs.DurationVar(&waitTimeout, "wait-timeout", 2*time.Minute, "Maximum total wait time")
-	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 
 	condition := ""
 	if len(args) > 0 && !strings.HasPrefix(strings.TrimSpace(args[0]), "-") {
@@ -63,7 +61,7 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 		return parseErr
 	}
 
-	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, fieldPath, common.fieldsCSV)
+	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, common.rawOutput, common.selectors)
 	if selectErr != nil {
 		return c.printWaitError(common.jsonOutput, selectionErrorOptions(selectOpts), selectErr)
 	}

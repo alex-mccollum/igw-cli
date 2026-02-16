@@ -237,10 +237,8 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 	}
 
 	var common wrapperCommon
-	var fieldPath string
 	var openAPIPath string
 	bindWrapperCommonWithDefaults(fs, &common, 8*time.Second, false)
-	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 	fs.StringVar(&openAPIPath, "openapi-path", "", "Override OpenAPI endpoint path (default: auto-detect)")
 
 	if err := fs.Parse(args); err != nil {
@@ -250,7 +248,7 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 		return c.printAPISyncError(common.jsonOutput, jsonSelectOptions{}, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
-	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, fieldPath, common.fieldsCSV)
+	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, common.rawOutput, common.selectors)
 	if selectErr != nil {
 		return c.printAPISyncError(common.jsonOutput, selectionErrorOptions(selectOpts), selectErr)
 	}

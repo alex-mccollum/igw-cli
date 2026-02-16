@@ -154,7 +154,7 @@ func TestCallJSONContractAuthErrorDetails(t *testing.T) {
 	}
 }
 
-func TestCallJSONFieldExtraction(t *testing.T) {
+func TestCallJSONSelectRawExtraction(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +181,8 @@ func TestCallJSONFieldExtraction(t *testing.T) {
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
 		"--json",
-		"--field", "response.status",
+		"--select", "response.status",
+		"--raw",
 	})
 	if err != nil {
 		t.Fatalf("call failed: %v", err)
@@ -191,7 +192,7 @@ func TestCallJSONFieldExtraction(t *testing.T) {
 	}
 }
 
-func TestCallJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
+func TestCallJSONSelectRawExtractionFromErrorEnvelope(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +219,8 @@ func TestCallJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
 		"--json",
-		"--field", "code",
+		"--select", "code",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected auth failure")
@@ -231,7 +233,7 @@ func TestCallJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 	}
 }
 
-func TestCallJSONFieldsExtraction(t *testing.T) {
+func TestCallJSONSelectSubsetExtraction(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -258,7 +260,8 @@ func TestCallJSONFieldsExtraction(t *testing.T) {
 		"--api-key", "secret",
 		"--path", "/data/api/v1/gateway-info",
 		"--json",
-		"--fields", "ok,response.status",
+		"--select", "ok",
+		"--select", "response.status",
 	})
 	if err != nil {
 		t.Fatalf("call failed: %v", err)

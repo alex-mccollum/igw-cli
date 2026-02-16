@@ -50,7 +50,7 @@ func selectJSONFields(payload any, selectors []string) (map[string]any, error) {
 		value, extractErr := extractJSONValueFromRoot(root, selector)
 		if extractErr != nil {
 			return nil, &igwerr.UsageError{
-				Msg: fmt.Sprintf("invalid --fields selector %q: %v", strings.TrimSpace(selector), extractErr),
+				Msg: fmt.Sprintf("invalid --select path %q: %v", strings.TrimSpace(selector), extractErr),
 			}
 		}
 		out[selector] = value

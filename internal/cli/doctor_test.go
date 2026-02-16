@@ -214,7 +214,7 @@ func TestDoctorHintForTimeoutTransportError(t *testing.T) {
 	}
 }
 
-func TestDoctorFieldRequiresJSON(t *testing.T) {
+func TestDoctorSelectRequiresJSON(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -231,7 +231,7 @@ func TestDoctorFieldRequiresJSON(t *testing.T) {
 		"doctor",
 		"--gateway-url", "http://127.0.0.1:8088",
 		"--api-key", "secret",
-		"--field", "checks.0.name",
+		"--select", "checks.0.name",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -239,12 +239,12 @@ func TestDoctorFieldRequiresJSON(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "required: --json when using --field") {
+	if !strings.Contains(err.Error(), "required: --json when using --select") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestDoctorFieldsRequireJSON(t *testing.T) {
+func TestDoctorRawRequiresJSON(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -261,7 +261,8 @@ func TestDoctorFieldsRequireJSON(t *testing.T) {
 		"doctor",
 		"--gateway-url", "http://127.0.0.1:8088",
 		"--api-key", "secret",
-		"--fields", "checks.0.name",
+		"--select", "checks.0.name",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -269,7 +270,7 @@ func TestDoctorFieldsRequireJSON(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "required: --json when using --fields") {
+	if !strings.Contains(err.Error(), "required: --json when using --raw") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -304,7 +305,7 @@ func TestDoctorCompactRequiresJSON(t *testing.T) {
 	}
 }
 
-func TestDoctorFieldAndFieldsMutuallyExclusive(t *testing.T) {
+func TestDoctorRawRequiresExactlyOneSelect(t *testing.T) {
 	t.Parallel()
 
 	c := &CLI{
@@ -322,8 +323,9 @@ func TestDoctorFieldAndFieldsMutuallyExclusive(t *testing.T) {
 		"--gateway-url", "http://127.0.0.1:8088",
 		"--api-key", "secret",
 		"--json",
-		"--field", "checks.0.name",
-		"--fields", "ok",
+		"--select", "checks.0.name",
+		"--select", "ok",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected usage error")
@@ -331,12 +333,12 @@ func TestDoctorFieldAndFieldsMutuallyExclusive(t *testing.T) {
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
 	}
-	if !strings.Contains(err.Error(), "use only one of --field or --fields") {
+	if !strings.Contains(err.Error(), "required: exactly one --select when using --raw") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestDoctorJSONFieldExtractionSuccess(t *testing.T) {
+func TestDoctorJSONSelectRawExtractionSuccess(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -366,7 +368,8 @@ func TestDoctorJSONFieldExtractionSuccess(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--json",
-		"--field", "checks.0.name",
+		"--select", "checks.0.name",
+		"--raw",
 	})
 	if err != nil {
 		t.Fatalf("doctor failed: %v", err)
@@ -376,7 +379,7 @@ func TestDoctorJSONFieldExtractionSuccess(t *testing.T) {
 	}
 }
 
-func TestDoctorJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
+func TestDoctorJSONSelectRawExtractionFromErrorEnvelope(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -405,7 +408,8 @@ func TestDoctorJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--json",
-		"--field", "code",
+		"--select", "code",
+		"--raw",
 	})
 	if err == nil {
 		t.Fatalf("expected auth failure")
@@ -418,7 +422,7 @@ func TestDoctorJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 	}
 }
 
-func TestDoctorJSONFieldsExtractionSuccess(t *testing.T) {
+func TestDoctorJSONSelectSubsetExtractionSuccess(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -448,7 +452,8 @@ func TestDoctorJSONFieldsExtractionSuccess(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--json",
-		"--fields", "ok,checks.0.name",
+		"--select", "ok",
+		"--select", "checks.0.name",
 	})
 	if err != nil {
 		t.Fatalf("doctor failed: %v", err)

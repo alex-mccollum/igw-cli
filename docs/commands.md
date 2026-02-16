@@ -5,8 +5,8 @@ For script/agent workflow guidance, see `docs/automation.md`.
 
 Defaults and behavior:
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
-- `--field` extracts one value from JSON output (requires `--json`), with dot paths and array indexes (`checks.0.name`).
-- `--fields` extracts a subset JSON object from JSON output (requires `--json`), using comma-separated selectors.
+- Repeat `--select` to extract a subset JSON object from output (requires `--json`), with dot paths and array indexes (`checks.0.name`).
+- `--raw` prints one plain selected value and requires exactly one `--select`.
 - `--compact` prints one-line JSON (requires `--json`).
 - `igw tags export` defaults `--provider=default` and `--type=json`.
 - `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
@@ -41,7 +41,7 @@ igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
 igw api show --spec-file /path/to/openapi.json /data/api/v1/gateway-info
 igw api search --spec-file /path/to/openapi.json --query scan
 igw api sync --profile dev --json
-igw api refresh --profile dev --json --field operationCount
+igw api refresh --profile dev --json --select operationCount --raw
 igw api sync --profile dev --openapi-path /openapi.json --json
 ```
 
@@ -78,8 +78,8 @@ igw call --method POST --path /data/api/v1/scan/projects --yes
 igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
 igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
 igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
-igw call --method GET --path /data/api/v1/gateway-info --json --field response.status
-igw call --method GET --path /data/api/v1/gateway-info --json --fields ok,response.status --compact
+igw call --method GET --path /data/api/v1/gateway-info --json --select response.status --raw
+igw call --method GET --path /data/api/v1/gateway-info --json --select ok --select response.status --compact
 ```
 
 Config:
@@ -112,8 +112,8 @@ Doctor:
 ```bash
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --check-write
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --field checks.0.name
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --fields ok,checks.0.name --compact
+igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select checks.0.name --raw
+igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select ok --select checks.0.name --compact
 ```
 
 Convenience wrappers:
@@ -157,7 +157,7 @@ igw restart gateway --profile dev --yes --json
 # Wait / poll
 igw wait gateway --profile dev --interval 2s --wait-timeout 2m
 igw wait diagnostics-bundle --profile dev --interval 2s --wait-timeout 5m --json
-igw wait restart-tasks --profile dev --interval 2s --wait-timeout 3m --json --field attempts
+igw wait restart-tasks --profile dev --interval 2s --wait-timeout 3m --json --select attempts --raw
 ```
 
 Shell completion:

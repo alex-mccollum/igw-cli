@@ -22,11 +22,9 @@ func (c *CLI) runDoctor(args []string) error {
 
 	var common wrapperCommon
 	var checkWrite bool
-	var fieldPath string
 
 	bindWrapperCommonWithDefaults(fs, &common, 5*time.Second, false)
 	fs.BoolVar(&checkWrite, "check-write", false, "Include mutating write-permission check (scan projects)")
-	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
@@ -35,7 +33,7 @@ func (c *CLI) runDoctor(args []string) error {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
 	}
 
-	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, fieldPath, common.fieldsCSV)
+	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, common.rawOutput, common.selectors)
 	if selectErr != nil {
 		return selectErr
 	}

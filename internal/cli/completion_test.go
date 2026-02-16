@@ -37,11 +37,11 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "sync") || !strings.Contains(script, "refresh") || !strings.Contains(script, "diagnostics-bundle") || !strings.Contains(script, "restart-tasks") {
 		t.Fatalf("missing api/wait completion entries")
 	}
-	if !strings.Contains(script, "--field") {
-		t.Fatalf("missing --field completion flag")
+	if !strings.Contains(script, "--select") || !strings.Contains(script, "--raw") {
+		t.Fatalf("missing --select/--raw completion flags")
 	}
-	if !strings.Contains(script, "--fields") || !strings.Contains(script, "--compact") {
-		t.Fatalf("missing --fields/--compact completion flags")
+	if !strings.Contains(script, "--compact") {
+		t.Fatalf("missing --compact completion flag")
 	}
 }
 
