@@ -103,7 +103,8 @@ func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--json",
-		"--fields", "ok,operationCount",
+		"--select", "ok",
+		"--select", "operationCount",
 		"--compact",
 	}); err != nil {
 		t.Fatalf("api refresh failed: %v", err)
@@ -155,7 +156,8 @@ func TestAPISyncFallsBackToOpenAPIJSONPath(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--json",
-		"--field", "sourceURL",
+		"--select", "sourceURL",
+		"--raw",
 	}); err != nil {
 		t.Fatalf("api sync failed: %v", err)
 	}
@@ -269,7 +271,8 @@ func TestCallOperationIDAutoSyncsMissingDefaultSpec(t *testing.T) {
 		"call",
 		"--op", "gatewayInfo",
 		"--json",
-		"--field", "response.status",
+		"--select", "response.status",
+		"--raw",
 	}); err != nil {
 		t.Fatalf("call --op failed: %v", err)
 	}

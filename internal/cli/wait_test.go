@@ -81,7 +81,8 @@ func TestWaitDiagnosticsBundleReady(t *testing.T) {
 		"--interval", "10ms",
 		"--wait-timeout", "300ms",
 		"--json",
-		"--field", "ready",
+		"--select", "ready",
+		"--raw",
 	}); err != nil {
 		t.Fatalf("wait diagnostics-bundle failed: %v", err)
 	}
@@ -120,7 +121,8 @@ func TestWaitRestartTasksClear(t *testing.T) {
 		"--interval", "10ms",
 		"--wait-timeout", "300ms",
 		"--json",
-		"--fields", "target,attempts",
+		"--select", "target",
+		"--select", "attempts",
 		"--compact",
 	}); err != nil {
 		t.Fatalf("wait restart-tasks failed: %v", err)
@@ -165,6 +167,75 @@ func TestWaitTimeoutMapsToNetworkExitCode(t *testing.T) {
 	}
 	if code := igwerr.ExitCode(err); code != 7 {
 		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestWaitDiagnosticsBundleFailedStateExitsImmediately(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/diagnostics/bundle/status" {
+			http.NotFound(w, r)
+			return
+		}
+		calls++
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"state":"FAILED","fileSize":0}`))
+	}))
+	defer srv.Close()
+
+	c := testWaitCLI(t, srv, new(bytes.Buffer))
+
+	err := c.Execute([]string{
+		"wait", "diagnostics-bundle",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--interval", "10ms",
+		"--wait-timeout", "500ms",
+	})
+	if err == nil {
+		t.Fatalf("expected failure")
+	}
+	if code := igwerr.ExitCode(err); code != 7 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if calls != 1 {
+		t.Fatalf("expected immediate terminal failure, got %d calls", calls)
+	}
+}
+
+func TestWaitGatewayAuthFailureExitsImmediately(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		calls++
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	c := testWaitCLI(t, srv, new(bytes.Buffer))
+
+	err := c.Execute([]string{
+		"wait", "gateway",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--interval", "10ms",
+		"--wait-timeout", "500ms",
+	})
+	if err == nil {
+		t.Fatalf("expected auth failure")
+	}
+	if code := igwerr.ExitCode(err); code != 6 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if calls != 1 {
+		t.Fatalf("expected no retries on auth failure, got %d calls", calls)
 	}
 }
 
