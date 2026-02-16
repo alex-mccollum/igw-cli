@@ -1,6 +1,7 @@
 # Commands
 
 This file is the canonical command example reference.
+For script/agent workflow guidance, see `docs/automation.md`.
 
 Defaults and behavior:
 - `igw call` defaults `--method` to `GET` when `--path` is provided.

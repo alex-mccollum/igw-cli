@@ -50,7 +50,7 @@ igw config set --api-key-stdin < "$IGW_TOKEN_FILE"
 igw doctor
 
 # 4) Run a read call
-igw gateway info --json
+igw gateway info
 ```
 
 Note:
@@ -62,6 +62,16 @@ If you are in WSL and Ignition is running on Windows host:
 ```bash
 igw config set --auto-gateway
 ```
+
+### Automation note (`--json`)
+
+For scripts and agent workflows, use JSON output plus exit codes as the primary contract.
+
+- `igw doctor --json` for read-only environment checks.
+- `igw doctor --check-write --json` to include write-permission validation.
+- `igw call --path /data/api/v1/gateway-info --json` for machine-readable API responses.
+
+For the full automation workflow and patterns, see `docs/automation.md`.
 
 ## Commands
 - `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
