@@ -153,3 +153,73 @@ func TestCallJSONContractAuthErrorDetails(t *testing.T) {
 		t.Fatalf("unexpected status detail %v", details["status"])
 	}
 }
+
+func TestConfigSetJSONContractUsageError(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"config", "set", "--json",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if payload["ok"] != false {
+		t.Fatalf("expected ok=false")
+	}
+	if int(payload["code"].(float64)) != 2 {
+		t.Fatalf("unexpected code in envelope %v", payload["code"])
+	}
+}
+
+func TestAPIShowJSONContractUsageError(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{
+		"api", "show",
+		"--spec-file", specPath,
+		"--json",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if payload["ok"] != false {
+		t.Fatalf("expected ok=false")
+	}
+	if int(payload["code"].(float64)) != 2 {
+		t.Fatalf("unexpected code in envelope %v", payload["code"])
+	}
+}

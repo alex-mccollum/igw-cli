@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -234,26 +233,7 @@ func (c *CLI) runCall(args []string) error {
 
 func (c *CLI) printCallError(jsonOutput bool, err error) error {
 	if jsonOutput {
-		var statusErr *igwerr.StatusError
-		details := map[string]any{}
-		if errors.As(err, &statusErr) {
-			details["status"] = statusErr.StatusCode
-			if statusErr.Hint != "" {
-				details["hint"] = statusErr.Hint
-			}
-		}
-
-		_ = writeCallJSON(c.Out, callJSONEnvelope{
-			OK:    false,
-			Code:  igwerr.ExitCode(err),
-			Error: err.Error(),
-			Details: func() map[string]any {
-				if len(details) == 0 {
-					return nil
-				}
-				return details
-			}(),
-		})
+		_ = writeJSON(c.Out, jsonErrorPayload(err))
 	} else {
 		fmt.Fprintln(c.Err, err.Error())
 	}
