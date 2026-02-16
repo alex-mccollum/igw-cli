@@ -6,6 +6,8 @@ For script/agent workflow guidance, see `docs/automation.md`.
 Defaults and behavior:
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
 - `--field` extracts one value from JSON output (requires `--json`), with dot paths and array indexes (`checks.0.name`).
+- `--fields` extracts a subset JSON object from JSON output (requires `--json`), using comma-separated selectors.
+- `--compact` prints one-line JSON (requires `--json`).
 - `igw tags export` defaults `--provider=default` and `--type=json`.
 - `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
 - `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames whenever `--out` is omitted.
@@ -73,6 +75,7 @@ igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
 igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
 igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
 igw call --method GET --path /data/api/v1/gateway-info --json --field response.status
+igw call --method GET --path /data/api/v1/gateway-info --json --fields ok,response.status --compact
 ```
 
 Config:
@@ -106,6 +109,7 @@ Doctor:
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --check-write
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --field checks.0.name
+igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --fields ok,checks.0.name --compact
 ```
 
 Convenience wrappers:

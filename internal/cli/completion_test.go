@@ -37,6 +37,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "--field") {
 		t.Fatalf("missing --field completion flag")
 	}
+	if !strings.Contains(script, "--fields") || !strings.Contains(script, "--compact") {
+		t.Fatalf("missing --fields/--compact completion flags")
+	}
 }
 
 func TestCompletionUnsupportedShell(t *testing.T) {

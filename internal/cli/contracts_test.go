@@ -231,6 +231,93 @@ func TestCallJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 	}
 }
 
+func TestCallJSONFieldsExtraction(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--fields", "ok,response.status",
+	})
+	if err != nil {
+		t.Fatalf("call failed: %v", err)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode fields json: %v", decodeErr)
+	}
+	if payload["ok"] != true {
+		t.Fatalf("unexpected ok value %#v", payload["ok"])
+	}
+	if int(payload["response.status"].(float64)) != 200 {
+		t.Fatalf("unexpected response.status %#v", payload["response.status"])
+	}
+}
+
+func TestCallJSONCompactOutput(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--compact",
+	})
+	if err != nil {
+		t.Fatalf("call failed: %v", err)
+	}
+
+	output := out.String()
+	if !json.Valid([]byte(output)) {
+		t.Fatalf("expected valid compact json, got %q", output)
+	}
+	if strings.Contains(output, "\n  ") {
+		t.Fatalf("expected compact json without indentation, got %q", output)
+	}
+}
+
 func TestConfigSetJSONContractUsageError(t *testing.T) {
 	t.Parallel()
 

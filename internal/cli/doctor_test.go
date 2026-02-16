@@ -244,6 +244,98 @@ func TestDoctorFieldRequiresJSON(t *testing.T) {
 	}
 }
 
+func TestDoctorFieldsRequireJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--fields", "checks.0.name",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --fields") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDoctorCompactRequiresJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--compact",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --compact") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDoctorFieldAndFieldsMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--json",
+		"--field", "checks.0.name",
+		"--fields", "ok",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "use only one of --field or --fields") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestDoctorJSONFieldExtractionSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -323,5 +415,53 @@ func TestDoctorJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
 	}
 	if out.String() != "6\n" {
 		t.Fatalf("unexpected field output %q", out.String())
+	}
+}
+
+func TestDoctorJSONFieldsExtractionSuccess(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"name":"gateway"}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--fields", "ok,checks.0.name",
+	})
+	if err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(out.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("decode fields json: %v", decodeErr)
+	}
+	if payload["ok"] != true {
+		t.Fatalf("unexpected ok value %#v", payload["ok"])
+	}
+	if payload["checks.0.name"] != "gateway_url" {
+		t.Fatalf("unexpected checks.0.name %#v", payload["checks.0.name"])
 	}
 }

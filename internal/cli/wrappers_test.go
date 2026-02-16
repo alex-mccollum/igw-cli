@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -71,5 +72,54 @@ func TestScanProjectsWrapperRequiresYes(t *testing.T) {
 	}
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestGatewayInfoWrapperPropagatesFieldsAndCompact(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"gateway", "info",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--compact",
+		"--fields", "response.status",
+	}); err != nil {
+		t.Fatalf("gateway info failed: %v", err)
+	}
+
+	output := out.String()
+	if !json.Valid([]byte(output)) {
+		t.Fatalf("expected valid json output, got %q", output)
+	}
+	if strings.Contains(output, "\n  ") {
+		t.Fatalf("expected compact output, got %q", output)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if int(payload["response.status"].(float64)) != 200 {
+		t.Fatalf("unexpected response.status %#v", payload["response.status"])
 	}
 }

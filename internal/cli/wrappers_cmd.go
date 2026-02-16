@@ -698,6 +698,8 @@ type wrapperCommon struct {
 	profile        string
 	timeout        time.Duration
 	jsonOutput     bool
+	compactJSON    bool
+	fieldsCSV      string
 	includeHeaders bool
 }
 
@@ -712,6 +714,8 @@ func bindWrapperCommonWithDefaults(fs *flag.FlagSet, common *wrapperCommon, time
 	fs.StringVar(&common.profile, "profile", "", "Config profile name")
 	fs.DurationVar(&common.timeout, "timeout", timeoutDefault, "Request timeout")
 	fs.BoolVar(&common.jsonOutput, "json", false, "Print JSON envelope")
+	fs.BoolVar(&common.compactJSON, "compact", false, "Print compact one-line JSON (requires --json)")
+	fs.StringVar(&common.fieldsCSV, "fields", "", "Extract subset object from JSON output using comma-separated selectors (requires --json)")
 	if includeHeaders {
 		fs.BoolVar(&common.includeHeaders, "include-headers", false, "Include response headers")
 	}
@@ -741,6 +745,12 @@ func (w wrapperCommon) callArgsExcludingTimeout() []string {
 	}
 	if w.jsonOutput {
 		args = append(args, "--json")
+	}
+	if w.compactJSON {
+		args = append(args, "--compact")
+	}
+	if strings.TrimSpace(w.fieldsCSV) != "" {
+		args = append(args, "--fields", strings.TrimSpace(w.fieldsCSV))
 	}
 	if w.includeHeaders {
 		args = append(args, "--include-headers")

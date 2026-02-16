@@ -50,6 +50,13 @@ igw call --path /data/api/v1/gateway-info --json --field response.status
 igw doctor --json --field checks.2.ok
 ```
 
+Subset extraction and compact JSON:
+
+```bash
+igw call --path /data/api/v1/gateway-info --json --fields ok,response.status
+igw doctor --json --fields ok,checks.0.name --compact
+```
+
 Artifacts:
 
 ```bash
@@ -63,5 +70,7 @@ igw backup export --out gateway.gwbk --json
 - `doctor` is read-only by default; add `--check-write` for write checks.
 - `call` defaults `--method` to `GET` when `--path` is provided.
 - `--field` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
+- `--fields` requires `--json` and accepts comma-separated selectors.
+- `--compact` requires `--json` and removes pretty indentation.
 - API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 - If you omit `--profile`, the active profile is used (when set).

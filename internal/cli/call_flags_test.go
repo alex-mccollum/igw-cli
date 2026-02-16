@@ -196,3 +196,98 @@ func TestCallFieldRequiresJSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestCallFieldsRequireJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--fields", "response.status,ok",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --fields") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCallCompactRequiresJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--compact",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --compact") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCallFieldAndFieldsMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--field", "response.status",
+		"--fields", "ok",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "use only one of --field or --fields") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
