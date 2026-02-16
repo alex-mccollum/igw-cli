@@ -2,6 +2,13 @@
 
 This file is the canonical command example reference.
 
+Defaults and behavior:
+- `igw call` defaults `--method` to `GET` when `--path` is provided.
+- `igw tags export` defaults `--provider=default` and `--type=json`.
+- `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
+- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames only for interactive terminal output.
+- Mutating commands require `--yes`.
+
 Build:
 
 ```bash
@@ -81,6 +88,10 @@ igw config profile add stage --gateway-url http://10.0.1.5:8088 --api-key-stdin
 igw config profile list
 igw config profile use stage
 ```
+
+Profile behavior:
+- If there is no active profile yet, the first `config profile add` becomes active automatically.
+- If `--profile` is omitted at runtime, the active profile is used when set.
 
 Doctor:
 
