@@ -27,6 +27,7 @@ func (c *CLI) runDoctor(args []string) error {
 	var profile string
 	var timeout time.Duration
 	var jsonOutput bool
+	var checkWrite bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
@@ -34,6 +35,7 @@ func (c *CLI) runDoctor(args []string) error {
 	fs.StringVar(&profile, "profile", "", "Config profile name")
 	fs.DurationVar(&timeout, "timeout", 5*time.Second, "Check timeout")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&checkWrite, "check-write", false, "Include mutating write-permission check (scan projects)")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
@@ -143,25 +145,33 @@ func (c *CLI) runDoctor(args []string) error {
 		Message: fmt.Sprintf("status %d", resp.StatusCode),
 	})
 
-	writeResp, err := client.Call(context.Background(), gateway.CallRequest{
-		Method:  http.MethodPost,
-		Path:    "/data/api/v1/scan/projects",
-		Timeout: timeout,
-	})
-	if err != nil {
+	if checkWrite {
+		writeResp, err := client.Call(context.Background(), gateway.CallRequest{
+			Method:  http.MethodPost,
+			Path:    "/data/api/v1/scan/projects",
+			Timeout: timeout,
+		})
+		if err != nil {
+			checks = append(checks, doctorCheck{
+				Name:    "scan_projects",
+				OK:      false,
+				Message: err.Error(),
+				Hint:    doctorHintForError(err),
+			})
+			return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+		}
 		checks = append(checks, doctorCheck{
 			Name:    "scan_projects",
-			OK:      false,
-			Message: err.Error(),
-			Hint:    doctorHintForError(err),
+			OK:      true,
+			Message: fmt.Sprintf("status %d", writeResp.StatusCode),
 		})
-		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+	} else {
+		checks = append(checks, doctorCheck{
+			Name:    "scan_projects",
+			OK:      true,
+			Message: "skipped (use --check-write)",
+		})
 	}
-	checks = append(checks, doctorCheck{
-		Name:    "scan_projects",
-		OK:      true,
-		Message: fmt.Sprintf("status %d", writeResp.StatusCode),
-	})
 
 	return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nil)
 }

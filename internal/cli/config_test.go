@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -121,5 +122,76 @@ func TestConfigSetAutoGatewayDetectFailure(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "auto-gateway failed") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigSetJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	var saved config.File
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		WriteConfig: func(cfg config.File) error {
+			saved = cfg
+			return nil
+		},
+	}
+
+	if err := c.Execute([]string{"config", "set", "--gateway-url", "http://127.0.0.1:8088", "--json"}); err != nil {
+		t.Fatalf("config set failed: %v", err)
+	}
+
+	if saved.GatewayURL != "http://127.0.0.1:8088" {
+		t.Fatalf("unexpected saved gateway URL: %q", saved.GatewayURL)
+	}
+
+	var payload struct {
+		OK         bool   `json:"ok"`
+		GatewayURL string `json:"gatewayURL"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("parse json output: %v", err)
+	}
+	if !payload.OK || payload.GatewayURL != "http://127.0.0.1:8088" {
+		t.Fatalf("unexpected json payload: %s", out.String())
+	}
+}
+
+func TestConfigShowTextSortsProfiles(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{
+				Profiles: map[string]config.Profile{
+					"zeta":  {GatewayURL: "http://z", Token: "z-token"},
+					"alpha": {GatewayURL: "http://a", Token: "a-token"},
+				},
+			}, nil
+		},
+	}
+
+	if err := c.Execute([]string{"config", "show"}); err != nil {
+		t.Fatalf("config show failed: %v", err)
+	}
+
+	got := out.String()
+	alpha := strings.Index(got, "profile\talpha\t")
+	zeta := strings.Index(got, "profile\tzeta\t")
+	if alpha == -1 || zeta == -1 || alpha > zeta {
+		t.Fatalf("profiles not sorted in text output: %q", got)
 	}
 }

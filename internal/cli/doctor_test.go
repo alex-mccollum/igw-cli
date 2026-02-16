@@ -55,6 +55,53 @@ func TestDoctorSuccess(t *testing.T) {
 	if !strings.Contains(got, "ok\tgateway_info\tstatus 200") {
 		t.Fatalf("missing gateway_info success check: %q", got)
 	}
+	if !strings.Contains(got, "ok\tscan_projects\tskipped (use --check-write)") {
+		t.Fatalf("missing default skipped write check: %q", got)
+	}
+}
+
+func TestDoctorCheckWriteEnabled(t *testing.T) {
+	t.Parallel()
+
+	var sawWriteCheck bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/data/api/v1/gateway-info":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"name":"gateway"}`))
+		case "/data/api/v1/scan/projects":
+			sawWriteCheck = true
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--check-write",
+	}); err != nil {
+		t.Fatalf("doctor with write check failed: %v", err)
+	}
+
+	if !sawWriteCheck {
+		t.Fatalf("expected write check call to scan/projects")
+	}
 }
 
 func TestDoctorAuthFailureMapsToAuthExitCode(t *testing.T) {

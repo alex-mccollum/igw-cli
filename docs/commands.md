@@ -6,8 +6,9 @@ Defaults and behavior:
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
 - `igw tags export` defaults `--provider=default` and `--type=json`.
 - `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
-- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames only for interactive terminal output.
+- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames whenever `--out` is omitted.
 - Mutating commands require `--yes`.
+- API discovery defaults to `openapi.json` in the current directory, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 
 Build:
 
@@ -77,6 +78,7 @@ Config:
 igw config set --gateway-url http://127.0.0.1:8088
 igw config set --auto-gateway
 igw config set --api-key-stdin < token.txt
+igw config set --gateway-url http://127.0.0.1:8088 --json
 igw config show
 ```
 
@@ -85,8 +87,10 @@ Profiles:
 ```bash
 igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --use
 igw config profile add stage --gateway-url http://10.0.1.5:8088 --api-key-stdin
+igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --json
 igw config profile list
 igw config profile use stage
+igw config profile use stage --json
 ```
 
 Profile behavior:
@@ -97,6 +101,7 @@ Doctor:
 
 ```bash
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
+igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --check-write
 ```
 
 Convenience wrappers:
@@ -112,7 +117,7 @@ Admin wrappers:
 # Logs
 igw logs list --profile dev --query limit=5 --json
 igw logs download --profile dev --out gateway-logs.zip
-# If --out is omitted on an interactive terminal, defaults to gateway-logs.zip.
+# If --out is omitted, defaults to gateway-logs.zip.
 igw logs loggers --profile dev --json
 igw logs logger set --profile dev --name com.inductiveautomation --level DEBUG --yes --json
 igw logs level-reset --profile dev --yes --json
@@ -121,11 +126,11 @@ igw logs level-reset --profile dev --yes --json
 igw diagnostics bundle generate --profile dev --yes --json
 igw diagnostics bundle status --profile dev --json
 igw diagnostics bundle download --profile dev --out diagnostics.zip
-# If --out is omitted on an interactive terminal, defaults to diagnostics.zip.
+# If --out is omitted, defaults to diagnostics.zip.
 
 # Backups
 igw backup export --profile dev --out gateway.gwbk
-# If --out is omitted on an interactive terminal, defaults to gateway.gwbk.
+# If --out is omitted, defaults to gateway.gwbk.
 igw backup restore --profile dev --in gateway.gwbk --yes --json
 
 # Tags

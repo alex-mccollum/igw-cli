@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -82,5 +83,64 @@ func TestConfigProfileAddFirstProfileBecomesActive(t *testing.T) {
 
 	if cfg.ActiveProfile != "dev" {
 		t.Fatalf("expected first profile to become active, got %q", cfg.ActiveProfile)
+	}
+}
+
+func TestConfigProfileAddAndUseJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	var cfg config.File
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return cfg, nil
+		},
+		WriteConfig: func(next config.File) error {
+			cfg = next
+			return nil
+		},
+	}
+
+	if err := c.Execute([]string{
+		"config", "profile", "add", "dev",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "dev-token",
+		"--json",
+	}); err != nil {
+		t.Fatalf("profile add failed: %v", err)
+	}
+
+	var addPayload struct {
+		OK     bool   `json:"ok"`
+		Name   string `json:"name"`
+		Active bool   `json:"active"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &addPayload); err != nil {
+		t.Fatalf("parse add json output: %v", err)
+	}
+	if !addPayload.OK || addPayload.Name != "dev" || !addPayload.Active {
+		t.Fatalf("unexpected add payload: %s", out.String())
+	}
+
+	out.Reset()
+	if err := c.Execute([]string{
+		"config", "profile", "use", "dev", "--json",
+	}); err != nil {
+		t.Fatalf("profile use failed: %v", err)
+	}
+
+	var usePayload struct {
+		OK     bool   `json:"ok"`
+		Active string `json:"active"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &usePayload); err != nil {
+		t.Fatalf("parse use json output: %v", err)
+	}
+	if !usePayload.OK || usePayload.Active != "dev" {
+		t.Fatalf("unexpected use payload: %s", out.String())
 	}
 }

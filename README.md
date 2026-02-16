@@ -67,7 +67,7 @@ igw config set --auto-gateway
 - `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
 - `igw config set|show|profile`: local config + profile management.
-- `igw doctor`: connectivity + auth checks (URL, TCP, read access, write access).
+- `igw doctor`: connectivity + auth checks (URL, TCP, read access; optional write access with `--check-write`).
 - `igw gateway info`: convenience read wrapper.
 - `igw scan projects`: convenience write wrapper.
 - `igw logs ...`: list/download logs and manage logger levels.
@@ -80,7 +80,8 @@ igw config set --auto-gateway
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
 - `igw tags export` defaults `--provider` to `default` and `--type` to `json`.
 - `igw tags import` defaults `--provider` to `default`, infers `--type` from the import file extension (`.json`, `.xml`, `.csv`, fallback `json`), and defaults `--collision-policy` to `Abort`.
-- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default `--out` filenames when output is an interactive terminal.
+- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default `--out` filenames even when `--out` is omitted.
+- API discovery defaults to `openapi.json` in the current directory, then falls back to `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 
 ## Mutation Safety
 - Mutating operations require explicit `--yes` confirmation.
@@ -99,6 +100,7 @@ Environment variables:
 Profiles:
 - If `--profile` is omitted and an active profile is set, that active profile is used.
 - The first profile created by `igw config profile add` becomes active automatically if no active profile exists.
+- `config set`, `config profile add`, and `config profile use` support `--json` for machine-readable success/error output.
 
 Config file path:
 - Linux/macOS: `${XDG_CONFIG_HOME:-~/.config}/igw/config.json`
@@ -117,6 +119,7 @@ Run health/auth checks:
 
 ```bash
 igw doctor
+igw doctor --check-write
 ```
 
 Run a generic API call:

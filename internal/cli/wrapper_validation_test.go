@@ -135,29 +135,19 @@ func TestChooseDefaultOutPath(t *testing.T) {
 		name        string
 		explicit    string
 		defaultName string
-		interactive bool
 		want        string
 	}{
 		{
 			name:        "explicit wins",
 			explicit:    "custom.zip",
 			defaultName: "gateway-logs.zip",
-			interactive: true,
 			want:        "custom.zip",
 		},
 		{
-			name:        "interactive uses default",
+			name:        "empty uses default",
 			explicit:    "",
 			defaultName: "gateway-logs.zip",
-			interactive: true,
 			want:        "gateway-logs.zip",
-		},
-		{
-			name:        "non interactive leaves stdout",
-			explicit:    "",
-			defaultName: "gateway-logs.zip",
-			interactive: false,
-			want:        "",
 		},
 	}
 
@@ -165,7 +155,7 @@ func TestChooseDefaultOutPath(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := chooseDefaultOutPath(tc.explicit, tc.defaultName, tc.interactive)
+			got := chooseDefaultOutPath(tc.explicit, tc.defaultName)
 			if got != tc.want {
 				t.Fatalf("got %q want %q", got, tc.want)
 			}

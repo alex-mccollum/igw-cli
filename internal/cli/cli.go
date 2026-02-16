@@ -23,7 +23,6 @@ type CLI struct {
 	ReadConfig      func() (config.File, error)
 	WriteConfig     func(config.File) error
 	DetectWSLHostIP func() (string, string, error)
-	IsTerminal      func(io.Writer) bool
 	HTTPClient      *http.Client
 }
 
@@ -36,7 +35,6 @@ func New() *CLI {
 		ReadConfig:      config.Read,
 		WriteConfig:     config.Write,
 		DetectWSLHostIP: wsl.DetectWindowsHostIP,
-		IsTerminal:      isWriterTerminal,
 	}
 }
 
@@ -189,6 +187,7 @@ func bashCompletionScript() string {
 		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--include-headers",
 		"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
 		"--dry-run", "--retry", "--retry-backoff", "--out", "--in", "--provider", "--type", "--collision-policy",
+		"--check-write",
 		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
 		"--recursive", "--include-udts",
 	}, " ")

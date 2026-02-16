@@ -131,6 +131,74 @@ func TestAPIShowAcceptsPositionalPath(t *testing.T) {
 	}
 }
 
+func TestAPIShowJSONErrorEnvelope(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "show", "--spec-file", specPath, "--json"})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+
+	var payload struct {
+		OK    bool   `json:"ok"`
+		Code  int    `json:"code"`
+		Error string `json:"error"`
+	}
+	if unmarshalErr := json.Unmarshal(out.Bytes(), &payload); unmarshalErr != nil {
+		t.Fatalf("parse json output: %v", unmarshalErr)
+	}
+	if payload.OK || payload.Code != 2 || !strings.Contains(payload.Error, "required: --path") {
+		t.Fatalf("unexpected json error payload: %s", out.String())
+	}
+}
+
+func TestAPIFallbackToConfigDirSpec(t *testing.T) {
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+
+	specDir := filepath.Join(configHome, "igw")
+	if err := os.MkdirAll(specDir, 0o700); err != nil {
+		t.Fatalf("create config spec dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(specDir, "openapi.json"), []byte(apiSpecFixture), 0o600); err != nil {
+		t.Fatalf("write config spec: %v", err)
+	}
+
+	emptyDir := t.TempDir()
+	prevWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(emptyDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(prevWD)
+	})
+
+	var out bytes.Buffer
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	if err := c.Execute([]string{"api", "list"}); err != nil {
+		t.Fatalf("api list failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "gatewayInfo") {
+		t.Fatalf("expected operation from config-dir spec, got %q", out.String())
+	}
+}
+
 func writeAPISpec(t *testing.T, content string) string {
 	t.Helper()
 

@@ -211,64 +211,74 @@ func (c *CLI) runConfigProfile(args []string) error {
 }
 
 func (c *CLI) runConfigSet(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	fs := flag.NewFlagSet("config set", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
 
 	var gatewayURL string
 	var autoGateway bool
 	var profileName string
 	var apiKey string
 	var apiKeyStdin bool
+	var jsonOutput bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.BoolVar(&autoGateway, "auto-gateway", false, "Detect Windows host IP from WSL and set gateway URL")
 	fs.StringVar(&profileName, "profile", "", "Profile to update instead of default config")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
 	if apiKeyStdin {
 		if apiKey != "" {
-			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
 		}
 		tokenBytes, err := io.ReadAll(c.In)
 		if err != nil {
-			return igwerr.NewTransportError(err)
+			return c.printJSONCommandError(jsonOutput, igwerr.NewTransportError(err))
 		}
 		apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
 	if autoGateway && strings.TrimSpace(gatewayURL) != "" {
-		return &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"})
 	}
 
+	autoGatewaySource := ""
 	if autoGateway {
 		if c.DetectWSLHostIP == nil {
-			return &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"})
 		}
 
 		hostIP, source, detectErr := c.DetectWSLHostIP()
 		if detectErr != nil {
-			return &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)})
 		}
 
 		gatewayURL = fmt.Sprintf("http://%s:8088", hostIP)
-		fmt.Fprintf(c.Out, "auto-detected gateway URL from %s: %s\n", source, gatewayURL)
+		autoGatewaySource = source
+		if !jsonOutput {
+			fmt.Fprintf(c.Out, "auto-detected gateway URL from %s: %s\n", source, gatewayURL)
+		}
 	}
 
 	if strings.TrimSpace(gatewayURL) == "" && strings.TrimSpace(apiKey) == "" {
-		return &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"})
 	}
 
 	cfg, err := c.ReadConfig()
 	if err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)})
 	}
 
 	profileName = strings.TrimSpace(profileName)
@@ -295,13 +305,32 @@ func (c *CLI) runConfigSet(args []string) error {
 	}
 
 	if c.WriteConfig == nil {
-		return &igwerr.UsageError{Msg: "config writer is not configured"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "config writer is not configured"})
 	}
 	if err := c.WriteConfig(cfg); err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
 	}
 
 	path, pathErr := config.Path()
+	pathValue := ""
+	if pathErr == nil {
+		pathValue = path
+	}
+
+	if jsonOutput {
+		payload := map[string]any{
+			"ok":           true,
+			"configPath":   pathValue,
+			"profile":      profileName,
+			"gatewayURL":   strings.TrimSpace(gatewayURL),
+			"tokenUpdated": strings.TrimSpace(apiKey) != "",
+		}
+		if autoGatewaySource != "" {
+			payload["autoGatewaySource"] = autoGatewaySource
+		}
+		return writeJSON(c.Out, payload)
+	}
+
 	if pathErr == nil {
 		fmt.Fprintf(c.Out, "saved config: %s\n", path)
 	} else {
@@ -366,7 +395,13 @@ func (c *CLI) runConfigShow(args []string) error {
 		fmt.Fprintf(c.Out, "active_profile\t%s\n", cfg.ActiveProfile)
 	}
 	if len(cfg.Profiles) > 0 {
-		for name, profile := range cfg.Profiles {
+		names := make([]string, 0, len(cfg.Profiles))
+		for name := range cfg.Profiles {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			profile := cfg.Profiles[name]
 			fmt.Fprintf(c.Out, "profile\t%s\t%s\t%s\n", name, profile.GatewayURL, config.MaskToken(profile.Token))
 		}
 	}
@@ -374,68 +409,76 @@ func (c *CLI) runConfigShow(args []string) error {
 }
 
 func (c *CLI) runConfigProfileAdd(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	if len(args) == 0 {
-		return &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"})
 	}
 	name := strings.TrimSpace(args[0])
 	if strings.HasPrefix(name, "-") || name == "" {
-		return &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: "usage: igw config profile add <name> [flags]"})
 	}
 
 	fs := flag.NewFlagSet("config profile add", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
 
 	var gatewayURL string
 	var autoGateway bool
 	var apiKey string
 	var apiKeyStdin bool
 	var makeActive bool
+	var jsonOutput bool
 
 	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.BoolVar(&autoGateway, "auto-gateway", false, "Detect Windows host IP from WSL and set gateway URL")
 	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
 	fs.BoolVar(&makeActive, "use", false, "Set added profile as active profile")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args[1:]); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
 	if apiKeyStdin {
 		if apiKey != "" {
-			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
 		}
 		tokenBytes, err := io.ReadAll(c.In)
 		if err != nil {
-			return igwerr.NewTransportError(err)
+			return c.printJSONCommandError(jsonOutput, igwerr.NewTransportError(err))
 		}
 		apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
 	if autoGateway && strings.TrimSpace(gatewayURL) != "" {
-		return &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "use only one of --gateway-url or --auto-gateway"})
 	}
+	autoGatewaySource := ""
 	if autoGateway {
 		if c.DetectWSLHostIP == nil {
-			return &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "auto-gateway is not available in this runtime"})
 		}
-		hostIP, _, detectErr := c.DetectWSLHostIP()
+		hostIP, source, detectErr := c.DetectWSLHostIP()
 		if detectErr != nil {
-			return &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("auto-gateway failed: %v", detectErr)})
 		}
 		gatewayURL = fmt.Sprintf("http://%s:8088", hostIP)
+		autoGatewaySource = source
 	}
 
 	if strings.TrimSpace(gatewayURL) == "" && strings.TrimSpace(apiKey) == "" {
-		return &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "set at least one of --gateway-url or --api-key"})
 	}
 
 	cfg, err := c.ReadConfig()
 	if err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)})
 	}
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]config.Profile{}
@@ -459,51 +502,78 @@ func (c *CLI) runConfigProfileAdd(args []string) error {
 	}
 
 	if c.WriteConfig == nil {
-		return &igwerr.UsageError{Msg: "config writer is not configured"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "config writer is not configured"})
 	}
 	if err := c.WriteConfig(cfg); err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
+	}
+
+	if jsonOutput {
+		payload := map[string]any{
+			"ok":           true,
+			"name":         name,
+			"active":       cfg.ActiveProfile == name,
+			"gatewayURL":   strings.TrimSpace(gatewayURL),
+			"tokenUpdated": strings.TrimSpace(apiKey) != "",
+		}
+		if autoGatewaySource != "" {
+			payload["autoGatewaySource"] = autoGatewaySource
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	fmt.Fprintf(c.Out, "saved profile: %s\n", name)
-	if makeActive {
+	if cfg.ActiveProfile == name {
 		fmt.Fprintf(c.Out, "active profile: %s\n", name)
 	}
 	return nil
 }
 
 func (c *CLI) runConfigProfileUse(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	if len(args) == 0 {
-		return &igwerr.UsageError{Msg: "usage: igw config profile use <name>"}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: "usage: igw config profile use <name> [flags]"})
 	}
 	name := strings.TrimSpace(args[0])
 	if strings.HasPrefix(name, "-") || name == "" {
-		return &igwerr.UsageError{Msg: "usage: igw config profile use <name>"}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: "usage: igw config profile use <name> [flags]"})
 	}
 
 	fs := flag.NewFlagSet("config profile use", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
+	var jsonOutput bool
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args[1:]); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 	cfg, err := c.ReadConfig()
 	if err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)})
 	}
 	if _, ok := cfg.Profiles[name]; !ok {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("profile %q not found", name)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("profile %q not found", name)})
 	}
 	cfg.ActiveProfile = name
 
 	if c.WriteConfig == nil {
-		return &igwerr.UsageError{Msg: "config writer is not configured"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "config writer is not configured"})
 	}
 	if err := c.WriteConfig(cfg); err != nil {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
+	}
+
+	if jsonOutput {
+		return writeJSON(c.Out, map[string]any{
+			"ok":     true,
+			"active": name,
+		})
 	}
 
 	fmt.Fprintf(c.Out, "active profile: %s\n", name)

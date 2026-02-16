@@ -4,10 +4,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/alex-mccollum/igw-cli/internal/apidocs"
+	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
 
@@ -30,8 +33,12 @@ func (c *CLI) runAPI(args []string) error {
 }
 
 func (c *CLI) runAPIList(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	fs := flag.NewFlagSet("api list", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
 
 	var specFile string
 	var method string
@@ -44,15 +51,15 @@ func (c *CLI) runAPIList(args []string) error {
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
 	ops, err := loadAPIOperations(specFile)
 	if err != nil {
-		return err
+		return c.printJSONCommandError(jsonOutput, err)
 	}
 
 	ops = apidocs.FilterByMethod(ops, method)
@@ -74,8 +81,12 @@ func (c *CLI) runAPIList(args []string) error {
 }
 
 func (c *CLI) runAPIShow(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	fs := flag.NewFlagSet("api show", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
 
 	var specFile string
 	var method string
@@ -88,30 +99,30 @@ func (c *CLI) runAPIShow(args []string) error {
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
 		if strings.TrimSpace(path) == "" && fs.NArg() == 1 {
 			path = fs.Arg(0)
 		} else {
-			return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 		}
 	}
 
 	if strings.TrimSpace(path) == "" {
-		return &igwerr.UsageError{Msg: "required: --path (or one positional path argument)"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "required: --path (or one positional path argument)"})
 	}
 
 	ops, err := loadAPIOperations(specFile)
 	if err != nil {
-		return err
+		return c.printJSONCommandError(jsonOutput, err)
 	}
 
 	ops = apidocs.FilterByPath(ops, strings.TrimSpace(path))
 	ops = apidocs.FilterByMethod(ops, method)
 
 	if len(ops) == 0 {
-		return &igwerr.UsageError{Msg: fmt.Sprintf("no API operation found for path %q", path)}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("no API operation found for path %q", path)})
 	}
 
 	if jsonOutput {
@@ -142,8 +153,12 @@ func (c *CLI) runAPIShow(args []string) error {
 }
 
 func (c *CLI) runAPISearch(args []string) error {
+	jsonRequested := argsWantJSON(args)
 	fs := flag.NewFlagSet("api search", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
 
 	var specFile string
 	var method string
@@ -156,23 +171,23 @@ func (c *CLI) runAPISearch(args []string) error {
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
 	}
 	if fs.NArg() > 0 {
 		if strings.TrimSpace(query) == "" && fs.NArg() == 1 {
 			query = fs.Arg(0)
 		} else {
-			return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+			return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 		}
 	}
 
 	if strings.TrimSpace(query) == "" {
-		return &igwerr.UsageError{Msg: "required: --query (or one positional query argument)"}
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "required: --query (or one positional query argument)"})
 	}
 
 	ops, err := loadAPIOperations(specFile)
 	if err != nil {
-		return err
+		return c.printJSONCommandError(jsonOutput, err)
 	}
 
 	ops = apidocs.FilterByMethod(ops, method)
@@ -195,16 +210,17 @@ func (c *CLI) runAPISearch(args []string) error {
 }
 
 func loadAPIOperations(specFile string) ([]apidocs.Operation, error) {
-	specFile = strings.TrimSpace(specFile)
-	if specFile == "" {
-		specFile = apidocs.DefaultSpecFile
-	}
-
-	ops, err := apidocs.LoadOperations(specFile)
+	resolvedSpecFile, candidates := resolveSpecFile(specFile)
+	ops, err := apidocs.LoadOperations(resolvedSpecFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			if len(candidates) > 1 {
+				return nil, &igwerr.UsageError{
+					Msg: fmt.Sprintf("OpenAPI spec not found. checked: %q (cwd), %q (config). pass --spec-file /path/to/openapi.json", candidates[0], candidates[1]),
+				}
+			}
 			return nil, &igwerr.UsageError{
-				Msg: fmt.Sprintf("OpenAPI spec not found at %q (pass --spec-file /path/to/openapi.json)", specFile),
+				Msg: fmt.Sprintf("OpenAPI spec not found at %q (pass --spec-file /path/to/openapi.json)", resolvedSpecFile),
 			}
 		}
 		return nil, &igwerr.UsageError{Msg: err.Error()}
@@ -232,4 +248,24 @@ func formatOperationMatches(ops []apidocs.Operation) string {
 	}
 
 	return strings.Join(parts, "; ")
+}
+
+func resolveSpecFile(specFile string) (string, []string) {
+	specFile = strings.TrimSpace(specFile)
+	if specFile != "" && specFile != apidocs.DefaultSpecFile {
+		return specFile, []string{specFile}
+	}
+
+	candidates := []string{apidocs.DefaultSpecFile}
+	if cfgDir, err := config.Dir(); err == nil {
+		candidates = append(candidates, filepath.Join(cfgDir, apidocs.DefaultSpecFile))
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, candidates
+		}
+	}
+
+	return candidates[0], candidates
 }

@@ -27,6 +27,7 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 - Config supports WSL host auto-detection via `config set --auto-gateway`.
 - Profiles supported for multi-gateway workflows (`config profile add|use|list`, runtime `--profile`).
 - Mutating calls require explicit `--yes`.
+- `doctor` is read-only by default; `--check-write` enables write permission checks.
 - `call` supports optional retries for idempotent methods and `--out` file output.
 - `completion bash` outputs profile-aware shell completion.
 - Wrapper commands delegate to `call` so they share auth/config/timeout/JSON/exit behavior.
@@ -38,5 +39,6 @@ Default to Go standard library dependencies; add third-party packages only when 
 - Query a committed or local OpenAPI JSON snapshot.
 - Do not depend on runtime `/openapi` availability.
 - Keep `call` generic and use `api` commands for endpoint lookup.
+- Default spec lookup: `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 - `call --op <operationId>` resolves method/path from local spec for ergonomic calls.
 - Convenience wrappers (`gateway info`, `scan projects`) delegate to the same core `call` behavior.
