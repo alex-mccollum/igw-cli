@@ -34,6 +34,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "list download loggers logger level-reset") || !strings.Contains(script, "generate status download") {
 		t.Fatalf("missing new command completion entries")
 	}
+	if !strings.Contains(script, "sync") || !strings.Contains(script, "refresh") || !strings.Contains(script, "diagnostics-bundle") || !strings.Contains(script, "restart-tasks") {
+		t.Fatalf("missing api/wait completion entries")
+	}
 	if !strings.Contains(script, "--field") {
 		t.Fatalf("missing --field completion flag")
 	}

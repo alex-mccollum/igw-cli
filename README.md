@@ -77,7 +77,7 @@ For scripts and agent workflows, use JSON output plus exit codes as the primary 
 For the full automation workflow and patterns, see `docs/automation.md`.
 
 ## Commands
-- `igw api list|show|search`: query local OpenAPI docs for endpoint discovery.
+- `igw api list|show|search|sync|refresh`: query local OpenAPI docs and refresh cached spec.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
 - `igw config set|show|profile`: local config + profile management.
 - `igw doctor`: connectivity + auth checks (URL, TCP, read access; optional write access with `--check-write`).
@@ -88,6 +88,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 - `igw backup export|restore`: download or restore gateway backups.
 - `igw tags export|import`: tag import/export helpers.
 - `igw restart tasks|gateway`: restart task status and gateway restart trigger.
+- `igw wait gateway|diagnostics-bundle|restart-tasks`: poll operational readiness checks.
 
 ## Defaults
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
@@ -98,6 +99,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 - `igw tags import` defaults `--provider` to `default`, infers `--type` from the import file extension (`.json`, `.xml`, `.csv`, fallback `json`), and defaults `--collision-policy` to `Abort`.
 - `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default `--out` filenames even when `--out` is omitted.
 - API discovery defaults to `openapi.json` in the current directory, then falls back to `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
+- If no default spec is found, `igw` auto-syncs and caches OpenAPI from the gateway before resolving `api` and `call --op`.
 
 ## Mutation Safety
 - Mutating operations require explicit `--yes` confirmation.
@@ -136,6 +138,7 @@ Run health/auth checks:
 ```bash
 igw doctor
 igw doctor --check-write
+igw wait gateway --wait-timeout 2m
 ```
 
 Run a generic API call:

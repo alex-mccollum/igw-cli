@@ -39,6 +39,7 @@ igw doctor --check-write --json
 API execution:
 
 ```bash
+igw api sync --json
 igw call --path /data/api/v1/gateway-info --json
 igw call --method POST --path /data/api/v1/scan/projects --yes --json
 ```
@@ -65,6 +66,14 @@ igw diagnostics bundle download --out diagnostics.zip --json
 igw backup export --out gateway.gwbk --json
 ```
 
+Operational wait checks:
+
+```bash
+igw wait gateway --interval 2s --wait-timeout 2m --json
+igw wait diagnostics-bundle --interval 2s --wait-timeout 5m --json
+igw wait restart-tasks --interval 2s --wait-timeout 3m --json --field attempts
+```
+
 ## Notes
 
 - `doctor` is read-only by default; add `--check-write` for write checks.
@@ -73,4 +82,5 @@ igw backup export --out gateway.gwbk --json
 - `--fields` requires `--json` and accepts comma-separated selectors.
 - `--compact` requires `--json` and removes pretty indentation.
 - API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
+- If no default spec is present, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
 - If you omit `--profile`, the active profile is used (when set).

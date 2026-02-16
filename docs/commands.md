@@ -13,6 +13,7 @@ Defaults and behavior:
 - `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames whenever `--out` is omitted.
 - Mutating commands require `--yes`.
 - API discovery defaults to `openapi.json` in the current directory, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
+- If default spec files are missing, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
 
 Build:
 
@@ -39,6 +40,9 @@ igw api list --spec-file /path/to/openapi.json --path-contains gateway
 igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
 igw api show --spec-file /path/to/openapi.json /data/api/v1/gateway-info
 igw api search --spec-file /path/to/openapi.json --query scan
+igw api sync --profile dev --json
+igw api refresh --profile dev --json --field operationCount
+igw api sync --profile dev --openapi-path /openapi.json --json
 ```
 
 Generic call:
@@ -149,6 +153,11 @@ igw tags import --profile dev --in tags.json --collision-policy Overwrite --yes 
 # Restart
 igw restart tasks --profile dev --json
 igw restart gateway --profile dev --yes --json
+
+# Wait / poll
+igw wait gateway --profile dev --interval 2s --wait-timeout 2m
+igw wait diagnostics-bundle --profile dev --interval 2s --wait-timeout 5m --json
+igw wait restart-tasks --profile dev --interval 2s --wait-timeout 3m --json --field attempts
 ```
 
 Shell completion:

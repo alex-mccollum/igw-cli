@@ -88,7 +88,12 @@ func (c *CLI) runCall(args []string) error {
 			return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
 		}
 
-		ops, loadErr := loadAPIOperations(specFile)
+		ops, loadErr := c.loadAPIOperations(specFile, apiSyncRuntime{
+			Profile:    common.profile,
+			GatewayURL: common.gatewayURL,
+			APIKey:     common.apiKey,
+			Timeout:    common.timeout,
+		})
 		if loadErr != nil {
 			return c.printCallError(common.jsonOutput, selectOpts, loadErr)
 		}

@@ -46,7 +46,7 @@ type rootCommand struct {
 }
 
 var rootCommands = []rootCommand{
-	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search"}, Run: (*CLI).runAPI},
+	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search", "sync", "refresh"}, Run: (*CLI).runAPI},
 	{Name: "backup", Summary: "Gateway backup export/restore", Subcommands: []string{"export", "restore"}, Run: (*CLI).runBackup},
 	{Name: "call", Summary: "Execute generic Ignition Gateway API request", Run: (*CLI).runCall},
 	{Name: "completion", Summary: "Output shell completion script", Run: (*CLI).runCompletion},
@@ -58,15 +58,16 @@ var rootCommands = []rootCommand{
 	{Name: "restart", Summary: "Restart task/gateway helpers", Subcommands: []string{"tasks", "gateway"}, Run: (*CLI).runRestart},
 	{Name: "scan", Summary: "Convenience scan commands", Subcommands: []string{"projects"}, Run: (*CLI).runScan},
 	{Name: "tags", Summary: "Tag import/export helpers", Subcommands: []string{"export", "import"}, Run: (*CLI).runTags},
+	{Name: "wait", Summary: "Wait for operational readiness conditions", Subcommands: []string{"gateway", "diagnostics-bundle", "restart-tasks"}, Run: (*CLI).runWait},
 	{Name: "version", Summary: "Print build version information", Run: (*CLI).runVersion},
 }
 
 var completionRootCommands = []string{
-	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "gateway", "help", "logs", "restart", "scan", "tags", "version",
+	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "gateway", "help", "logs", "restart", "scan", "tags", "wait", "version",
 }
 
 var completionSubcommands = map[string][]string{
-	"api":         {"list", "show", "search"},
+	"api":         {"list", "show", "search", "sync", "refresh"},
 	"backup":      {"export", "restore"},
 	"config":      {"set", "show", "profile"},
 	"diagnostics": {"bundle"},
@@ -75,6 +76,7 @@ var completionSubcommands = map[string][]string{
 	"restart":     {"tasks", "gateway"},
 	"scan":        {"projects"},
 	"tags":        {"export", "import"},
+	"wait":        {"gateway", "diagnostics-bundle", "restart-tasks"},
 }
 
 var nestedCompletionCommands = map[string][]string{
@@ -187,6 +189,7 @@ func bashCompletionScript() string {
 		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--include-headers",
 		"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
 		"--dry-run", "--retry", "--retry-backoff", "--out", "--field", "--fields", "--compact", "--in", "--provider", "--type", "--collision-policy",
+		"--interval", "--wait-timeout", "--openapi-path",
 		"--check-write",
 		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
 		"--recursive", "--include-udts",
