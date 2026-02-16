@@ -213,3 +213,115 @@ func TestDoctorHintForTimeoutTransportError(t *testing.T) {
 		t.Fatalf("unexpected timeout hint: %q", hint)
 	}
 }
+
+func TestDoctorFieldRequiresJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--field", "checks.0.name",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --field") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDoctorJSONFieldExtractionSuccess(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"name":"gateway"}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--field", "checks.0.name",
+	})
+	if err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+	if out.String() != "gateway_url\n" {
+		t.Fatalf("unexpected field output %q", out.String())
+	}
+}
+
+func TestDoctorJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/api/v1/gateway-info" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"doctor",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--json",
+		"--field", "code",
+	})
+	if err == nil {
+		t.Fatalf("expected auth failure")
+	}
+	if code := igwerr.ExitCode(err); code != 6 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if out.String() != "6\n" {
+		t.Fatalf("unexpected field output %q", out.String())
+	}
+}

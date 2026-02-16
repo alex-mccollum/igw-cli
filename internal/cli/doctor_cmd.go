@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,15 +22,20 @@ func (c *CLI) runDoctor(args []string) error {
 
 	var common wrapperCommon
 	var checkWrite bool
+	var fieldPath string
 
 	bindWrapperCommonWithDefaults(fs, &common, 5*time.Second, false)
 	fs.BoolVar(&checkWrite, "check-write", false, "Include mutating write-permission check (scan projects)")
+	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 	if fs.NArg() > 0 {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+	if strings.TrimSpace(fieldPath) != "" && !common.jsonOutput {
+		return &igwerr.UsageError{Msg: "required: --json when using --field"}
 	}
 
 	if common.apiKeyStdin {
@@ -71,7 +75,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Use a full URL like http://<windows-host-ip>:8088",
 		})
-		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, uerr)
 	}
 	checks = append(checks, doctorCheck{
 		Name:    "gateway_url",
@@ -88,7 +92,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Gateway URL must include a valid host and scheme",
 		})
-		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, uerr)
 	}
 
 	conn, err := net.DialTimeout("tcp", addr, common.timeout)
@@ -100,7 +104,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: nerr.Error(),
 			Hint:    doctorHintForError(nerr),
 		})
-		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, nerr)
+		return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, nerr)
 	}
 	_ = conn.Close()
 	checks = append(checks, doctorCheck{
@@ -126,7 +130,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: err.Error(),
 			Hint:    doctorHintForError(err),
 		})
-		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, err)
+		return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, err)
 	}
 
 	checks = append(checks, doctorCheck{
@@ -148,7 +152,7 @@ func (c *CLI) runDoctor(args []string) error {
 				Message: err.Error(),
 				Hint:    doctorHintForError(err),
 			})
-			return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, err)
+			return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, err)
 		}
 		checks = append(checks, doctorCheck{
 			Name:    "scan_projects",
@@ -163,7 +167,7 @@ func (c *CLI) runDoctor(args []string) error {
 		})
 	}
 
-	return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, nil)
+	return c.printDoctorResult(common.jsonOutput, fieldPath, resolved.GatewayURL, checks, nil)
 }
 
 type doctorCheck struct {
@@ -181,7 +185,7 @@ type doctorEnvelope struct {
 	Checks     []doctorCheck `json:"checks"`
 }
 
-func (c *CLI) printDoctorResult(jsonOutput bool, gatewayURL string, checks []doctorCheck, err error) error {
+func (c *CLI) printDoctorResult(jsonOutput bool, fieldPath, gatewayURL string, checks []doctorCheck, err error) error {
 	if jsonOutput {
 		payload := doctorEnvelope{
 			OK:         err == nil,
@@ -193,10 +197,23 @@ func (c *CLI) printDoctorResult(jsonOutput bool, gatewayURL string, checks []doc
 			payload.Error = err.Error()
 		}
 
-		enc := json.NewEncoder(c.Out)
-		enc.SetIndent("", "  ")
-		if encodeErr := enc.Encode(payload); encodeErr != nil {
-			return igwerr.NewTransportError(encodeErr)
+		if strings.TrimSpace(fieldPath) != "" {
+			extracted, extractErr := extractJSONField(payload, fieldPath)
+			if extractErr != nil {
+				fieldErr := &igwerr.UsageError{
+					Msg: fmt.Sprintf("invalid --field path %q: %v", strings.TrimSpace(fieldPath), extractErr),
+				}
+				_ = writeJSON(c.Out, jsonErrorPayload(fieldErr))
+				return fieldErr
+			}
+			if _, writeErr := fmt.Fprintln(c.Out, extracted); writeErr != nil {
+				return igwerr.NewTransportError(writeErr)
+			}
+			return err
+		}
+
+		if encodeErr := writeJSON(c.Out, payload); encodeErr != nil {
+			return encodeErr
 		}
 		return err
 	}

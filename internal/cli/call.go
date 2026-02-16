@@ -33,6 +33,7 @@ func (c *CLI) runCall(args []string) error {
 		retry        int
 		retryBackoff time.Duration
 		outPath      string
+		fieldPath    string
 		queries      stringList
 		headers      stringList
 	)
@@ -51,49 +52,53 @@ func (c *CLI) runCall(args []string) error {
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
+	fs.StringVar(&fieldPath, "field", "", "Extract one value from JSON output using dot path (requires --json)")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 
 	if fs.NArg() > 0 {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+	}
+	if strings.TrimSpace(fieldPath) != "" && !common.jsonOutput {
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "required: --json when using --field"})
 	}
 
 	if common.apiKeyStdin {
 		if common.apiKey != "" {
-			return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
+			return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
 		}
 		tokenBytes, err := io.ReadAll(c.In)
 		if err != nil {
-			return c.printCallError(common.jsonOutput, igwerr.NewTransportError(err))
+			return c.printCallError(common.jsonOutput, fieldPath, igwerr.NewTransportError(err))
 		}
 		common.apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
 	resolved, err := c.resolveRuntimeConfig(common.profile, common.gatewayURL, common.apiKey)
 	if err != nil {
-		return c.printCallError(common.jsonOutput, err)
+		return c.printCallError(common.jsonOutput, fieldPath, err)
 	}
 
 	if strings.TrimSpace(op) != "" {
 		if strings.TrimSpace(method) != "" || strings.TrimSpace(path) != "" {
-			return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
+			return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
 		}
 
 		ops, loadErr := loadAPIOperations(specFile)
 		if loadErr != nil {
-			return c.printCallError(common.jsonOutput, loadErr)
+			return c.printCallError(common.jsonOutput, fieldPath, loadErr)
 		}
 
 		matches := apidocs.FilterByOperationID(ops, op)
 		if len(matches) == 0 {
-			return c.printCallError(common.jsonOutput, &igwerr.UsageError{
+			return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{
 				Msg: fmt.Sprintf("operationId %q not found in spec %q", strings.TrimSpace(op), strings.TrimSpace(specFile)),
 			})
 		}
 		if len(matches) > 1 {
-			return c.printCallError(common.jsonOutput, &igwerr.UsageError{
+			return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{
 				Msg: fmt.Sprintf("operationId %q is ambiguous (%d matches): %s", strings.TrimSpace(op), len(matches), formatOperationMatches(matches)),
 			})
 		}
@@ -103,25 +108,25 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	if strings.TrimSpace(resolved.GatewayURL) == "" {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"})
 	}
 	if strings.TrimSpace(resolved.Token) == "" {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
 	}
 	if strings.TrimSpace(path) == "" {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --path"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "required: --path"})
 	}
 	if strings.TrimSpace(method) == "" {
 		method = http.MethodGet
 	}
 	if common.timeout <= 0 {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--timeout must be positive"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "--timeout must be positive"})
 	}
 	if retry < 0 {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--retry must be >= 0"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "--retry must be >= 0"})
 	}
 	if retry > 0 && retryBackoff <= 0 {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
 	}
 
 	method = strings.ToUpper(strings.TrimSpace(method))
@@ -131,19 +136,19 @@ func (c *CLI) runCall(args []string) error {
 		queries = append(queries, "dryRun=true")
 	}
 	if isMutatingMethod(method) && !yes {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{
 			Msg: fmt.Sprintf("method %s requires --yes confirmation", method),
 		})
 	}
 	if retry > 0 && !isIdempotentMethod(method) {
-		return c.printCallError(common.jsonOutput, &igwerr.UsageError{
+		return c.printCallError(common.jsonOutput, fieldPath, &igwerr.UsageError{
 			Msg: fmt.Sprintf("--retry is only supported for idempotent methods; got %s", method),
 		})
 	}
 
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
-		return c.printCallError(common.jsonOutput, err)
+		return c.printCallError(common.jsonOutput, fieldPath, err)
 	}
 
 	if len(bodyBytes) > 0 && strings.TrimSpace(contentType) == "" {
@@ -168,19 +173,19 @@ func (c *CLI) runCall(args []string) error {
 		RetryBackoff: retryBackoff,
 	})
 	if err != nil {
-		return c.printCallError(common.jsonOutput, err)
+		return c.printCallError(common.jsonOutput, fieldPath, err)
 	}
 
 	bodyFile := ""
 	if strings.TrimSpace(outPath) != "" {
 		if writeErr := os.WriteFile(outPath, resp.Body, 0o600); writeErr != nil {
-			return c.printCallError(common.jsonOutput, igwerr.NewTransportError(writeErr))
+			return c.printCallError(common.jsonOutput, fieldPath, igwerr.NewTransportError(writeErr))
 		}
 		bodyFile = outPath
 	}
 
 	if common.jsonOutput {
-		return writeCallJSON(c.Out, callJSONEnvelope{
+		payload := callJSONEnvelope{
 			OK: true,
 			Request: callJSONRequest{
 				Method: resp.Method,
@@ -192,7 +197,20 @@ func (c *CLI) runCall(args []string) error {
 				Body:     string(resp.Body),
 				BodyFile: bodyFile,
 			},
-		})
+		}
+		if strings.TrimSpace(fieldPath) != "" {
+			extracted, extractErr := extractJSONField(payload, fieldPath)
+			if extractErr != nil {
+				return c.printCallError(common.jsonOutput, "", &igwerr.UsageError{
+					Msg: fmt.Sprintf("invalid --field path %q: %v", strings.TrimSpace(fieldPath), extractErr),
+				})
+			}
+			if _, err := fmt.Fprintln(c.Out, extracted); err != nil {
+				return igwerr.NewTransportError(err)
+			}
+			return nil
+		}
+		return writeCallJSON(c.Out, payload)
 	}
 
 	if common.includeHeaders {
@@ -219,9 +237,24 @@ func (c *CLI) runCall(args []string) error {
 	return nil
 }
 
-func (c *CLI) printCallError(jsonOutput bool, err error) error {
+func (c *CLI) printCallError(jsonOutput bool, fieldPath string, err error) error {
 	if jsonOutput {
-		_ = writeJSON(c.Out, jsonErrorPayload(err))
+		payload := jsonErrorPayload(err)
+		if strings.TrimSpace(fieldPath) != "" {
+			extracted, extractErr := extractJSONField(payload, fieldPath)
+			if extractErr != nil {
+				fieldErr := &igwerr.UsageError{
+					Msg: fmt.Sprintf("invalid --field path %q: %v", strings.TrimSpace(fieldPath), extractErr),
+				}
+				_ = writeJSON(c.Out, jsonErrorPayload(fieldErr))
+				return fieldErr
+			}
+			if _, writeErr := fmt.Fprintln(c.Out, extracted); writeErr != nil {
+				return igwerr.NewTransportError(writeErr)
+			}
+			return err
+		}
+		_ = writeJSON(c.Out, payload)
 	} else {
 		fmt.Fprintln(c.Err, err.Error())
 	}

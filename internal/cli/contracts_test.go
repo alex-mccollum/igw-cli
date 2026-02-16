@@ -154,6 +154,83 @@ func TestCallJSONContractAuthErrorDetails(t *testing.T) {
 	}
 }
 
+func TestCallJSONFieldExtraction(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--field", "response.status",
+	})
+	if err != nil {
+		t.Fatalf("call failed: %v", err)
+	}
+	if out.String() != "200\n" {
+		t.Fatalf("unexpected field output %q", out.String())
+	}
+}
+
+func TestCallJSONFieldExtractionFromErrorEnvelope(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`forbidden`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--json",
+		"--field", "code",
+	})
+	if err == nil {
+		t.Fatalf("expected auth failure")
+	}
+	if code := igwerr.ExitCode(err); code != 6 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if out.String() != "6\n" {
+		t.Fatalf("unexpected field output %q", out.String())
+	}
+}
+
 func TestConfigSetJSONContractUsageError(t *testing.T) {
 	t.Parallel()
 

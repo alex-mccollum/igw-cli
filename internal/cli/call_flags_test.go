@@ -165,3 +165,34 @@ func TestCallDefaultsMethodToGET(t *testing.T) {
 		t.Fatalf("expected default method GET, got %q", gotMethod)
 	}
 }
+
+func TestCallFieldRequiresJSON(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--path", "/data/api/v1/gateway-info",
+		"--field", "response.status",
+	})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "required: --json when using --field") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

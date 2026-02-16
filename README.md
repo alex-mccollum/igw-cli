@@ -70,6 +70,7 @@ For scripts and agent workflows, use JSON output plus exit codes as the primary 
 - `igw doctor --json` for read-only environment checks.
 - `igw doctor --check-write --json` to include write-permission validation.
 - `igw call --path /data/api/v1/gateway-info --json` for machine-readable API responses.
+- Use `--field` with `--json` when you need one value only (for example: `igw call --path /data/api/v1/gateway-info --json --field response.status`).
 
 For the full automation workflow and patterns, see `docs/automation.md`.
 
@@ -88,6 +89,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 
 ## Defaults
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
+- `igw call` and `igw doctor` support `--field` for single-value extraction from `--json` output.
 - `igw tags export` defaults `--provider` to `default` and `--type` to `json`.
 - `igw tags import` defaults `--provider` to `default`, infers `--type` from the import file extension (`.json`, `.xml`, `.csv`, fallback `json`), and defaults `--collision-policy` to `Abort`.
 - `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default `--out` filenames even when `--out` is omitted.
