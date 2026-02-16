@@ -605,13 +605,19 @@ type wrapperCommon struct {
 }
 
 func bindWrapperCommon(fs *flag.FlagSet, common *wrapperCommon) {
+	bindWrapperCommonWithDefaults(fs, common, 8*time.Second, true)
+}
+
+func bindWrapperCommonWithDefaults(fs *flag.FlagSet, common *wrapperCommon, timeoutDefault time.Duration, includeHeaders bool) {
 	fs.StringVar(&common.gatewayURL, "gateway-url", "", "Gateway base URL")
 	fs.StringVar(&common.apiKey, "api-key", "", "Ignition API token")
 	fs.BoolVar(&common.apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
 	fs.StringVar(&common.profile, "profile", "", "Config profile name")
-	fs.DurationVar(&common.timeout, "timeout", 8*time.Second, "Request timeout")
+	fs.DurationVar(&common.timeout, "timeout", timeoutDefault, "Request timeout")
 	fs.BoolVar(&common.jsonOutput, "json", false, "Print JSON envelope")
-	fs.BoolVar(&common.includeHeaders, "include-headers", false, "Include response headers")
+	if includeHeaders {
+		fs.BoolVar(&common.includeHeaders, "include-headers", false, "Include response headers")
+	}
 }
 
 func (w wrapperCommon) callArgs() []string {

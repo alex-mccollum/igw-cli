@@ -21,32 +21,23 @@ func (c *CLI) runCall(args []string) error {
 	fs.SetOutput(c.Err)
 
 	var (
-		gatewayURL     string
-		apiKey         string
-		apiKeyStdin    bool
-		profile        string
-		op             string
-		specFile       string
-		method         string
-		path           string
-		body           string
-		contentType    string
-		dryRun         bool
-		yes            bool
-		retry          int
-		retryBackoff   time.Duration
-		outPath        string
-		timeout        time.Duration
-		jsonOutput     bool
-		includeHeaders bool
-		queries        stringList
-		headers        stringList
+		common       wrapperCommon
+		op           string
+		specFile     string
+		method       string
+		path         string
+		body         string
+		contentType  string
+		dryRun       bool
+		yes          bool
+		retry        int
+		retryBackoff time.Duration
+		outPath      string
+		queries      stringList
+		headers      stringList
 	)
 
-	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
-	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
-	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
-	fs.StringVar(&profile, "profile", "", "Config profile name")
+	bindWrapperCommonWithDefaults(fs, &common, 8*time.Second, true)
 	fs.StringVar(&op, "op", "", "OpenAPI operationId to call")
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file (used with --op)")
 	fs.StringVar(&method, "method", "", "HTTP method")
@@ -60,52 +51,49 @@ func (c *CLI) runCall(args []string) error {
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
-	fs.DurationVar(&timeout, "timeout", 8*time.Second, "Request timeout")
-	fs.BoolVar(&jsonOutput, "json", false, "Print JSON envelope")
-	fs.BoolVar(&includeHeaders, "include-headers", false, "Include response headers in output")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 
 	if fs.NArg() > 0 {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
-	if apiKeyStdin {
-		if apiKey != "" {
-			return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
+	if common.apiKeyStdin {
+		if common.apiKey != "" {
+			return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"})
 		}
 		tokenBytes, err := io.ReadAll(c.In)
 		if err != nil {
-			return c.printCallError(jsonOutput, igwerr.NewTransportError(err))
+			return c.printCallError(common.jsonOutput, igwerr.NewTransportError(err))
 		}
-		apiKey = strings.TrimSpace(string(tokenBytes))
+		common.apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
-	resolved, err := c.resolveRuntimeConfig(profile, gatewayURL, apiKey)
+	resolved, err := c.resolveRuntimeConfig(common.profile, common.gatewayURL, common.apiKey)
 	if err != nil {
-		return c.printCallError(jsonOutput, err)
+		return c.printCallError(common.jsonOutput, err)
 	}
 
 	if strings.TrimSpace(op) != "" {
 		if strings.TrimSpace(method) != "" || strings.TrimSpace(path) != "" {
-			return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
+			return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
 		}
 
 		ops, loadErr := loadAPIOperations(specFile)
 		if loadErr != nil {
-			return c.printCallError(jsonOutput, loadErr)
+			return c.printCallError(common.jsonOutput, loadErr)
 		}
 
 		matches := apidocs.FilterByOperationID(ops, op)
 		if len(matches) == 0 {
-			return c.printCallError(jsonOutput, &igwerr.UsageError{
+			return c.printCallError(common.jsonOutput, &igwerr.UsageError{
 				Msg: fmt.Sprintf("operationId %q not found in spec %q", strings.TrimSpace(op), strings.TrimSpace(specFile)),
 			})
 		}
 		if len(matches) > 1 {
-			return c.printCallError(jsonOutput, &igwerr.UsageError{
+			return c.printCallError(common.jsonOutput, &igwerr.UsageError{
 				Msg: fmt.Sprintf("operationId %q is ambiguous (%d matches): %s", strings.TrimSpace(op), len(matches), formatOperationMatches(matches)),
 			})
 		}
@@ -115,25 +103,25 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	if strings.TrimSpace(resolved.GatewayURL) == "" {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --gateway-url (or IGNITION_GATEWAY_URL/config)"})
 	}
 	if strings.TrimSpace(resolved.Token) == "" {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
 	}
 	if strings.TrimSpace(path) == "" {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "required: --path"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "required: --path"})
 	}
 	if strings.TrimSpace(method) == "" {
 		method = http.MethodGet
 	}
-	if timeout <= 0 {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--timeout must be positive"})
+	if common.timeout <= 0 {
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--timeout must be positive"})
 	}
 	if retry < 0 {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--retry must be >= 0"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--retry must be >= 0"})
 	}
 	if retry > 0 && retryBackoff <= 0 {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
 	}
 
 	method = strings.ToUpper(strings.TrimSpace(method))
@@ -143,19 +131,19 @@ func (c *CLI) runCall(args []string) error {
 		queries = append(queries, "dryRun=true")
 	}
 	if isMutatingMethod(method) && !yes {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{
 			Msg: fmt.Sprintf("method %s requires --yes confirmation", method),
 		})
 	}
 	if retry > 0 && !isIdempotentMethod(method) {
-		return c.printCallError(jsonOutput, &igwerr.UsageError{
+		return c.printCallError(common.jsonOutput, &igwerr.UsageError{
 			Msg: fmt.Sprintf("--retry is only supported for idempotent methods; got %s", method),
 		})
 	}
 
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
-		return c.printCallError(jsonOutput, err)
+		return c.printCallError(common.jsonOutput, err)
 	}
 
 	if len(bodyBytes) > 0 && strings.TrimSpace(contentType) == "" {
@@ -175,23 +163,23 @@ func (c *CLI) runCall(args []string) error {
 		Headers:      headers,
 		Body:         bodyBytes,
 		ContentType:  contentType,
-		Timeout:      timeout,
+		Timeout:      common.timeout,
 		Retry:        retry,
 		RetryBackoff: retryBackoff,
 	})
 	if err != nil {
-		return c.printCallError(jsonOutput, err)
+		return c.printCallError(common.jsonOutput, err)
 	}
 
 	bodyFile := ""
 	if strings.TrimSpace(outPath) != "" {
 		if writeErr := os.WriteFile(outPath, resp.Body, 0o600); writeErr != nil {
-			return c.printCallError(jsonOutput, igwerr.NewTransportError(writeErr))
+			return c.printCallError(common.jsonOutput, igwerr.NewTransportError(writeErr))
 		}
 		bodyFile = outPath
 	}
 
-	if jsonOutput {
+	if common.jsonOutput {
 		return writeCallJSON(c.Out, callJSONEnvelope{
 			OK: true,
 			Request: callJSONRequest{
@@ -200,14 +188,14 @@ func (c *CLI) runCall(args []string) error {
 			},
 			Response: callJSONResponse{
 				Status:   resp.StatusCode,
-				Headers:  maybeHeaders(resp.Headers, includeHeaders),
+				Headers:  maybeHeaders(resp.Headers, common.includeHeaders),
 				Body:     string(resp.Body),
 				BodyFile: bodyFile,
 			},
 		})
 	}
 
-	if includeHeaders {
+	if common.includeHeaders {
 		fmt.Fprintf(c.Out, "HTTP %d\n", resp.StatusCode)
 		for k, vals := range resp.Headers {
 			for _, v := range vals {

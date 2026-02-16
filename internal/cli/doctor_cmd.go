@@ -21,20 +21,10 @@ func (c *CLI) runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
 
-	var gatewayURL string
-	var apiKey string
-	var apiKeyStdin bool
-	var profile string
-	var timeout time.Duration
-	var jsonOutput bool
+	var common wrapperCommon
 	var checkWrite bool
 
-	fs.StringVar(&gatewayURL, "gateway-url", "", "Gateway base URL")
-	fs.StringVar(&apiKey, "api-key", "", "Ignition API token")
-	fs.BoolVar(&apiKeyStdin, "api-key-stdin", false, "Read API token from stdin")
-	fs.StringVar(&profile, "profile", "", "Config profile name")
-	fs.DurationVar(&timeout, "timeout", 5*time.Second, "Check timeout")
-	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	bindWrapperCommonWithDefaults(fs, &common, 5*time.Second, false)
 	fs.BoolVar(&checkWrite, "check-write", false, "Include mutating write-permission check (scan projects)")
 
 	if err := fs.Parse(args); err != nil {
@@ -44,18 +34,18 @@ func (c *CLI) runDoctor(args []string) error {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
 	}
 
-	if apiKeyStdin {
-		if apiKey != "" {
+	if common.apiKeyStdin {
+		if common.apiKey != "" {
 			return &igwerr.UsageError{Msg: "use only one of --api-key or --api-key-stdin"}
 		}
 		tokenBytes, err := io.ReadAll(c.In)
 		if err != nil {
 			return igwerr.NewTransportError(err)
 		}
-		apiKey = strings.TrimSpace(string(tokenBytes))
+		common.apiKey = strings.TrimSpace(string(tokenBytes))
 	}
 
-	resolved, err := c.resolveRuntimeConfig(profile, gatewayURL, apiKey)
+	resolved, err := c.resolveRuntimeConfig(common.profile, common.gatewayURL, common.apiKey)
 	if err != nil {
 		return err
 	}
@@ -66,7 +56,7 @@ func (c *CLI) runDoctor(args []string) error {
 	if strings.TrimSpace(resolved.Token) == "" {
 		return &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"}
 	}
-	if timeout <= 0 {
+	if common.timeout <= 0 {
 		return &igwerr.UsageError{Msg: "--timeout must be positive"}
 	}
 
@@ -81,7 +71,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Use a full URL like http://<windows-host-ip>:8088",
 		})
-		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, uerr)
 	}
 	checks = append(checks, doctorCheck{
 		Name:    "gateway_url",
@@ -98,10 +88,10 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Gateway URL must include a valid host and scheme",
 		})
-		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, uerr)
 	}
 
-	conn, err := net.DialTimeout("tcp", addr, timeout)
+	conn, err := net.DialTimeout("tcp", addr, common.timeout)
 	if err != nil {
 		nerr := igwerr.NewTransportError(err)
 		checks = append(checks, doctorCheck{
@@ -110,7 +100,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: nerr.Error(),
 			Hint:    doctorHintForError(nerr),
 		})
-		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nerr)
+		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, nerr)
 	}
 	_ = conn.Close()
 	checks = append(checks, doctorCheck{
@@ -127,7 +117,7 @@ func (c *CLI) runDoctor(args []string) error {
 	resp, err := client.Call(context.Background(), gateway.CallRequest{
 		Method:  http.MethodGet,
 		Path:    "/data/api/v1/gateway-info",
-		Timeout: timeout,
+		Timeout: common.timeout,
 	})
 	if err != nil {
 		checks = append(checks, doctorCheck{
@@ -136,7 +126,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: err.Error(),
 			Hint:    doctorHintForError(err),
 		})
-		return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+		return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, err)
 	}
 
 	checks = append(checks, doctorCheck{
@@ -149,7 +139,7 @@ func (c *CLI) runDoctor(args []string) error {
 		writeResp, err := client.Call(context.Background(), gateway.CallRequest{
 			Method:  http.MethodPost,
 			Path:    "/data/api/v1/scan/projects",
-			Timeout: timeout,
+			Timeout: common.timeout,
 		})
 		if err != nil {
 			checks = append(checks, doctorCheck{
@@ -158,7 +148,7 @@ func (c *CLI) runDoctor(args []string) error {
 				Message: err.Error(),
 				Hint:    doctorHintForError(err),
 			})
-			return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, err)
+			return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, err)
 		}
 		checks = append(checks, doctorCheck{
 			Name:    "scan_projects",
@@ -173,7 +163,7 @@ func (c *CLI) runDoctor(args []string) error {
 		})
 	}
 
-	return c.printDoctorResult(jsonOutput, resolved.GatewayURL, checks, nil)
+	return c.printDoctorResult(common.jsonOutput, resolved.GatewayURL, checks, nil)
 }
 
 type doctorCheck struct {
