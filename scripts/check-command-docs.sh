@@ -25,7 +25,7 @@ if ! grep -q 'docs/commands.md' "$README"; then
   exit 1
 fi
 
-README_CMD_COUNT="$(rg -N '^\s*igw(\s|$)' "$README" | wc -l | tr -d ' ')"
+README_CMD_COUNT="$( (grep -E '^[[:space:]]*igw([[:space:]]|$)' "$README" || true) | wc -l | tr -d ' ' )"
 MAX_README_CMDS=12
 if (( README_CMD_COUNT > MAX_README_CMDS )); then
   echo "error: README.md has $README_CMD_COUNT igw commands; keep onboarding examples at <= $MAX_README_CMDS"
@@ -34,7 +34,7 @@ fi
 
 extract_shapes() {
   local file="$1"
-  rg -N '^\s*igw(\s|$)' "$file" | awk '
+  (grep -E '^[[:space:]]*igw([[:space:]]|$)' "$file" || true) | awk '
   {
     first = $2
     second = $3
