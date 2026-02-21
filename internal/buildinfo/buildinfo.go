@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strings"
 )
 
@@ -14,8 +15,21 @@ var (
 	Date = ""
 )
 
+var readBuildInfo = debug.ReadBuildInfo
+
 func Short() string {
 	version := strings.TrimSpace(Version)
+	if version != "" && version != "dev" {
+		return version
+	}
+
+	if bi, ok := readBuildInfo(); ok && bi != nil {
+		moduleVersion := strings.TrimSpace(bi.Main.Version)
+		if moduleVersion != "" && moduleVersion != "(devel)" {
+			return moduleVersion
+		}
+	}
+
 	if version == "" {
 		return "dev"
 	}
