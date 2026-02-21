@@ -40,6 +40,8 @@ igw api list --spec-file /path/to/openapi.json --path-contains gateway
 igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
 igw api show --spec-file /path/to/openapi.json /data/api/v1/gateway-info
 igw api search --spec-file /path/to/openapi.json --query scan
+igw api tags --spec-file /path/to/openapi.json
+igw api stats --spec-file /path/to/openapi.json --json
 igw api sync --profile dev --json
 igw api refresh --profile dev --json --select operationCount --raw
 igw api sync --profile dev --openapi-path /openapi.json --json

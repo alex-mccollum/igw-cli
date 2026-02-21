@@ -110,6 +110,85 @@ func TestAPISearchJSON(t *testing.T) {
 	}
 }
 
+func TestAPITagsJSON(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "tags", "--spec-file", specPath, "--json"})
+	if err != nil {
+		t.Fatalf("api tags failed: %v", err)
+	}
+
+	var payload struct {
+		Count int      `json:"count"`
+		Tags  []string `json:"tags"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("parse json output: %v", err)
+	}
+	if payload.Count != 2 || len(payload.Tags) != 2 {
+		t.Fatalf("unexpected payload: %+v", payload)
+	}
+	if payload.Tags[0] != "gateway" || payload.Tags[1] != "scan" {
+		t.Fatalf("unexpected tags ordering/content: %+v", payload.Tags)
+	}
+}
+
+func TestAPIStatsJSON(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "stats", "--spec-file", specPath, "--json"})
+	if err != nil {
+		t.Fatalf("api stats failed: %v", err)
+	}
+
+	var payload struct {
+		Total        int `json:"total"`
+		Methods      []struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		} `json:"methods"`
+		Tags []struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		} `json:"tags"`
+		PathPrefixes []struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		} `json:"pathPrefixes"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("parse json output: %v", err)
+	}
+	if payload.Total != 2 {
+		t.Fatalf("unexpected total: %d", payload.Total)
+	}
+	if len(payload.Methods) != 2 || payload.Methods[0].Name != "GET" || payload.Methods[1].Name != "POST" {
+		t.Fatalf("unexpected method stats: %+v", payload.Methods)
+	}
+	if len(payload.Tags) != 2 || payload.Tags[0].Name != "gateway" || payload.Tags[1].Name != "scan" {
+		t.Fatalf("unexpected tag stats: %+v", payload.Tags)
+	}
+	if len(payload.PathPrefixes) != 2 {
+		t.Fatalf("unexpected path prefix stats: %+v", payload.PathPrefixes)
+	}
+}
+
 func TestAPIShowAcceptsPositionalPath(t *testing.T) {
 	t.Parallel()
 

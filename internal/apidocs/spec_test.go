@@ -91,6 +91,59 @@ func TestFilterByOperationID(t *testing.T) {
 	}
 }
 
+func TestUniqueTags(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	got := UniqueTags(ops)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 tags, got %d", len(got))
+	}
+	if got[0] != "gateway" || got[1] != "scan" {
+		t.Fatalf("unexpected tags: %+v", got)
+	}
+}
+
+func TestBuildStats(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	stats := BuildStats(ops)
+	if stats.Total != 2 {
+		t.Fatalf("unexpected total: %d", stats.Total)
+	}
+
+	if len(stats.Methods) != 2 {
+		t.Fatalf("unexpected methods length: %d", len(stats.Methods))
+	}
+	if stats.Methods[0].Name != "GET" || stats.Methods[0].Count != 1 {
+		t.Fatalf("unexpected GET method stat: %+v", stats.Methods[0])
+	}
+	if stats.Methods[1].Name != "POST" || stats.Methods[1].Count != 1 {
+		t.Fatalf("unexpected POST method stat: %+v", stats.Methods[1])
+	}
+
+	if len(stats.PathPrefixes) != 2 {
+		t.Fatalf("unexpected path prefix length: %d", len(stats.PathPrefixes))
+	}
+	if stats.PathPrefixes[0].Name != "/data/api/v1/gateway-info" || stats.PathPrefixes[0].Count != 1 {
+		t.Fatalf("unexpected first path prefix stat: %+v", stats.PathPrefixes[0])
+	}
+	if stats.PathPrefixes[1].Name != "/data/api/v1/scan" || stats.PathPrefixes[1].Count != 1 {
+		t.Fatalf("unexpected second path prefix stat: %+v", stats.PathPrefixes[1])
+	}
+}
+
 func writeSpec(t *testing.T, content string) string {
 	t.Helper()
 

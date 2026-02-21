@@ -17,7 +17,7 @@ import (
 
 func (c *CLI) runAPI(args []string) error {
 	if len(args) == 0 {
-		fmt.Fprintln(c.Err, "Usage: igw api <list|show|search|sync|refresh> [flags]")
+		fmt.Fprintln(c.Err, "Usage: igw api <list|show|search|tags|stats|sync|refresh> [flags]")
 		return &igwerr.UsageError{Msg: "required api subcommand"}
 	}
 
@@ -28,6 +28,10 @@ func (c *CLI) runAPI(args []string) error {
 		return c.runAPIShow(args[1:])
 	case "search":
 		return c.runAPISearch(args[1:])
+	case "tags":
+		return c.runAPITags(args[1:])
+	case "stats":
+		return c.runAPIStats(args[1:])
 	case "sync":
 		return c.runAPISync(args[1:])
 	case "refresh":
@@ -215,6 +219,117 @@ func (c *CLI) runAPISearch(args []string) error {
 	fmt.Fprintln(c.Out, "METHOD\tPATH\tOPERATION_ID\tSUMMARY")
 	for _, op := range ops {
 		fmt.Fprintf(c.Out, "%s\t%s\t%s\t%s\n", op.Method, op.Path, op.OperationID, op.Summary)
+	}
+
+	return nil
+}
+
+func (c *CLI) runAPITags(args []string) error {
+	jsonRequested := argsWantJSON(args)
+	fs := flag.NewFlagSet("api tags", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
+
+	var specFile string
+	var method string
+	var pathContains string
+	var jsonOutput bool
+
+	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
+	fs.StringVar(&method, "method", "", "Filter by HTTP method")
+	fs.StringVar(&pathContains, "path-contains", "", "Filter by path substring")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+
+	if err := fs.Parse(args); err != nil {
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
+	}
+	if fs.NArg() > 0 {
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+	}
+
+	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{
+		Timeout: 8 * time.Second,
+	})
+	if err != nil {
+		return c.printJSONCommandError(jsonOutput, err)
+	}
+
+	ops = apidocs.FilterByMethod(ops, method)
+	ops = apidocs.FilterByPathContains(ops, pathContains)
+	tags := apidocs.UniqueTags(ops)
+
+	if jsonOutput {
+		return writeJSON(c.Out, map[string]any{
+			"count": len(tags),
+			"tags":  tags,
+		})
+	}
+
+	for _, tag := range tags {
+		fmt.Fprintln(c.Out, tag)
+	}
+	return nil
+}
+
+func (c *CLI) runAPIStats(args []string) error {
+	jsonRequested := argsWantJSON(args)
+	fs := flag.NewFlagSet("api stats", flag.ContinueOnError)
+	fs.SetOutput(c.Err)
+	if jsonRequested {
+		fs.SetOutput(io.Discard)
+	}
+
+	var specFile string
+	var method string
+	var pathContains string
+	var query string
+	var jsonOutput bool
+
+	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
+	fs.StringVar(&method, "method", "", "Filter by HTTP method")
+	fs.StringVar(&pathContains, "path-contains", "", "Filter by path substring")
+	fs.StringVar(&query, "query", "", "Search text")
+	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+
+	if err := fs.Parse(args); err != nil {
+		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
+	}
+	if fs.NArg() > 0 {
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+	}
+
+	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{
+		Timeout: 8 * time.Second,
+	})
+	if err != nil {
+		return c.printJSONCommandError(jsonOutput, err)
+	}
+
+	ops = apidocs.FilterByMethod(ops, method)
+	ops = apidocs.FilterByPathContains(ops, pathContains)
+	ops = apidocs.Search(ops, query)
+	stats := apidocs.BuildStats(ops)
+
+	if jsonOutput {
+		return writeJSON(c.Out, stats)
+	}
+
+	fmt.Fprintf(c.Out, "total\t%d\n", stats.Total)
+	fmt.Fprintln(c.Out, "METHOD\tCOUNT")
+	for _, row := range stats.Methods {
+		fmt.Fprintf(c.Out, "%s\t%d\n", row.Name, row.Count)
+	}
+
+	fmt.Fprintln(c.Out, "TAG\tCOUNT")
+	for _, row := range stats.Tags {
+		fmt.Fprintf(c.Out, "%s\t%d\n", row.Name, row.Count)
+	}
+
+	fmt.Fprintln(c.Out, "PATH_PREFIX\tCOUNT")
+	for _, row := range stats.PathPrefixes {
+		fmt.Fprintf(c.Out, "%s\t%d\n", row.Name, row.Count)
 	}
 
 	return nil

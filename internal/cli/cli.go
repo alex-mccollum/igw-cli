@@ -46,7 +46,7 @@ type rootCommand struct {
 }
 
 var rootCommands = []rootCommand{
-	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search", "sync", "refresh"}, Run: (*CLI).runAPI},
+	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search", "tags", "stats", "sync", "refresh"}, Run: (*CLI).runAPI},
 	{Name: "backup", Summary: "Gateway backup export/restore", Subcommands: []string{"export", "restore"}, Run: (*CLI).runBackup},
 	{Name: "call", Summary: "Execute generic Ignition Gateway API request", Run: (*CLI).runCall},
 	{Name: "completion", Summary: "Output shell completion script", Run: (*CLI).runCompletion},
@@ -67,7 +67,7 @@ var completionRootCommands = []string{
 }
 
 var completionSubcommands = map[string][]string{
-	"api":         {"list", "show", "search", "sync", "refresh"},
+	"api":         {"list", "show", "search", "tags", "stats", "sync", "refresh"},
 	"backup":      {"export", "restore"},
 	"config":      {"set", "show", "profile"},
 	"diagnostics": {"bundle"},

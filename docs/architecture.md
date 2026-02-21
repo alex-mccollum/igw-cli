@@ -4,7 +4,7 @@
 A thin CLI wrapper around the Ignition Gateway HTTP API.
 
 ## Core Commands
-1. `api list|show|search`
+1. `api list|show|search|tags|stats`
 2. `api sync|refresh`
 3. `call`
 4. `config set|show|profile`

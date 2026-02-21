@@ -77,7 +77,7 @@ For scripts and agent workflows, use JSON output plus exit codes as the primary 
 For the full automation workflow and patterns, see `docs/automation.md`.
 
 ## Commands
-- `igw api list|show|search|sync|refresh`: query local OpenAPI docs and refresh cached spec.
+- `igw api list|show|search|tags|stats|sync|refresh`: query local OpenAPI docs and refresh cached spec.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
 - `igw config set|show|profile`: local config + profile management.
 - `igw doctor`: connectivity + auth checks (URL, TCP, read access; optional write access with `--check-write`).
