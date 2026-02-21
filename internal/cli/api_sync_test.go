@@ -15,8 +15,7 @@ import (
 )
 
 func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	setIsolatedConfigDir(t)
 
 	var gotToken string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -74,8 +73,7 @@ func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
 }
 
 func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	setIsolatedConfigDir(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/openapi" {
@@ -124,8 +122,7 @@ func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
 }
 
 func TestAPISyncFallsBackToOpenAPIJSONPath(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	setIsolatedConfigDir(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -268,8 +265,7 @@ func TestAPISyncErrorEnvelopeSubsetSelection(t *testing.T) {
 }
 
 func TestAPISyncInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	setIsolatedConfigDir(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/openapi" {
@@ -320,8 +316,7 @@ func TestAPISyncInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
 }
 
 func TestAPIListAutoSyncsMissingDefaultSpec(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	cfgDir := setIsolatedConfigDir(t)
 
 	emptyWD := t.TempDir()
 	prevWD, err := os.Getwd()
@@ -366,15 +361,14 @@ func TestAPIListAutoSyncsMissingDefaultSpec(t *testing.T) {
 		t.Fatalf("expected operation listing, got %q", out.String())
 	}
 
-	specPath := filepath.Join(configHome, "igw", "openapi.json")
+	specPath := filepath.Join(cfgDir, "openapi.json")
 	if _, err := os.Stat(specPath); err != nil {
 		t.Fatalf("expected synced spec at %q: %v", specPath, err)
 	}
 }
 
 func TestCallOperationIDAutoSyncsMissingDefaultSpec(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
+	setIsolatedConfigDir(t)
 
 	emptyWD := t.TempDir()
 	prevWD, err := os.Getwd()

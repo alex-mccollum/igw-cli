@@ -240,14 +240,11 @@ func TestAPIShowJSONErrorEnvelope(t *testing.T) {
 }
 
 func TestAPIFallbackToConfigDirSpec(t *testing.T) {
-	configHome := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configHome)
-
-	specDir := filepath.Join(configHome, "igw")
-	if err := os.MkdirAll(specDir, 0o700); err != nil {
+	cfgDir := setIsolatedConfigDir(t)
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatalf("create config spec dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(specDir, "openapi.json"), []byte(apiSpecFixture), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "openapi.json"), []byte(apiSpecFixture), 0o600); err != nil {
 		t.Fatalf("write config spec: %v", err)
 	}
 
