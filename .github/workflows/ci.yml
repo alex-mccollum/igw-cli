@@ -21,6 +21,9 @@ jobs:
       - name: Verify command docs consistency
         run: ./scripts/check-command-docs.sh
 
+      - name: Lint docs quality
+        run: ./scripts/lint-docs.sh
+
   test-and-build:
     name: Test and Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
