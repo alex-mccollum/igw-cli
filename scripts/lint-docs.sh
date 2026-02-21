@@ -57,4 +57,19 @@ if rg -n 'tests/(unit|integration)' "${DOC_FILES[@]}" >/dev/null; then
   fi
 fi
 
+# Ensure referenced docs pages exist.
+missing_refs=0
+while IFS= read -r ref; do
+  if [[ ! -f "$ref" ]]; then
+    if [[ $missing_refs -eq 0 ]]; then
+      echo "error: docs reference missing docs/*.md files:"
+    fi
+    echo "  - $ref"
+    missing_refs=1
+  fi
+done < <(rg -o --no-filename 'docs/[A-Za-z0-9._/-]+\.md' "${DOC_FILES[@]}" | sort -u)
+if [[ $missing_refs -ne 0 ]]; then
+  exit 1
+fi
+
 echo "ok: docs lint checks passed"
