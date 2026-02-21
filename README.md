@@ -26,6 +26,14 @@ Verify install:
 igw version
 ```
 
+## Documentation
+- `docs/installation.md`: install options and verification.
+- `docs/configuration.md`: runtime configuration and profile behavior.
+- `docs/examples.md`: practical usage flows.
+- `docs/troubleshooting.md`: common error diagnosis.
+- `docs/commands.md`: canonical command reference.
+- `docs/automation.md`: machine-oriented workflows.
+
 ## Quickstart (60 Seconds)
 
 The commands in this section are examples. Replace placeholder values for your environment.
