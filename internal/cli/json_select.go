@@ -75,7 +75,7 @@ func normalizeJSONSelectors(selectors []string) ([]string, error) {
 
 func printJSONSelection(w io.Writer, payload any, opts jsonSelectOptions) error {
 	if opts.raw {
-		extracted, err := extractJSONField(payload, opts.selectors[0])
+		extracted, err := extractJSONPathRaw(payload, opts.selectors[0])
 		if err != nil {
 			return &igwerr.UsageError{
 				Msg: fmt.Sprintf("invalid --select path %q: %v", opts.selectors[0], err),
@@ -88,7 +88,7 @@ func printJSONSelection(w io.Writer, payload any, opts jsonSelectOptions) error 
 	}
 
 	if len(opts.selectors) > 0 {
-		values, err := selectJSONFields(payload, opts.selectors)
+		values, err := selectJSONPaths(payload, opts.selectors)
 		if err != nil {
 			return err
 		}

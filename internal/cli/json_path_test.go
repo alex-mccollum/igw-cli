@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestExtractJSONFieldScalar(t *testing.T) {
+func TestExtractJSONPathRawScalar(t *testing.T) {
 	t.Parallel()
 
 	payload := map[string]any{
@@ -15,16 +15,16 @@ func TestExtractJSONFieldScalar(t *testing.T) {
 		},
 	}
 
-	got, err := extractJSONField(payload, "response.status")
+	got, err := extractJSONPathRaw(payload, "response.status")
 	if err != nil {
-		t.Fatalf("extract field: %v", err)
+		t.Fatalf("extract path: %v", err)
 	}
 	if got != "200" {
 		t.Fatalf("unexpected extracted value %q", got)
 	}
 }
 
-func TestExtractJSONFieldArrayPath(t *testing.T) {
+func TestExtractJSONPathRawArrayPath(t *testing.T) {
 	t.Parallel()
 
 	payload := map[string]any{
@@ -33,16 +33,16 @@ func TestExtractJSONFieldArrayPath(t *testing.T) {
 		},
 	}
 
-	got, err := extractJSONField(payload, "checks.0.name")
+	got, err := extractJSONPathRaw(payload, "checks.0.name")
 	if err != nil {
-		t.Fatalf("extract field: %v", err)
+		t.Fatalf("extract path: %v", err)
 	}
 	if got != "gateway_url" {
 		t.Fatalf("unexpected extracted value %q", got)
 	}
 }
 
-func TestExtractJSONFieldObjectValue(t *testing.T) {
+func TestExtractJSONPathRawObjectValue(t *testing.T) {
 	t.Parallel()
 
 	payload := map[string]any{
@@ -52,9 +52,9 @@ func TestExtractJSONFieldObjectValue(t *testing.T) {
 		},
 	}
 
-	got, err := extractJSONField(payload, "details")
+	got, err := extractJSONPathRaw(payload, "details")
 	if err != nil {
-		t.Fatalf("extract field: %v", err)
+		t.Fatalf("extract path: %v", err)
 	}
 
 	var decoded map[string]any
@@ -69,7 +69,7 @@ func TestExtractJSONFieldObjectValue(t *testing.T) {
 	}
 }
 
-func TestExtractJSONFieldInvalidPath(t *testing.T) {
+func TestExtractJSONPathRawInvalidPath(t *testing.T) {
 	t.Parallel()
 
 	payload := map[string]any{
@@ -79,23 +79,23 @@ func TestExtractJSONFieldInvalidPath(t *testing.T) {
 		"checks": []any{"x"},
 	}
 
-	_, err := extractJSONField(payload, "response..status")
+	_, err := extractJSONPathRaw(payload, "response..status")
 	if err == nil || !strings.Contains(err.Error(), "invalid path segment") {
 		t.Fatalf("expected invalid path segment error, got %v", err)
 	}
 
-	_, err = extractJSONField(payload, "response.code")
+	_, err = extractJSONPathRaw(payload, "response.code")
 	if err == nil || !strings.Contains(err.Error(), "key \"code\" not found") {
 		t.Fatalf("expected key missing error, got %v", err)
 	}
 
-	_, err = extractJSONField(payload, "checks.foo")
+	_, err = extractJSONPathRaw(payload, "checks.foo")
 	if err == nil || !strings.Contains(err.Error(), "expected array index") {
 		t.Fatalf("expected array index error, got %v", err)
 	}
 
-	_, err = extractJSONField(payload, " ")
-	if err == nil || !strings.Contains(err.Error(), "field path is empty") {
+	_, err = extractJSONPathRaw(payload, " ")
+	if err == nil || !strings.Contains(err.Error(), "select path is empty") {
 		t.Fatalf("expected empty path error, got %v", err)
 	}
 }

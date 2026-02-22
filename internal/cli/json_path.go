@@ -9,15 +9,15 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
 
-func extractJSONField(payload any, path string) (string, error) {
-	value, err := extractJSONValue(payload, path)
+func extractJSONPathRaw(payload any, path string) (string, error) {
+	value, err := extractJSONPathValue(payload, path)
 	if err != nil {
 		return "", err
 	}
-	return formatExtractedJSONValue(value)
+	return formatJSONValueForRawOutput(value)
 }
 
-func formatExtractedJSONValue(value any) (string, error) {
+func formatJSONValueForRawOutput(value any) (string, error) {
 	switch v := value.(type) {
 	case nil:
 		return "null", nil
@@ -39,7 +39,7 @@ func formatExtractedJSONValue(value any) (string, error) {
 	}
 }
 
-func selectJSONFields(payload any, selectors []string) (map[string]any, error) {
+func selectJSONPaths(payload any, selectors []string) (map[string]any, error) {
 	root, err := normalizeJSONPayload(payload)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func selectJSONFields(payload any, selectors []string) (map[string]any, error) {
 
 	out := make(map[string]any, len(selectors))
 	for _, selector := range selectors {
-		value, extractErr := extractJSONValueFromRoot(root, selector)
+		value, extractErr := extractJSONPathValueFromRoot(root, selector)
 		if extractErr != nil {
 			return nil, &igwerr.UsageError{
 				Msg: fmt.Sprintf("invalid --select path %q: %v", strings.TrimSpace(selector), extractErr),
@@ -59,12 +59,12 @@ func selectJSONFields(payload any, selectors []string) (map[string]any, error) {
 	return out, nil
 }
 
-func extractJSONValue(payload any, path string) (any, error) {
+func extractJSONPathValue(payload any, path string) (any, error) {
 	root, err := normalizeJSONPayload(payload)
 	if err != nil {
 		return nil, err
 	}
-	return extractJSONValueFromRoot(root, path)
+	return extractJSONPathValueFromRoot(root, path)
 }
 
 func normalizeJSONPayload(payload any) (any, error) {
@@ -81,10 +81,10 @@ func normalizeJSONPayload(payload any) (any, error) {
 	return root, nil
 }
 
-func extractJSONValueFromRoot(root any, path string) (any, error) {
+func extractJSONPathValueFromRoot(root any, path string) (any, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
-		return nil, fmt.Errorf("field path is empty")
+		return nil, fmt.Errorf("select path is empty")
 	}
 
 	current := root
