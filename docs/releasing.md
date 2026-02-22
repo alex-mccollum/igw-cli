@@ -7,6 +7,8 @@ This project uses a lightweight tag-based release flow.
 1. Ensure `main` is green:
    - `go test ./...`
    - `go build ./cmd/igw`
+   - `./scripts/check-command-docs.sh`
+   - `./scripts/lint-docs.sh`
 2. Create and push a semantic version tag:
 
 ```bash
@@ -15,6 +17,19 @@ git push origin v0.1.0
 ```
 
 3. GitHub Actions `release.yml` builds cross-platform artifacts and publishes a GitHub Release with generated notes.
+
+## Version contract
+
+- Release artifacts must print the release tag in `igw version` output.
+- CI enforces this contract for the Linux `amd64` artifact with:
+
+```bash
+./scripts/check-version-contract.sh <binary-path> <tag>
+```
+
+- The check validates output starts with `igw version <tag>`.
+- Release builds include commit/date metadata, so full output may be:
+  - `igw version v0.3.1 (abc1234, 2026-02-22)`
 
 ## Post-Release Smoke Check
 

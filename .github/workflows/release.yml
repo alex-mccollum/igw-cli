@@ -84,6 +84,18 @@ jobs:
             tar -C dist -czf "dist/${NAME}.tar.gz" "${NAME}"
           fi
 
+      - name: Verify version contract (linux-amd64)
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          NAME="igw_${VERSION}_${GOOS}_${GOARCH}"
+          BIN_PATH="dist/${NAME}/igw"
+          ./scripts/check-version-contract.sh "${BIN_PATH}" "${VERSION}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
