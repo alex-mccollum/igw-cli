@@ -3,9 +3,10 @@
 Project-local operating notes for `igw-cli`.
 
 ## Project Scope
-- Build a lightweight Ignition Gateway API CLI in Go.
-- Default to Go standard library dependencies; add third-party packages only when they provide clear, durable value.
-- Prioritize stable machine-friendly behavior over broad command surface.
+- Build a thin, reliable CLI wrapper for the Ignition Gateway HTTP API.
+- Keep the command surface focused on high-value operational workflows; prefer depth and consistency over breadth.
+- Preserve strong automation ergonomics: deterministic behavior, stable machine-readable output, and predictable error signaling.
+- Default to Go standard library dependencies; add third-party packages only when they provide clear, durable net value.
 
 ## Canonical Commands
 - `go test ./...`
@@ -16,13 +17,14 @@ Project-local operating notes for `igw-cli`.
 - Maintain stable exit codes for automation.
 - Avoid secret leakage in logs and output.
 
-## Atomic Commit Protocol
-- Default to atomic commits after each completed, verifiable slice of work.
-- Never include unrelated files in a commit.
-- If the working tree is already dirty, stage only files touched for the current slice.
-- Before commit, review `git status --short` and `git diff --staged` and confirm scope matches the slice.
-- In a dirty working tree, do not use broad staging/commit commands like `git add .` or `git commit -a`.
-- If unexpected modified files appear, stop and ask the user before committing.
-- Use path-scoped staging and commit flow:
-  - `git add -- <path1> <path2>`
-  - `git commit -m "<type(scope): summary>"`
+## Project Contracts
+- Exit codes are part of the automation contract:
+  - `0`: success (`2xx`)
+  - `2`: usage/config errors
+  - `6`: auth failures (`401`, `403`)
+  - `7`: network/transport and non-auth HTTP failures
+- Mutating operations require explicit `--yes` confirmation.
+- Configuration precedence is strict: flags > environment > config file.
+- Runtime environment variable names are stable: `IGNITION_GATEWAY_URL`, `IGNITION_API_TOKEN`.
+- Command examples are canonical in `docs/commands.md`; keep `README.md` as onboarding and link back to docs.
+- Release artifacts must satisfy the documented version and artifact naming contract in `docs/releasing.md`.
