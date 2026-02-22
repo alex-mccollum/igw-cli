@@ -18,6 +18,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Verify command docs consistency
         run: ./scripts/check-command-docs.sh
 

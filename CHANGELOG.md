@@ -12,6 +12,8 @@ All notable user-facing changes to `igw` are documented here.
 
 ### Changed
 - `release.yml` preflight now verifies release-tag integrity (tag exists, tag resolves to the workflow commit on tag events, tag is visible on `origin`) and builds from the tagged ref.
+- Docs lint now includes a registry-backed command-shape contract test so command names in `docs/commands.md` must match actual CLI command/subcommand definitions.
+- CI docs job now sets up Go before running docs consistency/lint checks.
 
 ## [v0.3.0](https://github.com/alex-mccollum/igw-cli/compare/v0.2.0...v0.3.0) - 2026-02-21
 
