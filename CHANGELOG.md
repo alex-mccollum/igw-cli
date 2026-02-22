@@ -9,6 +9,7 @@ All notable user-facing changes to `igw` are documented here.
   - required `CHANGELOG.md` heading for the release tag,
   - local tag existence and tag-to-`HEAD` integrity check,
   - `git push --dry-run` auth checks for branch and release tag.
+- `igw api stats --prefix-depth` to control path-prefix aggregation granularity for larger OpenAPI specs.
 
 ### Changed
 - `release.yml` preflight now verifies release-tag integrity (tag exists, tag resolves to the workflow commit on tag events, tag is visible on `origin`) and builds from the tagged ref.

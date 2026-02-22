@@ -189,6 +189,58 @@ func TestAPIStatsJSON(t *testing.T) {
 	}
 }
 
+func TestAPIStatsJSONPrefixDepth(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+	var out bytes.Buffer
+
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "stats", "--spec-file", specPath, "--prefix-depth", "2", "--json"})
+	if err != nil {
+		t.Fatalf("api stats failed: %v", err)
+	}
+
+	var payload struct {
+		PathPrefixes []struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		} `json:"pathPrefixes"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("parse json output: %v", err)
+	}
+	if len(payload.PathPrefixes) != 1 {
+		t.Fatalf("unexpected path prefix stats: %+v", payload.PathPrefixes)
+	}
+	if payload.PathPrefixes[0].Name != "/data/api" || payload.PathPrefixes[0].Count != 2 {
+		t.Fatalf("unexpected path prefix stats: %+v", payload.PathPrefixes)
+	}
+}
+
+func TestAPIStatsRejectsNegativePrefixDepth(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeAPISpec(t, apiSpecFixture)
+
+	c := &CLI{
+		Out: new(bytes.Buffer),
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"api", "stats", "--spec-file", specPath, "--prefix-depth", "-1"})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
 func TestAPIShowAcceptsPositionalPath(t *testing.T) {
 	t.Parallel()
 

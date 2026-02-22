@@ -285,12 +285,14 @@ func (c *CLI) runAPIStats(args []string) error {
 	var method string
 	var pathContains string
 	var query string
+	var prefixDepth int
 	var jsonOutput bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
 	fs.StringVar(&pathContains, "path-contains", "", "Filter by path substring")
 	fs.StringVar(&query, "query", "", "Search text")
+	fs.IntVar(&prefixDepth, "prefix-depth", 0, "Path prefix segment depth for aggregation (0 = auto)")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
 
 	if err := fs.Parse(args); err != nil {
@@ -298,6 +300,9 @@ func (c *CLI) runAPIStats(args []string) error {
 	}
 	if fs.NArg() > 0 {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+	}
+	if prefixDepth < 0 {
+		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "--prefix-depth must be >= 0"})
 	}
 
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{
@@ -310,7 +315,7 @@ func (c *CLI) runAPIStats(args []string) error {
 	ops = apidocs.FilterByMethod(ops, method)
 	ops = apidocs.FilterByPathContains(ops, pathContains)
 	ops = apidocs.Search(ops, query)
-	stats := apidocs.BuildStats(ops)
+	stats := apidocs.BuildStatsWithPrefixDepth(ops, prefixDepth)
 
 	if jsonOutput {
 		return writeJSON(c.Out, stats)

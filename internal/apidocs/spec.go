@@ -202,13 +202,17 @@ func UniqueTags(ops []Operation) []string {
 }
 
 func BuildStats(ops []Operation) Stats {
+	return BuildStatsWithPrefixDepth(ops, 0)
+}
+
+func BuildStatsWithPrefixDepth(ops []Operation, prefixDepth int) Stats {
 	methods := make(map[string]int, len(ops))
 	tags := make(map[string]int, len(ops))
 	pathPrefixes := make(map[string]int, len(ops))
 
 	for _, op := range ops {
 		methods[op.Method]++
-		pathPrefixes[pathPrefix(op.Path)]++
+		pathPrefixes[pathPrefix(op.Path, prefixDepth)]++
 
 		if len(op.Tags) == 0 {
 			tags["_untagged"]++
@@ -264,7 +268,7 @@ func operationContains(op Operation, query string) bool {
 	return false
 }
 
-func pathPrefix(apiPath string) string {
+func pathPrefix(apiPath string, depth int) string {
 	apiPath = strings.TrimSpace(apiPath)
 	if apiPath == "" {
 		return "/"
@@ -273,6 +277,13 @@ func pathPrefix(apiPath string) string {
 	parts := strings.Split(strings.Trim(apiPath, "/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
 		return "/"
+	}
+
+	if depth > 0 {
+		if depth > len(parts) {
+			depth = len(parts)
+		}
+		return "/" + strings.Join(parts[:depth], "/")
 	}
 
 	if len(parts) >= 4 && parts[0] == "data" && parts[1] == "api" && strings.HasPrefix(parts[2], "v") {

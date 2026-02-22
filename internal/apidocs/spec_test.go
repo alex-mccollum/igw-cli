@@ -144,6 +144,24 @@ func TestBuildStats(t *testing.T) {
 	}
 }
 
+func TestBuildStatsWithPrefixDepth(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeSpec(t, testSpec)
+	ops, err := LoadOperations(specPath)
+	if err != nil {
+		t.Fatalf("load operations: %v", err)
+	}
+
+	stats := BuildStatsWithPrefixDepth(ops, 2)
+	if len(stats.PathPrefixes) != 1 {
+		t.Fatalf("unexpected path prefix length: %d", len(stats.PathPrefixes))
+	}
+	if stats.PathPrefixes[0].Name != "/data/api" || stats.PathPrefixes[0].Count != 2 {
+		t.Fatalf("unexpected path prefix stat: %+v", stats.PathPrefixes[0])
+	}
+}
+
 func writeSpec(t *testing.T, content string) string {
 	t.Helper()
 
