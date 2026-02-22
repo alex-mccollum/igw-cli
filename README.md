@@ -9,15 +9,16 @@
 
 ## Install
 
-From source:
+For developers (Go toolchain):
 
 ```bash
-go install github.com/alex-mccollum/igw-cli/cmd/igw@latest
+go install github.com/alex-mccollum/igw-cli/cmd/igw@vX.Y.Z
 ```
 
-From GitHub Releases:
+For operators and CI (release artifacts):
 
 - Download the archive for your OS/architecture.
+- Verify artifact integrity with `checksums.txt`.
 - Extract it and place `igw` (or `igw.exe`) on your `PATH`.
 
 Verify install:
