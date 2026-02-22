@@ -19,11 +19,14 @@ This project uses a lightweight tag-based release flow.
 
 ```bash
 git tag v0.1.0
+./scripts/release/checklist.sh v0.1.0
 git push origin v0.1.0
 ```
 
 4. GitHub Actions `release.yml` runs preflight + build + publish:
    - verifies `CHANGELOG.md` contains `## [v0.1.0]`,
+   - verifies the release tag resolves to the workflow commit on tag-triggered runs,
+   - verifies the release tag exists on `origin`,
    - builds and packages all platform artifacts,
    - runs packaged Linux `amd64` smoke verification,
    - generates `checksums.txt`,
@@ -65,6 +68,7 @@ igw gateway info --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TO
 ## Manual release run
 
 You can also run the workflow manually from GitHub Actions and provide `tag_name`.
+The provided tag must already exist and be pushed.
 
 ## Produced artifacts
 

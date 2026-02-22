@@ -25,19 +25,44 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve release metadata
         id: meta
         env:
           DISPATCH_TAG: ${{ inputs.tag_name }}
         run: |
+          set -euo pipefail
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             VERSION="${GITHUB_REF_NAME}"
           else
             VERSION="${DISPATCH_TAG}"
           fi
+
+          if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: invalid release tag ${VERSION} (expected vMAJOR.MINOR.PATCH)" >&2
+            exit 1
+          fi
+
+          TAG_COMMIT="$(git rev-list -n 1 "refs/tags/${VERSION}" 2>/dev/null || true)"
+          if [ -z "${TAG_COMMIT}" ]; then
+            echo "error: tag ${VERSION} does not exist in repository history" >&2
+            exit 1
+          fi
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${TAG_COMMIT}" != "${GITHUB_SHA}" ]; then
+            echo "error: tag ${VERSION} resolves to ${TAG_COMMIT}, expected workflow commit ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" >/dev/null; then
+            echo "error: tag ${VERSION} is not visible on origin" >&2
+            exit 1
+          fi
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "commit=${TAG_COMMIT::7}" >> "$GITHUB_OUTPUT"
           echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Verify changelog contains release entry
@@ -74,6 +99,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.version }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -119,6 +146,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.version }}
 
       - name: Download artifacts
         uses: actions/download-artifact@v4

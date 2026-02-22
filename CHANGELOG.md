@@ -2,6 +2,17 @@
 
 All notable user-facing changes to `igw` are documented here.
 
+## [Unreleased]
+
+### Added
+- `scripts/release/checklist.sh` to gate local releases with:
+  - required `CHANGELOG.md` heading for the release tag,
+  - local tag existence and tag-to-`HEAD` integrity check,
+  - `git push --dry-run` auth checks for branch and release tag.
+
+### Changed
+- `release.yml` preflight now verifies release-tag integrity (tag exists, tag resolves to the workflow commit on tag events, tag is visible on `origin`) and builds from the tagged ref.
+
 ## [v0.3.0](https://github.com/alex-mccollum/igw-cli/compare/v0.2.0...v0.3.0) - 2026-02-21
 
 ### Added
