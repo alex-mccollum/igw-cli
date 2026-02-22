@@ -83,6 +83,36 @@ func TestLongUsesResolvedShortVersion(t *testing.T) {
 	}
 }
 
+func TestLongIncludesCommitAndDateWhenPresent(t *testing.T) {
+	restore := snapshotBuildInfoState()
+	defer restore()
+
+	Version = "v0.3.1"
+	Commit = "abc1234"
+	Date = "2026-02-22"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, false
+	}
+
+	if got := Long(); got != "v0.3.1 (abc1234, 2026-02-22)" {
+		t.Fatalf("Long() = %q, want %q", got, "v0.3.1 (abc1234, 2026-02-22)")
+	}
+}
+
+func TestShortReturnsDevWhenNoVersionSourcesAvailable(t *testing.T) {
+	restore := snapshotBuildInfoState()
+	defer restore()
+
+	Version = ""
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, false
+	}
+
+	if got := Short(); got != "dev" {
+		t.Fatalf("Short() = %q, want %q", got, "dev")
+	}
+}
+
 func snapshotBuildInfoState() func() {
 	prevVersion := Version
 	prevCommit := Commit
