@@ -30,16 +30,7 @@ func TestLogsListWrapper(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"logs", "list",
@@ -72,16 +63,7 @@ func TestDiagnosticsBundleGenerateWrapper(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"diagnostics", "bundle", "generate",
@@ -97,29 +79,39 @@ func TestDiagnosticsBundleGenerateWrapper(t *testing.T) {
 	}
 }
 
-func TestDiagnosticsBundleGenerateWrapperRequiresYes(t *testing.T) {
+func TestAdminWrappersRequireYesValidation(t *testing.T) {
 	t.Parallel()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "diagnostics bundle generate",
+			args: []string{
+				"diagnostics", "bundle", "generate",
+				"--gateway-url", "http://127.0.0.1:8088",
+				"--api-key", "secret",
+			},
+		},
+		{
+			name: "restart gateway",
+			args: []string{
+				"restart", "gateway",
+				"--gateway-url", "http://127.0.0.1:8088",
+				"--api-key", "secret",
+			},
 		},
 	}
 
-	err := c.Execute([]string{
-		"diagnostics", "bundle", "generate",
-		"--gateway-url", "http://127.0.0.1:8088",
-		"--api-key", "secret",
-	})
-	if err == nil {
-		t.Fatalf("expected --yes validation failure")
-	}
-	if code := igwerr.ExitCode(err); code != 2 {
-		t.Fatalf("unexpected exit code %d", code)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := newAdminWrapperTestCLI(nil).Execute(tc.args)
+			requireUsageExitCode(t, err)
+		})
 	}
 }
 
@@ -150,16 +142,7 @@ func TestBackupRestoreWrapper(t *testing.T) {
 		t.Fatalf("write backup fixture: %v", err)
 	}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"backup", "restore",
@@ -201,16 +184,7 @@ func TestTagsExportWrapperDefaultsProviderAndType(t *testing.T) {
 	dir := t.TempDir()
 	outPath := filepath.Join(dir, "tags.json")
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"tags", "export",
@@ -233,32 +207,6 @@ func TestTagsExportWrapperDefaultsProviderAndType(t *testing.T) {
 	}
 }
 
-func TestRestartGatewayWrapperRequiresYes(t *testing.T) {
-	t.Parallel()
-
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-	}
-
-	err := c.Execute([]string{
-		"restart", "gateway",
-		"--gateway-url", "http://127.0.0.1:8088",
-		"--api-key", "secret",
-	})
-	if err == nil {
-		t.Fatalf("expected --yes validation failure")
-	}
-	if code := igwerr.ExitCode(err); code != 2 {
-		t.Fatalf("unexpected exit code %d", code)
-	}
-}
-
 func TestRestartGatewayWrapperSetsConfirmQuery(t *testing.T) {
 	t.Parallel()
 
@@ -274,16 +222,7 @@ func TestRestartGatewayWrapperSetsConfirmQuery(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"restart", "gateway",
@@ -312,16 +251,7 @@ func TestLogsLoggerSetWrapperNormalizesLevel(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"logs", "logger", "set",
@@ -355,16 +285,7 @@ func TestBackupRestoreWrapperNormalizesBoolQueries(t *testing.T) {
 		t.Fatalf("write backup fixture: %v", err)
 	}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"backup", "restore",
@@ -402,16 +323,7 @@ func TestTagsImportWrapperNormalizesEnumQueries(t *testing.T) {
 		t.Fatalf("write tags fixture: %v", err)
 	}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"tags", "import",
@@ -450,16 +362,7 @@ func TestTagsImportWrapperDefaultsProviderTypeAndCollisionPolicy(t *testing.T) {
 		t.Fatalf("write tags fixture: %v", err)
 	}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"tags", "import",
@@ -498,16 +401,7 @@ func TestTagsImportWrapperInfersTypeFromInputExtension(t *testing.T) {
 		t.Fatalf("write tags fixture: %v", err)
 	}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-		HTTPClient: srv.Client(),
-	}
+	c := newAdminWrapperTestCLI(srv.Client())
 
 	if err := c.Execute([]string{
 		"tags", "import",
@@ -524,101 +418,90 @@ func TestTagsImportWrapperInfersTypeFromInputExtension(t *testing.T) {
 	}
 }
 
-func TestLogsLoggerSetWrapperRejectsInvalidLevel(t *testing.T) {
+func TestAdminWrappersRejectInvalidFlagValues(t *testing.T) {
 	t.Parallel()
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
+	backupPath := mustWriteAdminFixture(t, "backup.gwbk", "backup-bytes")
+	tagsPath := mustWriteAdminFixture(t, "tags.json", `{"tags":[]}`)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "logs logger invalid level",
+			args: []string{
+				"logs", "logger", "set",
+				"--gateway-url", "http://127.0.0.1:8088",
+				"--api-key", "secret",
+				"--name", "com.example",
+				"--level", "VERBOSE",
+				"--yes",
+			},
+		},
+		{
+			name: "backup restore invalid bool",
+			args: []string{
+				"backup", "restore",
+				"--gateway-url", "http://127.0.0.1:8088",
+				"--api-key", "secret",
+				"--in", backupPath,
+				"--yes",
+				"--restore-disabled", "maybe",
+			},
+		},
+		{
+			name: "tags import invalid collision policy",
+			args: []string{
+				"tags", "import",
+				"--gateway-url", "http://127.0.0.1:8088",
+				"--api-key", "secret",
+				"--provider", "default",
+				"--type", "json",
+				"--collision-policy", "Replace",
+				"--in", tagsPath,
+				"--yes",
+			},
 		},
 	}
 
-	err := c.Execute([]string{
-		"logs", "logger", "set",
-		"--gateway-url", "http://127.0.0.1:8088",
-		"--api-key", "secret",
-		"--name", "com.example",
-		"--level", "VERBOSE",
-		"--yes",
-	})
-	if err == nil {
-		t.Fatalf("expected invalid --level error")
-	}
-	if code := igwerr.ExitCode(err); code != 2 {
-		t.Fatalf("unexpected exit code %d", code)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := newAdminWrapperTestCLI(nil).Execute(tc.args)
+			requireUsageExitCode(t, err)
+		})
 	}
 }
 
-func TestBackupRestoreWrapperRejectsInvalidBoolFlag(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	inPath := filepath.Join(dir, "backup.gwbk")
-	if err := os.WriteFile(inPath, []byte("backup-bytes"), 0o600); err != nil {
-		t.Fatalf("write backup fixture: %v", err)
-	}
-
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-	}
-
-	err := c.Execute([]string{
-		"backup", "restore",
-		"--gateway-url", "http://127.0.0.1:8088",
-		"--api-key", "secret",
-		"--in", inPath,
-		"--yes",
-		"--restore-disabled", "maybe",
-	})
-	if err == nil {
-		t.Fatalf("expected invalid bool flag error")
-	}
-	if code := igwerr.ExitCode(err); code != 2 {
-		t.Fatalf("unexpected exit code %d", code)
+func newAdminWrapperTestCLI(httpClient *http.Client) *CLI {
+	return &CLI{
+		In:         strings.NewReader(""),
+		Out:        new(bytes.Buffer),
+		Err:        new(bytes.Buffer),
+		Getenv:     func(string) string { return "" },
+		ReadConfig: func() (config.File, error) { return config.File{}, nil },
+		HTTPClient: httpClient,
 	}
 }
 
-func TestTagsImportWrapperRejectsInvalidCollisionPolicy(t *testing.T) {
-	t.Parallel()
+func mustWriteAdminFixture(t *testing.T, name string, content string) string {
+	t.Helper()
 
-	dir := t.TempDir()
-	inPath := filepath.Join(dir, "tags.json")
-	if err := os.WriteFile(inPath, []byte(`{"tags":[]}`), 0o600); err != nil {
-		t.Fatalf("write tags fixture: %v", err)
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s fixture: %v", name, err)
 	}
+	return path
+}
 
-	c := &CLI{
-		In:     strings.NewReader(""),
-		Out:    new(bytes.Buffer),
-		Err:    new(bytes.Buffer),
-		Getenv: func(string) string { return "" },
-		ReadConfig: func() (config.File, error) {
-			return config.File{}, nil
-		},
-	}
+func requireUsageExitCode(t *testing.T, err error) {
+	t.Helper()
 
-	err := c.Execute([]string{
-		"tags", "import",
-		"--gateway-url", "http://127.0.0.1:8088",
-		"--api-key", "secret",
-		"--provider", "default",
-		"--type", "json",
-		"--collision-policy", "Replace",
-		"--in", inPath,
-		"--yes",
-	})
 	if err == nil {
-		t.Fatalf("expected invalid collision policy error")
+		t.Fatalf("expected usage validation error")
 	}
 	if code := igwerr.ExitCode(err); code != 2 {
 		t.Fatalf("unexpected exit code %d", code)
