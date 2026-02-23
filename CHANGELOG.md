@@ -4,14 +4,6 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
-### Added
-- `scripts/release/cut.sh` as the default one-command release workflow (`dry-run` -> tag validation/creation -> checklist -> push branch and tag).
-- `scripts/install-git-hooks.sh` and repo-managed `scripts/hooks/pre-push` to run release checklist validation automatically for semantic version tag pushes.
-
-### Changed
-- Release scripts now share guard and validation helpers via `scripts/release/lib.sh` to keep semver, changelog, and tag integrity checks consistent across release entry points.
-- `AGENTS.md` now documents situational script recommendations (advisory, not mandatory) and links contributors to automation/release references.
-
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
 ### Added
@@ -20,11 +12,15 @@ All notable user-facing changes to `igw` are documented here.
   - local tag existence and tag-to-`HEAD` integrity check,
   - `git push --dry-run` auth checks for branch and release tag.
 - `igw api stats --prefix-depth` to control path-prefix aggregation granularity for larger OpenAPI specs.
+- `scripts/release/cut.sh` as the default one-command release workflow (`dry-run` -> tag validation/creation -> checklist -> push branch and tag).
+- `scripts/install-git-hooks.sh` and repo-managed `scripts/hooks/pre-push` to run release checklist validation automatically for semantic version tag pushes.
 
 ### Changed
 - `release.yml` preflight now verifies release-tag integrity (tag exists, tag resolves to the workflow commit on tag events, tag is visible on `origin`) and builds from the tagged ref.
 - Docs lint now includes a registry-backed command-shape contract test so command names in `docs/commands.md` must match actual CLI command/subcommand definitions.
 - CI docs job now sets up Go before running docs consistency/lint checks.
+- Release scripts now share guard and validation helpers via `scripts/release/lib.sh` to keep semver, changelog, and tag integrity checks consistent across release entry points.
+- `AGENTS.md` now documents situational script recommendations (advisory, not mandatory) and links contributors to automation/release references.
 
 ## [v0.3.0](https://github.com/alex-mccollum/igw-cli/compare/v0.2.0...v0.3.0) - 2026-02-21
 
