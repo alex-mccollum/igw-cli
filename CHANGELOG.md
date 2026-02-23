@@ -4,6 +4,8 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
+
 ### Added
 - `scripts/release/checklist.sh` to gate local releases with:
   - required `CHANGELOG.md` heading for the release tag,
