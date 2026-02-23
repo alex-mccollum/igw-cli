@@ -10,6 +10,7 @@ All notable user-facing changes to `igw` are documented here.
 
 ### Changed
 - Release scripts now share guard and validation helpers via `scripts/release/lib.sh` to keep semver, changelog, and tag integrity checks consistent across release entry points.
+- `AGENTS.md` now documents situational script recommendations (advisory, not mandatory) and links contributors to automation/release references.
 
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
