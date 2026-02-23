@@ -1,36 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib.sh
+source "${SCRIPT_DIR}/lib.sh"
+
 if [[ $# -ne 1 ]]; then
   echo "usage: $0 <version-tag>" >&2
   exit 2
 fi
 
 VERSION="$1"
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "error: version must use semantic tag format vMAJOR.MINOR.PATCH" >&2
-  exit 2
-fi
-
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
-
-if ! grep -q "^## \[${VERSION}\]" CHANGELOG.md; then
-  echo "error: CHANGELOG.md is missing release heading for ${VERSION}" >&2
-  exit 1
-fi
-
-if ! git rev-parse -q --verify "refs/tags/${VERSION}^{commit}" >/dev/null; then
-  echo "error: missing local tag ${VERSION}" >&2
-  exit 1
-fi
-
-TAG_COMMIT="$(git rev-list -n 1 "refs/tags/${VERSION}")"
-HEAD_COMMIT="$(git rev-parse HEAD)"
-if [[ "${TAG_COMMIT}" != "${HEAD_COMMIT}" ]]; then
-  echo "error: ${VERSION} points to ${TAG_COMMIT}, expected HEAD ${HEAD_COMMIT}" >&2
-  exit 1
-fi
+release_require_semver_tag "$VERSION"
+release_cd_repo_root
+release_require_changelog_heading "$VERSION"
+release_require_local_tag "$VERSION"
+release_require_tag_points_to_head "$VERSION"
 
 if ! git push --dry-run origin HEAD >/dev/null 2>&1; then
   echo "error: push auth check failed for origin HEAD" >&2

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../release/lib.sh
+source "${SCRIPT_DIR}/../release/lib.sh"
+release_cd_repo_root
 
 declare -A seen=()
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [[ "$local_ref" =~ ^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$local_ref" =~ ^refs/tags/(${RELEASE_SEMVER_TAG_PATTERN})$ ]]; then
     seen["${BASH_REMATCH[1]}"]=1
   fi
 done

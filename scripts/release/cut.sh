@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib.sh
+source "${SCRIPT_DIR}/lib.sh"
+
 usage() {
   cat >&2 <<'EOF'
 usage: ./scripts/release/cut.sh <version-tag>
@@ -20,30 +24,17 @@ if [[ $# -ne 1 ]]; then
 fi
 
 VERSION="$1"
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "error: version must use semantic tag format vMAJOR.MINOR.PATCH" >&2
-  exit 2
-fi
-
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
-
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "error: working tree must be clean before cutting a release" >&2
-  exit 1
-fi
-
-if ! grep -q "^## \[${VERSION}\]" CHANGELOG.md; then
-  echo "error: CHANGELOG.md is missing release heading for ${VERSION}" >&2
-  exit 1
-fi
+release_require_semver_tag "$VERSION"
+release_cd_repo_root
+release_require_clean_worktree
+release_require_changelog_heading "$VERSION"
 
 echo "==> release dry-run"
 ./scripts/release/dry-run.sh "$VERSION"
 
-HEAD_COMMIT="$(git rev-parse HEAD)"
-if git rev-parse -q --verify "refs/tags/${VERSION}^{commit}" >/dev/null; then
-  TAG_COMMIT="$(git rev-list -n 1 "refs/tags/${VERSION}")"
+HEAD_COMMIT="$(release_head_commit)"
+if release_local_tag_exists "$VERSION"; then
+  TAG_COMMIT="$(release_tag_commit "$VERSION")"
   if [[ "$TAG_COMMIT" != "$HEAD_COMMIT" ]]; then
     echo "error: local tag ${VERSION} already exists at ${TAG_COMMIT}, expected HEAD ${HEAD_COMMIT}" >&2
     exit 1

@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib.sh
+source "${SCRIPT_DIR}/lib.sh"
+
 if [[ $# -ne 1 ]]; then
   echo "usage: $0 <version-tag>" >&2
   exit 2
 fi
 
 VERSION="$1"
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "error: version must use semantic tag format vMAJOR.MINOR.PATCH" >&2
-  exit 2
-fi
-
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
+release_require_semver_tag "$VERSION"
+release_cd_repo_root
 
 DIST_DIR="${DIST_DIR:-dist}"
 mkdir -p "$DIST_DIR"
