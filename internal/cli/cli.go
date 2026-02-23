@@ -56,7 +56,7 @@ var rootCommands = []rootCommand{
 	{Name: "gateway", Summary: "Convenience gateway commands", Subcommands: []string{"info"}, Run: (*CLI).runGateway},
 	{Name: "logs", Summary: "Gateway log helpers", Subcommands: []string{"list", "download", "loggers", "logger", "level-reset"}, Run: (*CLI).runLogs},
 	{Name: "restart", Summary: "Restart task/gateway helpers", Subcommands: []string{"tasks", "gateway"}, Run: (*CLI).runRestart},
-	{Name: "scan", Summary: "Convenience scan commands", Subcommands: []string{"projects"}, Run: (*CLI).runScan},
+	{Name: "scan", Summary: "Convenience scan commands", Subcommands: scanSubcommands, Run: (*CLI).runScan},
 	{Name: "tags", Summary: "Tag import/export helpers", Subcommands: []string{"export", "import"}, Run: (*CLI).runTags},
 	{Name: "wait", Summary: "Wait for operational readiness conditions", Subcommands: []string{"gateway", "diagnostics-bundle", "restart-tasks"}, Run: (*CLI).runWait},
 	{Name: "version", Summary: "Print build version information", Run: (*CLI).runVersion},
@@ -74,7 +74,7 @@ var completionSubcommands = map[string][]string{
 	"gateway":     {"info"},
 	"logs":        {"list", "download", "loggers", "logger", "level-reset"},
 	"restart":     {"tasks", "gateway"},
-	"scan":        {"projects"},
+	"scan":        scanSubcommands,
 	"tags":        {"export", "import"},
 	"wait":        {"gateway", "diagnostics-bundle", "restart-tasks"},
 }

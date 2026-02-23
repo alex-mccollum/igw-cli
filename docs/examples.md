@@ -41,6 +41,7 @@ Mutating commands require explicit `--yes`:
 
 ```bash
 igw scan projects --yes
+igw scan config --yes
 igw tags import --in tags.json --yes --json
 igw backup restore --in gateway.gwbk --yes --json
 ```

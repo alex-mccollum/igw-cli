@@ -75,6 +75,159 @@ func TestScanProjectsWrapperRequiresYes(t *testing.T) {
 	}
 }
 
+func TestScanWrapperShorthandRequiresYes(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"scan",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+	})
+	if err == nil {
+		t.Fatalf("expected --yes requirement failure")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestScanWrapperShorthandDefaultsToProjects(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"scan",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--yes",
+	}); err != nil {
+		t.Fatalf("scan shorthand failed: %v", err)
+	}
+
+	if gotMethod != http.MethodPost || gotPath != "/data/api/v1/scan/projects" {
+		t.Fatalf("unexpected request %s %s", gotMethod, gotPath)
+	}
+}
+
+func TestScanWrapperUnknownSubcommand(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{"scan", "all"})
+	if err == nil {
+		t.Fatalf("expected usage error for unknown subcommand")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), `unknown scan subcommand "all"`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestScanConfigWrapperRequiresYes(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"scan", "config",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+	})
+	if err == nil {
+		t.Fatalf("expected --yes requirement failure")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
+func TestScanConfigWrapper(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{
+		"scan", "config",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--yes",
+	}); err != nil {
+		t.Fatalf("scan config failed: %v", err)
+	}
+
+	if gotMethod != http.MethodPost || gotPath != "/data/api/v1/scan/config" {
+		t.Fatalf("unexpected request %s %s", gotMethod, gotPath)
+	}
+}
+
 func TestGatewayInfoWrapperPropagatesFieldsAndCompact(t *testing.T) {
 	t.Parallel()
 

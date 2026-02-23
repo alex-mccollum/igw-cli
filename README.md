@@ -92,7 +92,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 - `igw config set|show|profile`: local config + profile management.
 - `igw doctor`: connectivity + auth checks (URL, TCP, read access; optional write access with `--check-write`).
 - `igw gateway info`: convenience read wrapper.
-- `igw scan projects`: convenience write wrapper.
+- `igw scan projects|config`: convenience write wrappers.
 - `igw logs ...`: list/download logs and manage logger levels.
 - `igw diagnostics bundle ...`: generate/status/download diagnostics bundles.
 - `igw backup export|restore`: download or restore gateway backups.
@@ -113,7 +113,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 
 ## Mutation Safety
 - Mutating operations require explicit `--yes` confirmation.
-- This includes commands like `scan projects`, `logs logger set`, `logs level-reset`, `diagnostics bundle generate`, `backup restore`, `tags import`, and `restart gateway`.
+- This includes commands like `scan projects`, `scan config`, `logs logger set`, `logs level-reset`, `diagnostics bundle generate`, `backup restore`, `tags import`, and `restart gateway`.
 
 ## Configuration Sources
 Precedence is strict:

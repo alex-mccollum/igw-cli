@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
@@ -96,13 +97,18 @@ func (c *CLI) runGateway(args []string) error {
 }
 
 func (c *CLI) runScan(args []string) error {
+	// Keep `scan` shorthand mapped to the most common project scan operation.
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		return c.runScanProjects(args)
+	}
 	return c.runWrapperSubcommand(
 		args,
-		"Usage: igw scan <projects> [flags]",
+		"Usage: igw scan <projects|config> [flags]",
 		"required scan subcommand",
 		"unknown scan subcommand %q",
 		map[string]func([]string) error{
-			"projects": c.runScanProjects,
+			scanSubcommandProjects: c.runScanProjects,
+			scanSubcommandConfig:   c.runScanConfig,
 		},
 	)
 }

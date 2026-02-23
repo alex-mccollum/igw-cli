@@ -125,6 +125,7 @@ Convenience wrappers:
 ```bash
 igw gateway info --profile dev --json
 igw scan projects --profile dev --yes
+igw scan config --profile dev --yes
 ```
 
 Admin wrappers:

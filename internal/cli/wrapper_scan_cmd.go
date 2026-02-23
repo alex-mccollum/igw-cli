@@ -2,8 +2,28 @@ package cli
 
 import "flag"
 
+const (
+	scanSubcommandProjects = "projects"
+	scanSubcommandConfig   = "config"
+)
+
+var scanSubcommands = []string{scanSubcommandProjects, scanSubcommandConfig}
+
+const (
+	scanProjectsPath = "/data/api/v1/scan/projects"
+	scanConfigPath   = "/data/api/v1/scan/config"
+)
+
+func (c *CLI) runScanConfig(args []string) error {
+	return c.runScanMutation("scan config", scanConfigPath, args)
+}
+
 func (c *CLI) runScanProjects(args []string) error {
-	fs := flag.NewFlagSet("scan projects", flag.ContinueOnError)
+	return c.runScanMutation("scan projects", scanProjectsPath, args)
+}
+
+func (c *CLI) runScanMutation(commandName string, path string, args []string) error {
+	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
 	fs.SetOutput(c.Err)
 
 	var common wrapperCommon
@@ -19,7 +39,7 @@ func (c *CLI) runScanProjects(args []string) error {
 
 	callArgs := []string{
 		"--method", "POST",
-		"--path", "/data/api/v1/scan/projects",
+		"--path", path,
 		"--timeout", common.timeout.String(),
 	}
 	callArgs = append(callArgs, common.callArgsExcludingTimeout()...)
