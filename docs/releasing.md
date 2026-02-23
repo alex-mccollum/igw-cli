@@ -54,6 +54,7 @@ Enable repo-managed hooks:
 When enabled, `scripts/hooks/pre-push` automatically runs
 `./scripts/release/checklist.sh <tag>` for any pushed `vMAJOR.MINOR.PATCH` tag.
 This blocks tag pushes if changelog/tag checks fail.
+When checklist runs from `pre-push` (or `cut.sh`), it skips dry-run push auth probes so local validation does not repeatedly prompt for SSH passphrases.
 
 ## Tag Failure Recovery
 

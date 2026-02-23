@@ -19,5 +19,5 @@ fi
 
 for tag in "${!seen[@]}"; do
   echo "pre-push: running release checklist for ${tag}"
-  ./scripts/release/checklist.sh "${tag}"
+  IGW_SKIP_PUSH_AUTH_CHECKS=1 ./scripts/release/checklist.sh "${tag}"
 done

@@ -46,12 +46,9 @@ else
 fi
 
 echo "==> release checklist"
-./scripts/release/checklist.sh "$VERSION"
+IGW_SKIP_PUSH_AUTH_CHECKS=1 ./scripts/release/checklist.sh "$VERSION"
 
-echo "==> push branch"
-git push origin HEAD
-
-echo "==> push tag"
-git push origin "refs/tags/${VERSION}"
+echo "==> push branch and tag"
+git push origin HEAD "refs/tags/${VERSION}"
 
 echo "ok: release ${VERSION} pushed"

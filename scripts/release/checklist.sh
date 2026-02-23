@@ -17,15 +17,17 @@ release_require_changelog_heading "$VERSION"
 release_require_local_tag "$VERSION"
 release_require_tag_points_to_head "$VERSION"
 
-# Avoid pre-push hook recursion when checklist itself is called from pre-push.
-if ! git push --dry-run --no-verify origin HEAD >/dev/null 2>&1; then
-  echo "error: push auth check failed for origin HEAD" >&2
-  exit 1
-fi
+if [[ "${IGW_SKIP_PUSH_AUTH_CHECKS:-0}" != "1" ]]; then
+  # Avoid pre-push hook recursion when checklist itself is called from pre-push.
+  if ! git push --dry-run --no-verify origin HEAD >/dev/null 2>&1; then
+    echo "error: push auth check failed for origin HEAD" >&2
+    exit 1
+  fi
 
-if ! git push --dry-run --no-verify origin "refs/tags/${VERSION}" >/dev/null 2>&1; then
-  echo "error: push auth check failed for refs/tags/${VERSION}" >&2
-  exit 1
+  if ! git push --dry-run --no-verify origin "refs/tags/${VERSION}" >/dev/null 2>&1; then
+    echo "error: push auth check failed for refs/tags/${VERSION}" >&2
+    exit 1
+  fi
 fi
 
 echo "ok: release checklist passed for ${VERSION}"

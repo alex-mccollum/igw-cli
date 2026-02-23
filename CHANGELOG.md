@@ -22,6 +22,7 @@ All notable user-facing changes to `igw` are documented here.
 - Release scripts now share guard and validation helpers via `scripts/release/lib.sh` to keep semver, changelog, and tag integrity checks consistent across release entry points.
 - `AGENTS.md` now documents situational script recommendations (advisory, not mandatory) and links contributors to automation/release references.
 - Release checklist dry-run push auth checks now use `--no-verify` to prevent pre-push hook recursion during release validation.
+- `pre-push` and `cut.sh` now run checklist in local-validation mode (skip dry-run push auth checks) to avoid repeated SSH passphrase prompts during tag pushes.
 
 ## [v0.3.0](https://github.com/alex-mccollum/igw-cli/compare/v0.2.0...v0.3.0) - 2026-02-21
 
