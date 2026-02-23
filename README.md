@@ -34,6 +34,7 @@ igw version
 - `docs/troubleshooting.md`: common error diagnosis.
 - `docs/commands.md`: canonical command reference.
 - `docs/automation.md`: machine-oriented workflows.
+- `docs/releasing.md`: release workflow and artifact expectations.
 
 ## Quickstart (60 Seconds)
 

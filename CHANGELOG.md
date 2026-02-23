@@ -4,6 +4,13 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+### Added
+- `scripts/release/cut.sh` as the default one-command release workflow (`dry-run` -> tag validation/creation -> checklist -> push branch and tag).
+- `scripts/install-git-hooks.sh` and repo-managed `scripts/hooks/pre-push` to run release checklist validation automatically for semantic version tag pushes.
+
+### Changed
+- Release scripts now share guard and validation helpers via `scripts/release/lib.sh` to keep semver, changelog, and tag integrity checks consistent across release entry points.
+
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
 ### Added

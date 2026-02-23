@@ -55,6 +55,14 @@ When enabled, `scripts/hooks/pre-push` automatically runs
 `./scripts/release/checklist.sh <tag>` for any pushed `vMAJOR.MINOR.PATCH` tag.
 This blocks tag pushes if changelog/tag checks fail.
 
+## Tag Failure Recovery
+
+If a pushed release tag fails preflight due to release metadata drift (for example missing changelog heading):
+
+1. Fix `CHANGELOG.md` and any release metadata on `main`.
+2. Prefer creating the next patch release tag (for example `v0.4.1`) from the corrected commit.
+3. Avoid force-moving an already published tag unless you explicitly intend to rewrite release history.
+
 ## Version contract
 
 - Release artifacts must print the release tag in `igw version` output.
