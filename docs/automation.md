@@ -42,6 +42,7 @@ API execution:
 igw api sync --json
 igw call --path /data/api/v1/gateway-info --json
 igw call --method POST --path /data/api/v1/scan/projects --yes --json
+igw scan config --yes --json
 ```
 
 Single-value extraction (for shell variables or quick checks):

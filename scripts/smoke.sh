@@ -12,6 +12,7 @@ WAIT_TIMEOUT="${IGW_WAIT_TIMEOUT:-30s}"
 SPEC_FILE="${IGW_SPEC_FILE:-$ROOT_DIR/openapi.json}"
 SKIP_WAIT="${IGW_SMOKE_SKIP_WAIT:-0}"
 SKIP_API_SYNC="${IGW_SMOKE_SKIP_API_SYNC:-0}"
+INCLUDE_MUTATIONS="${IGW_SMOKE_INCLUDE_MUTATIONS:-0}"
 
 CURRENT_STEP="initialization"
 
@@ -87,6 +88,11 @@ assert_single_line "call select/select compact validation" "$compact_subset"
 run_cmd "logs list json" "$BIN_PATH" logs list --timeout "$TIMEOUT" --query limit=5 --json "${PROFILE_ARGS[@]}"
 run_cmd "diagnostics bundle status json" "$BIN_PATH" diagnostics bundle status --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
 run_cmd "restart tasks json" "$BIN_PATH" restart tasks --timeout "$TIMEOUT" --json "${PROFILE_ARGS[@]}"
+if [[ "$INCLUDE_MUTATIONS" == "1" ]]; then
+  run_cmd "scan config json" "$BIN_PATH" scan config --timeout "$TIMEOUT" --yes --json "${PROFILE_ARGS[@]}"
+else
+  echo "Skipping mutating wrapper checks (IGW_SMOKE_INCLUDE_MUTATIONS=0)."
+fi
 
 if [[ "$SKIP_WAIT" == "1" ]]; then
   echo "Skipping wait checks (IGW_SMOKE_SKIP_WAIT=1)."
