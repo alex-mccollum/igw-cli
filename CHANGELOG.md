@@ -4,6 +4,15 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+### Added
+- `igw scan config` convenience wrapper for `POST /data/api/v1/scan/config` with the same mutation safety (`--yes`) and wrapper output/options as `scan projects`.
+
+### Changed
+- `igw scan` now defaults to project scan when invoked without an explicit subcommand (for example, `igw scan --yes` maps to `scan projects`).
+- Scan wrapper command surface now includes both `scan projects` and `scan config` in command docs, usage, and shell completion.
+- `scripts/smoke.sh` adds an opt-in mutating wrapper check for `scan config` controlled by `IGW_SMOKE_INCLUDE_MUTATIONS=1`.
+- `docs/automation.md` now includes `igw scan config --yes --json` in the machine-oriented API execution examples.
+
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
 ### Added
