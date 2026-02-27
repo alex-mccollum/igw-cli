@@ -29,6 +29,12 @@ type rpcResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+const (
+	rpcProtocolName    = "igw-rpc-v1"
+	rpcProtocolSemver  = "1.0.0"
+	rpcProtocolMinHost = "1.0.0"
+)
+
 func (c *CLI) runRPC(args []string) error {
 	fs := flag.NewFlagSet("rpc", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
@@ -66,13 +72,9 @@ func (c *CLI) runRPC(args []string) error {
 	type rpcWorkItem struct {
 		req rpcRequest
 	}
-	type rpcWorkResult struct {
-		resp     rpcResponse
-		shutdown bool
-	}
 
 	workQueue := make(chan rpcWorkItem, queueSize)
-	results := make(chan rpcWorkResult, queueSize)
+	results := make(chan rpcResponse, queueSize)
 
 	var workerWG sync.WaitGroup
 	for worker := 0; worker < workers; worker++ {
@@ -80,8 +82,7 @@ func (c *CLI) runRPC(args []string) error {
 		go func() {
 			defer workerWG.Done()
 			for work := range workQueue {
-				resp, shutdown := c.handleRPCRequest(work.req, common, specFile)
-				results <- rpcWorkResult{resp: resp, shutdown: shutdown}
+				results <- c.handleRPCRequest(work.req, common, specFile)
 			}
 		}()
 	}
@@ -93,7 +94,7 @@ func (c *CLI) runRPC(args []string) error {
 		var writeErr error
 		for result := range results {
 			if writeErr == nil {
-				if err := enc.Encode(result.resp); err != nil {
+				if err := enc.Encode(result); err != nil {
 					writeErr = igwerr.NewTransportError(err)
 				}
 			}
@@ -111,12 +112,10 @@ func (c *CLI) runRPC(args []string) error {
 
 		var req rpcRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			results <- rpcWorkResult{
-				resp: rpcResponse{
-					OK:    false,
-					Code:  igwerr.ExitCode(&igwerr.UsageError{Msg: "invalid rpc request json"}),
-					Error: fmt.Sprintf("invalid rpc request json: %v", err),
-				},
+			results <- rpcResponse{
+				OK:    false,
+				Code:  igwerr.ExitCode(&igwerr.UsageError{Msg: "invalid rpc request json"}),
+				Error: fmt.Sprintf("invalid rpc request json: %v", err),
 			}
 			continue
 		}
@@ -148,7 +147,21 @@ func (c *CLI) runRPC(args []string) error {
 	return nil
 }
 
-func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile string) (rpcResponse, bool) {
+func rpcFeatureFlags() map[string]bool {
+	return map[string]bool{
+		"hello":            true,
+		"call":             true,
+		"reloadConfig":     true,
+		"capability":       true,
+		"shutdown":         true,
+		"rpcWorkers":       true,
+		"rpcQueueSize":     true,
+		"sharedCallCoreV1": true,
+		"callStatsV1":      true,
+	}
+}
+
+func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile string) rpcResponse {
 	switch strings.ToLower(strings.TrimSpace(req.Op)) {
 	case "hello":
 		return rpcResponse{
@@ -156,11 +169,16 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 			OK:   true,
 			Code: 0,
 			Data: map[string]any{
-				"protocol": "igw-rpc-v1",
-				"version":  buildinfo.Long(),
-				"ops":      []string{"hello", "call", "reload_config", "shutdown"},
+				"protocol":       rpcProtocolName,
+				"protocolSemver": rpcProtocolSemver,
+				"minHostSemver":  rpcProtocolMinHost,
+				"version":        buildinfo.Long(),
+				"features":       rpcFeatureFlags(),
+				"ops":            []string{"hello", "capability", "call", "reload_config", "shutdown"},
 			},
-		}, false
+		}
+	case "capability":
+		return c.handleRPCCapability(req)
 	case "reload_config":
 		c.invalidateRuntimeCaches()
 		return rpcResponse{
@@ -168,16 +186,16 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 			OK:   true,
 			Code: 0,
 			Data: map[string]any{"reloaded": true},
-		}, false
+		}
 	case "shutdown":
 		return rpcResponse{
 			ID:   req.ID,
 			OK:   true,
 			Code: 0,
 			Data: map[string]any{"shutdown": true},
-		}, true
+		}
 	case "call":
-		return c.handleRPCCall(req, common, specFile), false
+		return c.handleRPCCall(req, common, specFile)
 	default:
 		err := &igwerr.UsageError{Msg: fmt.Sprintf("unknown rpc op %q", strings.TrimSpace(req.Op))}
 		return rpcResponse{
@@ -185,7 +203,64 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 			OK:    false,
 			Code:  igwerr.ExitCode(err),
 			Error: err.Error(),
-		}, false
+		}
+	}
+}
+
+type rpcCapabilityArgs struct {
+	Name string `json:"name,omitempty"`
+}
+
+func (c *CLI) handleRPCCapability(req rpcRequest) rpcResponse {
+	features := rpcFeatureFlags()
+	if len(req.Args) == 0 {
+		return rpcResponse{
+			ID:   req.ID,
+			OK:   true,
+			Code: 0,
+			Data: map[string]any{
+				"protocol":       rpcProtocolName,
+				"protocolSemver": rpcProtocolSemver,
+				"features":       features,
+			},
+		}
+	}
+
+	var args rpcCapabilityArgs
+	if err := json.Unmarshal(req.Args, &args); err != nil {
+		usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid capability args: %v", err)}
+		return rpcResponse{
+			ID:    req.ID,
+			OK:    false,
+			Code:  igwerr.ExitCode(usageErr),
+			Error: usageErr.Error(),
+		}
+	}
+
+	normalized := strings.TrimSpace(args.Name)
+	supported := false
+	if normalized != "" {
+		if direct, ok := features[normalized]; ok {
+			supported = direct
+		} else {
+			for name, present := range features {
+				if strings.EqualFold(name, normalized) {
+					supported = present
+					normalized = name
+					break
+				}
+			}
+		}
+	}
+
+	return rpcResponse{
+		ID:   req.ID,
+		OK:   true,
+		Code: 0,
+		Data: map[string]any{
+			"name":      normalized,
+			"supported": supported,
+		},
 	}
 }
 

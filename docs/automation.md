@@ -29,6 +29,7 @@ For applications that call `igw` as an external tool:
 4. Install `igw` in an app-managed bin directory.
 5. Run `igw version` and require success before enabling gateway-backed features.
 6. Probe capabilities with `igw api list --json` if your app gates behavior on available operations.
+7. If using persistent mode, start `igw rpc` and run a `hello`/`capability` handshake before sending workload requests.
 
 ## Recommended Commands
 
@@ -86,6 +87,15 @@ Persistent machine mode:
 igw rpc --profile dev
 ```
 
+Persistent machine mode with handshake:
+
+```bash
+printf '%s\n' \
+  '{"id":"h1","op":"hello"}' \
+  '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
+  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
+```
+
 Operational wait checks:
 
 ```bash
@@ -100,6 +110,7 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 - `call` defaults `--method` to `GET` when `--path` is provided.
 - `call --stream` can reduce memory overhead for large payload workflows.
 - `call --batch` can reduce process startup/flag parsing overhead for many independent requests.
+- `rpc` should be preferred for high-frequency host integrations because it amortizes process startup and supports bounded worker/queue controls.
 - `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
 - Repeat `--select` for multiple selections.
 - `--raw` requires exactly one `--select`.

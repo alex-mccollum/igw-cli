@@ -46,6 +46,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "--prefix-depth") {
 		t.Fatalf("missing --prefix-depth completion flag")
 	}
+	if !strings.Contains(script, "--workers") || !strings.Contains(script, "--queue-size") {
+		t.Fatalf("missing rpc queue/worker completion flags")
+	}
 	if strings.Contains(script, "--field") || strings.Contains(script, "--fields") {
 		t.Fatalf("found deprecated --field/--fields completion flags")
 	}

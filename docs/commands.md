@@ -184,6 +184,11 @@ Persistent RPC mode:
 
 ```bash
 igw rpc --profile dev
+igw rpc --profile dev --workers 4 --queue-size 128
+printf '%s\n' \
+  '{"id":"h1","op":"hello"}' \
+  '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
+  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
 ```
 
 Smoke test script:

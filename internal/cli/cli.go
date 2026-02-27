@@ -194,6 +194,7 @@ func bashCompletionScript() string {
 		"--dry-run", "--retry", "--retry-backoff", "--out", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
 		"--interval", "--wait-timeout", "--openapi-path",
 		"--check-write",
+		"--workers", "--queue-size",
 		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
 		"--recursive", "--include-udts",
 	}, " ")

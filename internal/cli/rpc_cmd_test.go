@@ -50,10 +50,75 @@ func TestRPCModeHelloCallShutdown(t *testing.T) {
 	if hello["ok"] != true {
 		t.Fatalf("expected hello ok response: %#v", hello)
 	}
+	helloData, ok := hello["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected hello response data payload: %#v", hello)
+	}
+	if helloData["protocol"] != rpcProtocolName {
+		t.Fatalf("expected protocol %q in hello response: %#v", rpcProtocolName, helloData)
+	}
+	if helloData["protocolSemver"] != rpcProtocolSemver {
+		t.Fatalf("expected protocolSemver %q in hello response: %#v", rpcProtocolSemver, helloData)
+	}
+	features, ok := helloData["features"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected hello features payload: %#v", helloData)
+	}
+	if features["capability"] != true {
+		t.Fatalf("expected capability feature in hello response: %#v", features)
+	}
 
 	callResp := responseByID(t, responses, "c1")
 	if callResp["ok"] != true {
 		t.Fatalf("expected call ok response: %#v", callResp)
+	}
+}
+
+func TestRPCModeCapabilityOperation(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In: strings.NewReader(strings.Join([]string{
+			`{"id":"c1","op":"capability","args":{"name":"rpcWorkers"}}`,
+			`{"id":"c2","op":"capability","args":{"name":"nope"}}`,
+			`{"id":"s1","op":"shutdown"}`,
+		}, "\n")),
+		Out: &out,
+		Err: new(bytes.Buffer),
+		Getenv: func(string) string {
+			return ""
+		},
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	if err := c.Execute([]string{"rpc", "--gateway-url", "http://127.0.0.1:8088", "--api-key", "secret"}); err != nil {
+		t.Fatalf("rpc failed: %v", err)
+	}
+
+	responses := decodeRPCResponses(t, out.String())
+	if len(responses) != 3 {
+		t.Fatalf("expected 3 rpc responses, got %d: %q", len(responses), out.String())
+	}
+
+	supported := responseByID(t, responses, "c1")
+	supportedData, ok := supported["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected capability data payload: %#v", supported)
+	}
+	if supportedData["name"] != "rpcWorkers" || supportedData["supported"] != true {
+		t.Fatalf("expected supported capability response: %#v", supportedData)
+	}
+
+	unsupported := responseByID(t, responses, "c2")
+	unsupportedData, ok := unsupported["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected capability data payload: %#v", unsupported)
+	}
+	if unsupportedData["name"] != "nope" || unsupportedData["supported"] != false {
+		t.Fatalf("expected unsupported capability response: %#v", unsupportedData)
 	}
 }
 
