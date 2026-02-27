@@ -85,6 +85,7 @@ func TestRPCModeHelloCallShutdown(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected call stats payload: %#v", callData)
 	}
+	assertCallStatsContractV1(t, callStats)
 	rpcStats, ok := callStats["rpc"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected rpc queue stats in call payload: %#v", callStats)
@@ -401,6 +402,7 @@ func TestRPCModeCancelsInFlightCall(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected stats payload on cancelled call response: %#v", callData)
 	}
+	assertCallStatsContractV1(t, stats)
 	rpcStats, ok := stats["rpc"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected rpc queue stats on cancelled call response: %#v", stats)

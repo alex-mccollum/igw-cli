@@ -74,6 +74,7 @@ Hosts should:
 
 `call` responses include `data.stats` with the same base fields used by one-shot and batch execution:
 
+- `version` (stats schema version, currently `1`)
 - `timingMs`
 - `bodyBytes`
 - `http` (when HTTP timing collection is enabled)

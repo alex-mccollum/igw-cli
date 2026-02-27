@@ -122,6 +122,7 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 - `--raw` requires exactly one `--select`.
 - `--compact` requires `--json` and removes pretty indentation.
 - `--timing` and `--json-stats` expose latency/runtime stats for automation diagnostics.
+- Call-style stats payloads expose a stable schema version at `stats.version` (currently `1`).
 - API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 - If no default spec is present, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
 - If you omit `--profile`, the active profile is used (when set).

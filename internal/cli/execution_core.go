@@ -37,6 +37,8 @@ type callExecutionInput struct {
 	EnableTiming bool
 }
 
+const callStatsSchemaVersion = 1
+
 func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway.CallResponse, string, string, error) {
 	method := strings.ToUpper(strings.TrimSpace(input.Method))
 	path := strings.TrimSpace(input.Path)
@@ -135,7 +137,9 @@ func resolveOperationByID(opMap map[string]apidocs.Operation, operationID string
 
 func buildCallStats(resp *gateway.CallResponse, timingMs int64) map[string]any {
 	stats := map[string]any{
+		"version":  callStatsSchemaVersion,
 		"timingMs": timingMs,
+		"bodyBytes": int64(0),
 	}
 	if resp == nil {
 		return stats
