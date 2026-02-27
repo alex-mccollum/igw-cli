@@ -120,6 +120,7 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 - `call` retry handling honors `Retry-After` on `429` responses; otherwise it falls back to `--retry-backoff`.
 - `rpc` supports in-flight cancellation via `{"op":"cancel","args":{"id":"<request-id>"}}`.
 - `./scripts/perf-gate.sh` enforces benchmark thresholds for hot execution paths.
+- Default thresholds are tracked in `scripts/perf-thresholds.env` and can be overridden with `IGW_PERF_MAX_*` env vars.
 - `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
 - Repeat `--select` for multiple selections.
 - `--raw` requires exactly one `--select`.

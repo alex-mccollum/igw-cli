@@ -209,4 +209,5 @@ Smoke test script:
 IGW_PROFILE=dev ./scripts/smoke.sh
 ITERATIONS=25 IGW_PROFILE=dev ./scripts/perf-baseline.sh
 ./scripts/perf-gate.sh
+# Thresholds live in scripts/perf-thresholds.env.
 ```
