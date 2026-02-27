@@ -155,3 +155,30 @@ func TestSchemaCommandRejectsUnknownPath(t *testing.T) {
 		t.Fatalf("unexpected exit code %d", code)
 	}
 }
+
+func TestSchemaRootCoversCommandRegistry(t *testing.T) {
+	t.Parallel()
+
+	root := buildSchemaRoot()
+	index := map[string]schemaCommand{}
+	for _, sub := range root.Subcommands {
+		index[sub.Name] = sub
+	}
+
+	for _, cmd := range rootCommands {
+		node, ok := index[cmd.Name]
+		if !ok {
+			t.Fatalf("schema root missing command %q", cmd.Name)
+		}
+
+		subIndex := map[string]bool{}
+		for _, sub := range node.Subcommands {
+			subIndex[sub.Name] = true
+		}
+		for _, expected := range cmd.Subcommands {
+			if !subIndex[expected] {
+				t.Fatalf("schema command %q missing subcommand %q", cmd.Name, expected)
+			}
+		}
+	}
+}
