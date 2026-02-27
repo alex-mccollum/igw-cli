@@ -204,6 +204,13 @@ func (c *CLI) runCall(args []string) error {
 		} else {
 			streamWriter = c.Out
 		}
+	} else if strings.TrimSpace(outPath) != "" && !common.jsonOutput {
+		outFile, err = os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(err))
+		}
+		defer outFile.Close()
+		streamWriter = outFile
 	}
 
 	bodyBytes, err := readBody(c.In, body)
@@ -233,13 +240,7 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	bodyFile := ""
-	if strings.TrimSpace(outPath) != "" && !stream {
-		if writeErr := os.WriteFile(outPath, resp.Body, 0o600); writeErr != nil {
-			return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(writeErr))
-		}
-		bodyFile = outPath
-	}
-	if strings.TrimSpace(outPath) != "" && stream {
+	if strings.TrimSpace(outPath) != "" && (stream || !common.jsonOutput) {
 		bodyFile = outPath
 	}
 
