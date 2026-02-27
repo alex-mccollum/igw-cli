@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./asset-lib.sh
+source "${SCRIPT_DIR}/asset-lib.sh"
+
 if [[ $# -lt 5 || $# -gt 6 ]]; then
   echo "usage: $0 <version> <commit> <date> <goos> <goarch> [dist-dir]" >&2
   exit 2
@@ -13,12 +17,14 @@ TARGET_GOOS="$4"
 TARGET_GOARCH="$5"
 DIST_DIR="${6:-dist}"
 
-NAME="igw_${VERSION}_${TARGET_GOOS}_${TARGET_GOARCH}"
-OUT_DIR="${DIST_DIR}/${NAME}"
+DIR_NAME="$(release_extract_dir_name "$VERSION" "$TARGET_GOOS" "$TARGET_GOARCH")"
+ARCHIVE_NAME="$(release_versioned_asset_name "$VERSION" "$TARGET_GOOS" "$TARGET_GOARCH")"
 BIN_NAME="igw"
 if [[ "$TARGET_GOOS" == "windows" ]]; then
   BIN_NAME="igw.exe"
 fi
+
+OUT_DIR="${DIST_DIR}/${DIR_NAME}"
 
 mkdir -p "$OUT_DIR"
 
@@ -35,10 +41,10 @@ if [[ "$TARGET_GOOS" == "windows" ]]; then
   fi
   (
     cd "$DIST_DIR"
-    zip -rq "${NAME}.zip" "${NAME}"
+    zip -rq "${ARCHIVE_NAME}" "${DIR_NAME}"
   )
-  echo "${DIST_DIR}/${NAME}.zip"
+  echo "${DIST_DIR}/${ARCHIVE_NAME}"
 else
-  tar -C "$DIST_DIR" -czf "${DIST_DIR}/${NAME}.tar.gz" "${NAME}"
-  echo "${DIST_DIR}/${NAME}.tar.gz"
+  tar -C "$DIST_DIR" -czf "${DIST_DIR}/${ARCHIVE_NAME}" "${DIR_NAME}"
+  echo "${DIST_DIR}/${ARCHIVE_NAME}"
 fi

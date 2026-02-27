@@ -1,6 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ASSET_LIB="${SCRIPT_DIR}/release/asset-lib.sh"
+
+if [[ -f "${ASSET_LIB}" ]]; then
+  # shellcheck source=./release/asset-lib.sh
+  source "${ASSET_LIB}"
+else
+  release_archive_ext() {
+    local goos="$1"
+    if [[ "$goos" == "windows" ]]; then
+      echo "zip"
+      return
+    fi
+    echo "tar.gz"
+  }
+
+  release_extract_dir_name() {
+    local version="$1"
+    local goos="$2"
+    local goarch="$3"
+    echo "igw_${version}_${goos}_${goarch}"
+  }
+
+  release_versioned_asset_name() {
+    local version="$1"
+    local goos="$2"
+    local goarch="$3"
+    local ext
+    ext="$(release_archive_ext "$goos")"
+    echo "$(release_extract_dir_name "$version" "$goos" "$goarch").${ext}"
+  }
+
+  release_latest_alias_name() {
+    local goos="$1"
+    local goarch="$2"
+    local ext
+    ext="$(release_archive_ext "$goos")"
+    echo "igw_${goos}_${goarch}.${ext}"
+  }
+fi
+
 usage() {
   cat >&2 <<'EOF'
 usage: scripts/install.sh [--version latest|vX.Y.Z] [--dir PATH] [--repo OWNER/REPO]
@@ -134,13 +175,13 @@ if [[ -n "$VERSION" && ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 if [[ -z "$VERSION" ]]; then
-  ARCHIVE="igw_${OS}_${ARCH}.tar.gz"
+  ARCHIVE="$(release_latest_alias_name "$OS" "$ARCH")"
   BASE_URL="https://github.com/${REPO}/releases/latest/download"
-  EXTRACTED_BINARY_GLOB="igw_v*_${OS}_${ARCH}/igw"
+  EXTRACTED_BINARY_GLOB="$(release_extract_dir_name "v*" "$OS" "$ARCH")/igw"
 else
-  ARCHIVE="igw_${VERSION}_${OS}_${ARCH}.tar.gz"
+  ARCHIVE="$(release_versioned_asset_name "$VERSION" "$OS" "$ARCH")"
   BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
-  EXTRACTED_BINARY_GLOB="igw_${VERSION}_${OS}_${ARCH}/igw"
+  EXTRACTED_BINARY_GLOB="$(release_extract_dir_name "$VERSION" "$OS" "$ARCH")/igw"
 fi
 ARCHIVE_URL="${BASE_URL}/${ARCHIVE}"
 CHECKSUMS_URL="${BASE_URL}/checksums.txt"

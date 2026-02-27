@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./lib.sh
 source "${SCRIPT_DIR}/lib.sh"
+# shellcheck source=./asset-lib.sh
+source "${SCRIPT_DIR}/asset-lib.sh"
 
 usage() {
   echo "usage: $0 <version-tag> [dist-dir]" >&2
@@ -57,7 +59,11 @@ for artifact_path in "${ARTIFACTS[@]}"; do
     exit 1
   fi
 
-  alias_name="igw_${artifact_os}_${artifact_arch}.${artifact_archive}"
+  alias_name="$(release_latest_alias_name "$artifact_os" "$artifact_arch")"
+  if [[ "${alias_name##*.}" != "${artifact_archive##*.}" ]]; then
+    echo "error: unexpected archive extension for ${artifact_name}" >&2
+    exit 1
+  fi
   cp -f "$artifact_path" "${DIST_DIR}/${alias_name}"
   echo "ok: wrote ${DIST_DIR}/${alias_name}"
 done

@@ -17,6 +17,40 @@ function Get-Arch {
   }
 }
 
+function Get-ArchiveExt {
+  param([Parameter(Mandatory = $true)][string]$Goos)
+  if ($Goos -eq "windows") {
+    return "zip"
+  }
+  return "tar.gz"
+}
+
+function Get-ExtractDirName {
+  param(
+    [Parameter(Mandatory = $true)][string]$VersionTag,
+    [Parameter(Mandatory = $true)][string]$Goos,
+    [Parameter(Mandatory = $true)][string]$Goarch
+  )
+  return "igw_${VersionTag}_${Goos}_${Goarch}"
+}
+
+function Get-VersionedArchiveName {
+  param(
+    [Parameter(Mandatory = $true)][string]$VersionTag,
+    [Parameter(Mandatory = $true)][string]$Goos,
+    [Parameter(Mandatory = $true)][string]$Goarch
+  )
+  return "$(Get-ExtractDirName -VersionTag $VersionTag -Goos $Goos -Goarch $Goarch).$(Get-ArchiveExt -Goos $Goos)"
+}
+
+function Get-LatestAliasName {
+  param(
+    [Parameter(Mandatory = $true)][string]$Goos,
+    [Parameter(Mandatory = $true)][string]$Goarch
+  )
+  return "igw_${Goos}_${Goarch}.$(Get-ArchiveExt -Goos $Goos)"
+}
+
 if ($Version -eq "latest") {
   $Version = ""
 }
@@ -26,12 +60,13 @@ if ($Version -ne "" -and $Version -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
 }
 
 $arch = Get-Arch
+$goos = "windows"
 $resolvedVersion = "unknown"
 if ($Version -eq "") {
-  $archiveName = "igw_windows_${arch}.zip"
+  $archiveName = Get-LatestAliasName -Goos $goos -Goarch $arch
   $baseUrl = "https://github.com/$Repo/releases/latest/download"
 } else {
-  $archiveName = "igw_${Version}_windows_${arch}.zip"
+  $archiveName = Get-VersionedArchiveName -VersionTag $Version -Goos $goos -Goarch $arch
   $baseUrl = "https://github.com/$Repo/releases/download/$Version"
   $resolvedVersion = $Version
 }
@@ -67,16 +102,16 @@ try {
 
   $binaryPath = ""
   if ($Version -eq "") {
-    $extractDirs = @(Get-ChildItem -Path $extractDir -Directory -Filter ("igw_v*_windows_" + $arch))
+    $extractDirs = @(Get-ChildItem -Path $extractDir -Directory -Filter (Get-ExtractDirName -VersionTag "v*" -Goos $goos -Goarch $arch))
     if ($extractDirs.Count -ne 1) {
       throw "Expected one extracted directory for $archiveName, found $($extractDirs.Count)."
     }
     $binaryPath = Join-Path -Path $extractDirs[0].FullName -ChildPath "igw.exe"
-    if ($extractDirs[0].Name -match '^igw_(v[0-9]+\.[0-9]+\.[0-9]+)_windows_[a-z0-9]+$') {
+    if ($extractDirs[0].Name -match '^igw_(v[0-9]+\.[0-9]+\.[0-9]+)_[a-z0-9]+_[a-z0-9]+$') {
       $resolvedVersion = $Matches[1]
     }
   } else {
-    $binaryPath = Join-Path -Path $extractDir -ChildPath ("igw_${Version}_windows_${arch}\igw.exe")
+    $binaryPath = Join-Path -Path $extractDir -ChildPath ((Get-ExtractDirName -VersionTag $Version -Goos $goos -Goarch $arch) + "\igw.exe")
   }
 
   if (-not (Test-Path -Path $binaryPath -PathType Leaf)) {
