@@ -220,6 +220,7 @@ func (c *CLI) runCallBatchParallel(
 	work := make(chan callBatchWorkItem, defaults.Parallel*2)
 	results := make(chan callBatchItemResult, defaults.Parallel*2)
 	var wg sync.WaitGroup
+	var drainWG sync.WaitGroup
 	var exitState batchExitState
 	var itemCount int
 
@@ -233,6 +234,15 @@ func (c *CLI) runCallBatchParallel(
 		}()
 	}
 
+	drainWG.Add(1)
+	go func() {
+		defer drainWG.Done()
+		for result := range results {
+			exitState.record(result.Code)
+			resultsByIndex[result.Index] = result
+		}
+	}()
+
 	itemCount, parseErr := c.parseBatchItems(reader, opMapLoader, func(item callBatchWorkItem) error {
 		work <- item
 		return nil
@@ -240,11 +250,7 @@ func (c *CLI) runCallBatchParallel(
 	close(work)
 	wg.Wait()
 	close(results)
-
-	for result := range results {
-		exitState.record(result.Code)
-		resultsByIndex[result.Index] = result
-	}
+	drainWG.Wait()
 	if parseErr != nil {
 		return nil, batchExitState{}, 0, parseErr
 	}
