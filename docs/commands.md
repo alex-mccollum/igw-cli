@@ -43,6 +43,7 @@ Machine contracts:
 igw exit-codes
 igw exit-codes --json
 igw schema
+igw schema --command "config profile"
 igw schema --select command.subcommands.0.name --raw
 ```
 

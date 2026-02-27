@@ -97,6 +97,7 @@ var completionFlags = []string{
 	"--interval", "--wait-timeout", "--openapi-path",
 	"--check-write",
 	"--workers", "--queue-size",
+	"--command",
 	"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
 	"--recursive", "--include-udts",
 }

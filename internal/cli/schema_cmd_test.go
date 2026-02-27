@@ -95,6 +95,50 @@ func TestSchemaCommandPathLookup(t *testing.T) {
 	}
 }
 
+func TestSchemaCommandPathLookupFlag(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	c := &CLI{
+		Out: &out,
+		Err: new(bytes.Buffer),
+	}
+
+	if err := c.Execute([]string{"schema", "--command", "config profile"}); err != nil {
+		t.Fatalf("schema --command failed: %v", err)
+	}
+
+	var payload struct {
+		Command struct {
+			Name string `json:"name"`
+			Path string `json:"path"`
+		} `json:"command"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("decode schema json: %v", err)
+	}
+	if payload.Command.Name != "profile" || payload.Command.Path != "igw config profile" {
+		t.Fatalf("unexpected schema --command payload: %#v", payload.Command)
+	}
+}
+
+func TestSchemaCommandRejectsMixedPathSelectors(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{
+		Out: new(bytes.Buffer),
+		Err: new(bytes.Buffer),
+	}
+
+	err := c.Execute([]string{"schema", "--command", "config profile", "config", "profile"})
+	if err == nil {
+		t.Fatalf("expected usage error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+}
+
 func TestSchemaCommandRejectsUnknownPath(t *testing.T) {
 	t.Parallel()
 

@@ -29,9 +29,11 @@ func (c *CLI) runSchema(args []string) error {
 	fs := flag.NewFlagSet("schema", flag.ContinueOnError)
 	fs.SetOutput(c.Err)
 
+	var commandPath string
 	var compact bool
 	var raw bool
 	var selectors stringList
+	fs.StringVar(&commandPath, "command", "", "Optional command path to describe (for example: \"config profile\")")
 	fs.BoolVar(&compact, "compact", false, "Print compact one-line JSON")
 	fs.BoolVar(&raw, "raw", false, "Print selected value without JSON quoting (requires one --select)")
 	fs.Var(&selectors, "select", "Select JSON path from output (repeatable)")
@@ -44,11 +46,19 @@ func (c *CLI) runSchema(args []string) error {
 		return c.printJSONCommandError(true, selectErr)
 	}
 
+	if strings.TrimSpace(commandPath) != "" && fs.NArg() > 0 {
+		return c.printJSONCommandError(true, &igwerr.UsageError{Msg: "use either --command or positional command path, not both"})
+	}
+
 	root := buildSchemaRoot()
 	selected := root
-	if fs.NArg() > 0 {
+	if strings.TrimSpace(commandPath) != "" || fs.NArg() > 0 {
 		pathTokens := make([]string, 0, fs.NArg())
-		for _, token := range fs.Args() {
+		source := fs.Args()
+		if strings.TrimSpace(commandPath) != "" {
+			source = strings.Fields(commandPath)
+		}
+		for _, token := range source {
 			trimmed := strings.TrimSpace(token)
 			if trimmed != "" {
 				pathTokens = append(pathTokens, trimmed)
