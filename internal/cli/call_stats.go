@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -45,6 +47,34 @@ func withRPCQueueStats(stats callStats, queueWaitMs int64, queueDepth int) callS
 		QueueDepth:  queueDepth,
 	}
 	return stats
+}
+
+func decodeCallStatsPayload(raw any) (callStats, error) {
+	switch v := raw.(type) {
+	case callStats:
+		if v.Version != callStatsSchemaVersion {
+			return callStats{}, fmt.Errorf("unsupported stats.version %d", v.Version)
+		}
+		return v, nil
+	case map[string]any:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return callStats{}, fmt.Errorf("encode stats payload: %w", err)
+		}
+		var decoded callStats
+		if err := json.Unmarshal(b, &decoded); err != nil {
+			return callStats{}, fmt.Errorf("decode stats payload: %w", err)
+		}
+		if decoded.Version != callStatsSchemaVersion {
+			return callStats{}, fmt.Errorf("unsupported stats.version %d", decoded.Version)
+		}
+		return decoded, nil
+	default:
+		if raw == nil {
+			return callStats{}, errors.New("missing stats payload")
+		}
+		return callStats{}, fmt.Errorf("unsupported stats payload type %T", raw)
+	}
 }
 
 func printTimingSummary(w io.Writer, payload callStats) {

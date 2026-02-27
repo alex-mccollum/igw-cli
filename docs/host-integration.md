@@ -57,6 +57,7 @@ Hosts should treat these as stable automation contracts:
   - `stats.version == 1`
   - `stats.timingMs`
   - `stats.bodyBytes`
+- Reject or safely degrade when `stats.version` is unknown.
 - RPC queue telemetry for `call`:
   - `stats.rpc.queueWaitMs`
   - `stats.rpc.queueDepth`
