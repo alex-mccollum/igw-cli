@@ -3,12 +3,10 @@ package cli
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -62,6 +60,7 @@ type callBatchItemResult struct {
 	TimingMs int64            `json:"timingMs"`
 	Request  callJSONRequest  `json:"request,omitempty"`
 	Response callJSONResponse `json:"response,omitempty"`
+	Stats    map[string]any   `json:"stats,omitempty"`
 }
 
 type batchExitError struct {
@@ -173,17 +172,71 @@ func (c *CLI) executeBatchCallItem(
 		out.ID = fmt.Sprintf("%d", index+1)
 	}
 
+	timeout := defaults.Timeout
+	if raw := strings.TrimSpace(item.Timeout); raw != "" {
+		parsed, parseErr := time.ParseDuration(raw)
+		if parseErr != nil || parsed <= 0 {
+			err := &igwerr.UsageError{Msg: fmt.Sprintf("invalid timeout %q", raw)}
+			out.OK = false
+			out.Code = exitCodeForError(err)
+			out.Error = "batch item: " + err.Error()
+			return out
+		}
+		timeout = parsed
+	}
+
+	retry := defaults.Retry
+	if item.Retry != nil {
+		retry = *item.Retry
+	}
+
+	retryBackoff := defaults.RetryBackoff
+	if raw := strings.TrimSpace(item.RetryBackoff); raw != "" {
+		parsed, parseErr := time.ParseDuration(raw)
+		if parseErr != nil || parsed <= 0 {
+			err := &igwerr.UsageError{Msg: fmt.Sprintf("invalid retryBackoff %q", raw)}
+			out.OK = false
+			out.Code = exitCodeForError(err)
+			out.Error = "batch item: " + err.Error()
+			return out
+		}
+		retryBackoff = parsed
+	}
+
+	yes := defaults.Yes
+	if item.Yes != nil {
+		yes = *item.Yes
+	}
+
 	start := time.Now()
-	resp, reqMethod, reqPath, err := c.executeBatchCallItemRaw(client, item, defaults, opMap)
+	resp, reqMethod, reqPath, err := executeCallCore(client, callExecutionInput{
+		Method:       item.Method,
+		Path:         item.Path,
+		OperationID:  item.OperationID,
+		OperationMap: opMap,
+		Query:        item.Query,
+		Headers:      item.Headers,
+		Body:         []byte(item.Body),
+		ContentType:  item.ContentType,
+		DryRun:       item.DryRun,
+		Yes:          yes,
+		Timeout:      timeout,
+		Retry:        retry,
+		RetryBackoff: retryBackoff,
+		EnableTiming: true,
+	})
 	out.TimingMs = time.Since(start).Milliseconds()
 	if reqMethod != "" || reqPath != "" {
 		out.Request = callJSONRequest{Method: reqMethod, URL: reqPath}
 	}
-
 	if err != nil {
+		if _, ok := err.(*igwerr.UsageError); ok {
+			err = &igwerr.UsageError{Msg: "batch item: " + err.Error()}
+		}
 		out.OK = false
 		out.Code = exitCodeForError(err)
 		out.Error = err.Error()
+		out.Stats = buildCallStats(resp, out.TimingMs)
 		return out
 	}
 
@@ -195,111 +248,14 @@ func (c *CLI) executeBatchCallItem(
 		URL:    resp.URL,
 	}
 	out.Response = callJSONResponse{
-		Status:  resp.StatusCode,
-		Headers: maybeHeaders(resp.Headers, defaults.IncludeHeads),
-		Body:    string(resp.Body),
+		Status:    resp.StatusCode,
+		Headers:   maybeHeaders(resp.Headers, defaults.IncludeHeads),
+		Body:      string(resp.Body),
+		Bytes:     resp.BodyBytes,
+		Truncated: resp.Truncated,
 	}
+	out.Stats = buildCallStats(resp, out.TimingMs)
 	return out
-}
-
-func (c *CLI) executeBatchCallItemRaw(
-	client *gateway.Client,
-	item callBatchItem,
-	defaults callBatchDefaults,
-	opMap map[string]apidocs.Operation,
-) (*gateway.CallResponse, string, string, error) {
-	method := strings.ToUpper(strings.TrimSpace(item.Method))
-	path := strings.TrimSpace(item.Path)
-	op := strings.TrimSpace(item.OperationID)
-
-	if op != "" {
-		if method != "" || path != "" {
-			return nil, "", "", &igwerr.UsageError{Msg: "batch item: use either op or method/path, not both"}
-		}
-		match, ok := opMap[op]
-		if !ok {
-			match, ok = opMap[strings.ToLower(op)]
-		}
-		if !ok {
-			return nil, "", "", &igwerr.UsageError{Msg: fmt.Sprintf("batch item: operationId %q not found", op)}
-		}
-		method = match.Method
-		path = match.Path
-	}
-
-	if path == "" {
-		return nil, "", "", &igwerr.UsageError{Msg: "batch item: required path"}
-	}
-	if method == "" {
-		method = http.MethodGet
-	}
-
-	timeout := defaults.Timeout
-	if raw := strings.TrimSpace(item.Timeout); raw != "" {
-		parsed, err := time.ParseDuration(raw)
-		if err != nil || parsed <= 0 {
-			return nil, method, path, &igwerr.UsageError{Msg: fmt.Sprintf("batch item: invalid timeout %q", raw)}
-		}
-		timeout = parsed
-	}
-
-	retry := defaults.Retry
-	if item.Retry != nil {
-		retry = *item.Retry
-	}
-	if retry < 0 {
-		return nil, method, path, &igwerr.UsageError{Msg: "batch item: retry must be >= 0"}
-	}
-	retryBackoff := defaults.RetryBackoff
-	if raw := strings.TrimSpace(item.RetryBackoff); raw != "" {
-		parsed, err := time.ParseDuration(raw)
-		if err != nil || parsed <= 0 {
-			return nil, method, path, &igwerr.UsageError{Msg: fmt.Sprintf("batch item: invalid retryBackoff %q", raw)}
-		}
-		retryBackoff = parsed
-	}
-	if retry > 0 && retryBackoff <= 0 {
-		return nil, method, path, &igwerr.UsageError{Msg: "batch item: retryBackoff must be positive when retry is set"}
-	}
-
-	yes := defaults.Yes
-	if item.Yes != nil {
-		yes = *item.Yes
-	}
-	if isMutatingMethod(method) && !yes {
-		return nil, method, path, &igwerr.UsageError{
-			Msg: fmt.Sprintf("batch item: method %s requires yes=true (or top-level --yes)", method),
-		}
-	}
-	if retry > 0 && !isIdempotentMethod(method) {
-		return nil, method, path, &igwerr.UsageError{
-			Msg: fmt.Sprintf("batch item: retry is only supported for idempotent methods; got %s", method),
-		}
-	}
-
-	query := append([]string(nil), item.Query...)
-	if item.DryRun {
-		query = append(query, "dryRun=true")
-	}
-
-	contentType := strings.TrimSpace(item.ContentType)
-	body := []byte(item.Body)
-	if len(body) > 0 && contentType == "" {
-		contentType = "application/json"
-	}
-
-	resp, err := client.Call(context.Background(), gateway.CallRequest{
-		Method:       method,
-		Path:         path,
-		Query:        query,
-		Headers:      item.Headers,
-		Body:         body,
-		ContentType:  contentType,
-		Timeout:      timeout,
-		Retry:        retry,
-		RetryBackoff: retryBackoff,
-	})
-	return resp, method, path, err
 }
 
 func (c *CLI) loadBatchOperationMap(items []callBatchItem, defaults callBatchDefaults) (map[string]apidocs.Operation, error) {

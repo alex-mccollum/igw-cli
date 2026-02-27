@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -169,38 +168,14 @@ func (c *CLI) runCall(args []string) error {
 	if strings.TrimSpace(path) == "" {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "required: --path"})
 	}
-	if strings.TrimSpace(method) == "" {
-		method = http.MethodGet
-	}
 	if common.timeout <= 0 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--timeout must be positive"})
 	}
 	if maxBodyBytes < 0 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--max-body-bytes must be >= 0"})
 	}
-	if retry < 0 {
-		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--retry must be >= 0"})
-	}
-	if retry > 0 && retryBackoff <= 0 {
-		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--retry-backoff must be positive when --retry is set"})
-	}
-
-	method = strings.ToUpper(strings.TrimSpace(method))
+	method = strings.TrimSpace(method)
 	path = strings.TrimSpace(path)
-
-	if dryRun {
-		queries = append(queries, "dryRun=true")
-	}
-	if isMutatingMethod(method) && !yes {
-		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{
-			Msg: fmt.Sprintf("method %s requires --yes confirmation", method),
-		})
-	}
-	if retry > 0 && !isIdempotentMethod(method) {
-		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{
-			Msg: fmt.Sprintf("--retry is only supported for idempotent methods; got %s", method),
-		})
-	}
 	if stream && common.jsonOutput {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--stream is not supported with --json"})
 	}
@@ -211,10 +186,6 @@ func (c *CLI) runCall(args []string) error {
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
 		return c.printCallError(common.jsonOutput, selectOpts, err)
-	}
-
-	if len(bodyBytes) > 0 && strings.TrimSpace(contentType) == "" {
-		contentType = "application/json"
 	}
 
 	client := &gateway.Client{
@@ -240,13 +211,16 @@ func (c *CLI) runCall(args []string) error {
 		}
 	}
 
-	resp, err := client.Call(context.Background(), gateway.CallRequest{
+	start := time.Now()
+	resp, _, _, err := executeCallCore(client, callExecutionInput{
 		Method:       method,
 		Path:         path,
 		Query:        queries,
 		Headers:      headers,
 		Body:         bodyBytes,
 		ContentType:  contentType,
+		DryRun:       dryRun,
+		Yes:          yes,
 		Timeout:      common.timeout,
 		Retry:        retry,
 		RetryBackoff: retryBackoff,
@@ -269,14 +243,7 @@ func (c *CLI) runCall(args []string) error {
 		bodyFile = outPath
 	}
 
-	timingPayload := map[string]any{}
-	if resp.Timing != nil {
-		timingPayload["http"] = resp.Timing
-	}
-	timingPayload["bodyBytes"] = resp.BodyBytes
-	if resp.Truncated {
-		timingPayload["truncated"] = true
-	}
+	timingPayload := buildCallStats(resp, time.Since(start).Milliseconds())
 
 	if common.jsonOutput {
 		payload := callJSONEnvelope{

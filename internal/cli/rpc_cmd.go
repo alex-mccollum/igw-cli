@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -153,15 +152,10 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 	}
 
 	defaults := callBatchDefaults{
-		Retry:        0,
-		RetryBackoff: 250 * time.Millisecond,
-		Timeout:      common.timeout,
-		Yes:          false,
-		SpecFile:     specFile,
-		Profile:      common.profile,
-		GatewayURL:   common.gatewayURL,
-		APIKey:       common.apiKey,
-		IncludeHeads: common.includeHeaders,
+		SpecFile:   specFile,
+		Profile:    common.profile,
+		GatewayURL: common.gatewayURL,
+		APIKey:     common.apiKey,
 	}
 
 	opMap, opErr := c.loadBatchOperationMap([]callBatchItem{item}, defaults)
@@ -179,27 +173,99 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 		Token:   resolved.Token,
 		HTTP:    c.runtimeHTTPClient(),
 	}
-	result := c.executeBatchCallItem(client, 0, item, defaults, opMap)
-	resp := rpcResponse{
-		ID:     req.ID,
-		OK:     result.OK,
-		Code:   result.Code,
-		Status: result.Status,
-	}
-	if result.OK {
-		resp.Data = map[string]any{
-			"request":  result.Request,
-			"response": result.Response,
-			"timingMs": result.TimingMs,
-		}
-		return resp
-	}
-	resp.Error = result.Error
-	return resp
-}
 
-func writeRPCResponse(w io.Writer, resp rpcResponse) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	return enc.Encode(resp)
+	timeout := common.timeout
+	if raw := strings.TrimSpace(item.Timeout); raw != "" {
+		parsed, parseErr := time.ParseDuration(raw)
+		if parseErr != nil || parsed <= 0 {
+			usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid timeout %q", raw)}
+			return rpcResponse{
+				ID:    req.ID,
+				OK:    false,
+				Code:  igwerr.ExitCode(usageErr),
+				Error: usageErr.Error(),
+			}
+		}
+		timeout = parsed
+	}
+
+	retry := 0
+	if item.Retry != nil {
+		retry = *item.Retry
+	}
+	retryBackoff := 250 * time.Millisecond
+	if raw := strings.TrimSpace(item.RetryBackoff); raw != "" {
+		parsed, parseErr := time.ParseDuration(raw)
+		if parseErr != nil || parsed <= 0 {
+			usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid retryBackoff %q", raw)}
+			return rpcResponse{
+				ID:    req.ID,
+				OK:    false,
+				Code:  igwerr.ExitCode(usageErr),
+				Error: usageErr.Error(),
+			}
+		}
+		retryBackoff = parsed
+	}
+
+	yes := false
+	if item.Yes != nil {
+		yes = *item.Yes
+	}
+
+	start := time.Now()
+	callResp, method, path, callErr := executeCallCore(client, callExecutionInput{
+		Method:       item.Method,
+		Path:         item.Path,
+		OperationID:  item.OperationID,
+		OperationMap: opMap,
+		Query:        item.Query,
+		Headers:      item.Headers,
+		Body:         []byte(item.Body),
+		ContentType:  item.ContentType,
+		DryRun:       item.DryRun,
+		Yes:          yes,
+		Timeout:      timeout,
+		Retry:        retry,
+		RetryBackoff: retryBackoff,
+		EnableTiming: true,
+	})
+	elapsedMs := time.Since(start).Milliseconds()
+	if callErr != nil {
+		return rpcResponse{
+			ID:    req.ID,
+			OK:    false,
+			Code:  igwerr.ExitCode(callErr),
+			Error: callErr.Error(),
+			Data: map[string]any{
+				"request": callJSONRequest{
+					Method: method,
+					URL:    path,
+				},
+				"stats": buildCallStats(callResp, elapsedMs),
+			},
+		}
+	}
+
+	return rpcResponse{
+		ID:     req.ID,
+		OK:     true,
+		Code:   0,
+		Status: callResp.StatusCode,
+		Data: map[string]any{
+			"request": callJSONRequest{
+				Method: callResp.Method,
+				URL:    callResp.URL,
+			},
+			"response": callJSONResponse{
+				Status:    callResp.StatusCode,
+				Headers:   maybeHeaders(callResp.Headers, common.includeHeaders),
+				Body:      string(callResp.Body),
+				Bytes:     callResp.BodyBytes,
+				Truncated: callResp.Truncated,
+			},
+			"timingMs": elapsedMs, // backward-compatible shorthand
+			"stats":    buildCallStats(callResp, elapsedMs),
+		},
+	}
 }
