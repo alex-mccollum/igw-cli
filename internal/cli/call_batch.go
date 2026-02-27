@@ -172,59 +172,23 @@ func (c *CLI) executeBatchCallItem(
 		out.ID = fmt.Sprintf("%d", index+1)
 	}
 
-	timeout := defaults.Timeout
-	if raw := strings.TrimSpace(item.Timeout); raw != "" {
-		parsed, parseErr := time.ParseDuration(raw)
-		if parseErr != nil || parsed <= 0 {
-			err := &igwerr.UsageError{Msg: fmt.Sprintf("invalid timeout %q", raw)}
-			out.OK = false
-			out.Code = exitCodeForError(err)
-			out.Error = "batch item: " + err.Error()
-			return out
-		}
-		timeout = parsed
-	}
-
-	retry := defaults.Retry
-	if item.Retry != nil {
-		retry = *item.Retry
-	}
-
-	retryBackoff := defaults.RetryBackoff
-	if raw := strings.TrimSpace(item.RetryBackoff); raw != "" {
-		parsed, parseErr := time.ParseDuration(raw)
-		if parseErr != nil || parsed <= 0 {
-			err := &igwerr.UsageError{Msg: fmt.Sprintf("invalid retryBackoff %q", raw)}
-			out.OK = false
-			out.Code = exitCodeForError(err)
-			out.Error = "batch item: " + err.Error()
-			return out
-		}
-		retryBackoff = parsed
-	}
-
-	yes := defaults.Yes
-	if item.Yes != nil {
-		yes = *item.Yes
+	input, parseErr := buildCallExecutionInputFromItem(item, callItemExecutionDefaults{
+		Timeout:      defaults.Timeout,
+		Retry:        defaults.Retry,
+		RetryBackoff: defaults.RetryBackoff,
+		Yes:          defaults.Yes,
+		OperationMap: opMap,
+		EnableTiming: true,
+	})
+	if parseErr != nil {
+		out.OK = false
+		out.Code = exitCodeForError(parseErr)
+		out.Error = "batch item: " + parseErr.Error()
+		return out
 	}
 
 	start := time.Now()
-	resp, reqMethod, reqPath, err := executeCallCore(client, callExecutionInput{
-		Method:       item.Method,
-		Path:         item.Path,
-		OperationID:  item.OperationID,
-		OperationMap: opMap,
-		Query:        item.Query,
-		Headers:      item.Headers,
-		Body:         []byte(item.Body),
-		ContentType:  item.ContentType,
-		DryRun:       item.DryRun,
-		Yes:          yes,
-		Timeout:      timeout,
-		Retry:        retry,
-		RetryBackoff: retryBackoff,
-		EnableTiming: true,
-	})
+	resp, reqMethod, reqPath, err := executeCallCore(client, input)
 	out.TimingMs = time.Since(start).Milliseconds()
 	if reqMethod != "" || reqPath != "" {
 		out.Request = callJSONRequest{Method: reqMethod, URL: reqPath}

@@ -450,43 +450,21 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 		HTTP:    c.runtimeHTTPClient(),
 	}
 
-	timeout := common.timeout
-	if raw := strings.TrimSpace(item.Timeout); raw != "" {
-		parsed, parseErr := time.ParseDuration(raw)
-		if parseErr != nil || parsed <= 0 {
-			usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid timeout %q", raw)}
-			return rpcResponse{
-				ID:    req.ID,
-				OK:    false,
-				Code:  igwerr.ExitCode(usageErr),
-				Error: usageErr.Error(),
-			}
+	input, parseErr := buildCallExecutionInputFromItem(item, callItemExecutionDefaults{
+		Timeout:      common.timeout,
+		Retry:        0,
+		RetryBackoff: 250 * time.Millisecond,
+		Yes:          false,
+		OperationMap: opMap,
+		EnableTiming: true,
+	})
+	if parseErr != nil {
+		return rpcResponse{
+			ID:    req.ID,
+			OK:    false,
+			Code:  igwerr.ExitCode(parseErr),
+			Error: parseErr.Error(),
 		}
-		timeout = parsed
-	}
-
-	retry := 0
-	if item.Retry != nil {
-		retry = *item.Retry
-	}
-	retryBackoff := 250 * time.Millisecond
-	if raw := strings.TrimSpace(item.RetryBackoff); raw != "" {
-		parsed, parseErr := time.ParseDuration(raw)
-		if parseErr != nil || parsed <= 0 {
-			usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid retryBackoff %q", raw)}
-			return rpcResponse{
-				ID:    req.ID,
-				OK:    false,
-				Code:  igwerr.ExitCode(usageErr),
-				Error: usageErr.Error(),
-			}
-		}
-		retryBackoff = parsed
-	}
-
-	yes := false
-	if item.Yes != nil {
-		yes = *item.Yes
 	}
 
 	callCtx, callCancel := context.WithCancel(context.Background())
@@ -496,23 +474,8 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 	}
 
 	start := time.Now()
-	callResp, method, path, callErr := executeCallCore(client, callExecutionInput{
-		Context:      callCtx,
-		Method:       item.Method,
-		Path:         item.Path,
-		OperationID:  item.OperationID,
-		OperationMap: opMap,
-		Query:        item.Query,
-		Headers:      item.Headers,
-		Body:         []byte(item.Body),
-		ContentType:  item.ContentType,
-		DryRun:       item.DryRun,
-		Yes:          yes,
-		Timeout:      timeout,
-		Retry:        retry,
-		RetryBackoff: retryBackoff,
-		EnableTiming: true,
-	})
+	input.Context = callCtx
+	callResp, method, path, callErr := executeCallCore(client, input)
 	elapsedMs := time.Since(start).Milliseconds()
 	if callErr != nil {
 		return rpcResponse{
