@@ -29,6 +29,9 @@ All notable user-facing changes to `igw` are documented here.
 - Release and install scripts now share a centralized asset naming library to reduce cross-script drift.
 - CI now includes a Linux `go test -race` job.
 
+### Fixed
+- `call --batch --parallel` now drains worker results concurrently while parsing input, preventing deadlock risk on large batch payloads.
+
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
 ### Added
