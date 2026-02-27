@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alex-mccollum/igw-cli/internal/apidocs"
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
@@ -76,8 +77,8 @@ func withRPCCallQueueStats(resp rpcResponse, queueWaitMs int64, queueDepth int) 
 		return resp
 	}
 
-	stats, ok := data["stats"].(callStats)
-	if !ok {
+	stats, err := decodeCallStatsPayload(data["stats"])
+	if err != nil {
 		return resp
 	}
 
@@ -220,13 +221,17 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 		APIKey:     common.apiKey,
 	}
 
-	opMap, opErr := c.loadBatchOperationMap([]callBatchItem{item}, defaults)
-	if opErr != nil {
-		return rpcResponse{
-			ID:    req.ID,
-			OK:    false,
-			Code:  igwerr.ExitCode(opErr),
-			Error: opErr.Error(),
+	opMap := map[string]apidocs.Operation(nil)
+	if strings.TrimSpace(item.OperationID) != "" {
+		var opErr error
+		opMap, opErr = c.loadBatchOperationMap(defaults)
+		if opErr != nil {
+			return rpcResponse{
+				ID:    req.ID,
+				OK:    false,
+				Code:  igwerr.ExitCode(opErr),
+				Error: opErr.Error(),
+			}
 		}
 	}
 

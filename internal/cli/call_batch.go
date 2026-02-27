@@ -74,6 +74,43 @@ func (e *batchExitError) ExitCode() int {
 	return e.code
 }
 
+type batchExitState struct {
+	hasUsage   bool
+	hasAuth    bool
+	hasNetwork bool
+}
+
+func (s *batchExitState) record(code int) {
+	switch code {
+	case exitcode.Success:
+	case exitcode.Usage:
+		s.hasUsage = true
+	case exitcode.Auth:
+		s.hasAuth = true
+	default:
+		s.hasNetwork = true
+	}
+}
+
+func (s *batchExitState) result() int {
+	switch {
+	case s.hasUsage:
+		return exitcode.Usage
+	case s.hasNetwork:
+		return exitcode.Network
+	case s.hasAuth:
+		return exitcode.Auth
+	default:
+		return exitcode.Success
+	}
+}
+
+type callBatchWorkItem struct {
+	index int
+	call  callBatchItem
+	opMap map[string]apidocs.Operation
+}
+
 func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, defaults callBatchDefaults) error {
 	if defaults.Parallel <= 0 {
 		return &igwerr.UsageError{Msg: "--parallel must be >= 1"}
@@ -96,18 +133,11 @@ func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, def
 		return &igwerr.UsageError{Msg: "--batch-output must be one of: ndjson, json"}
 	}
 
-	items, err := readCallBatchItems(c.In, inputSource)
+	reader, closer, err := readBatchSource(c.In, inputSource)
 	if err != nil {
 		return err
 	}
-	if len(items) == 0 {
-		return &igwerr.UsageError{Msg: "batch request list is empty"}
-	}
-
-	opMap, err := c.loadBatchOperationMap(items, defaults)
-	if err != nil {
-		return err
-	}
+	defer closer()
 
 	client := &gateway.Client{
 		BaseURL: baseURL,
@@ -115,37 +145,90 @@ func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, def
 		HTTP:    c.runtimeHTTPClient(),
 	}
 
-	results := make([]callBatchItemResult, len(items))
+	var (
+		itemCount      = 0
+		parseErr       error
+		opMap          map[string]apidocs.Operation
+		opMapErr       error
+		opMapOnce      sync.Once
+		resultsByIndex = make(map[int]callBatchItemResult)
+		exitState      batchExitState
+	)
+
+	loadOpMapIfNeeded := func() (map[string]apidocs.Operation, error) {
+		opMapOnce.Do(func() {
+			opMap, opMapErr = c.loadBatchOperationMap(defaults)
+		})
+		return opMap, opMapErr
+	}
+
 	if defaults.Parallel == 1 {
-		for i, item := range items {
-			results[i] = c.executeBatchCallItem(client, i, item, defaults, opMap)
-		}
+		parseErr = streamCallBatchItems(reader, func(index int, item callBatchItem) error {
+			if strings.TrimSpace(item.OperationID) != "" {
+				callOpMap, err := loadOpMapIfNeeded()
+				if err != nil {
+					return err
+				}
+				opMap = callOpMap
+			}
+
+			result := c.executeBatchCallItem(client, index, item, defaults, opMap)
+			exitState.record(result.Code)
+			resultsByIndex[index] = result
+			itemCount++
+			return nil
+		})
 	} else {
-		work := make(chan int)
+		work := make(chan callBatchWorkItem, defaults.Parallel*2)
+		results := make(chan callBatchItemResult, defaults.Parallel*2)
 		var wg sync.WaitGroup
 
 		for worker := 0; worker < defaults.Parallel; worker++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for idx := range work {
-					results[idx] = c.executeBatchCallItem(client, idx, items[idx], defaults, opMap)
+				for item := range work {
+					results <- c.executeBatchCallItem(client, item.index, item.call, defaults, item.opMap)
 				}
 			}()
 		}
 
-		for i := range items {
-			work <- i
-		}
+		parseErr = streamCallBatchItems(reader, func(index int, item callBatchItem) error {
+			if strings.TrimSpace(item.OperationID) != "" {
+				callOpMap, err := loadOpMapIfNeeded()
+				if err != nil {
+					return err
+				}
+				work <- callBatchWorkItem{index: index, call: item, opMap: callOpMap}
+			} else {
+				work <- callBatchWorkItem{index: index, call: item, opMap: nil}
+			}
+			itemCount++
+			return nil
+		})
 		close(work)
 		wg.Wait()
+		close(results)
+
+		for result := range results {
+			exitState.record(result.Code)
+			resultsByIndex[result.Index] = result
+		}
 	}
 
-	if writeErr := writeBatchResults(c.Out, results, format, defaults.Compact); writeErr != nil {
-		return igwerr.NewTransportError(writeErr)
+	if parseErr != nil {
+		return parseErr
+	}
+	if itemCount == 0 {
+		return &igwerr.UsageError{Msg: "batch request list is empty"}
 	}
 
-	exit := aggregateBatchExitCode(results)
+	results := orderedBatchResults(resultsByIndex, itemCount)
+	if err := writeBatchResults(c.Out, results, format, defaults.Compact); err != nil {
+		return igwerr.NewTransportError(err)
+	}
+
+	exit := exitState.result()
 	if exit == exitcode.Success {
 		return nil
 	}
@@ -153,6 +236,14 @@ func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, def
 		msg:  "one or more batch requests failed",
 		code: exit,
 	}
+}
+
+func orderedBatchResults(resultsByIndex map[int]callBatchItemResult, count int) []callBatchItemResult {
+	out := make([]callBatchItemResult, count)
+	for i := 0; i < count; i++ {
+		out[i] = resultsByIndex[i]
+	}
+	return out
 }
 
 func (c *CLI) executeBatchCallItem(
@@ -222,18 +313,7 @@ func (c *CLI) executeBatchCallItem(
 	return out
 }
 
-func (c *CLI) loadBatchOperationMap(items []callBatchItem, defaults callBatchDefaults) (map[string]apidocs.Operation, error) {
-	needsOps := false
-	for _, item := range items {
-		if strings.TrimSpace(item.OperationID) != "" {
-			needsOps = true
-			break
-		}
-	}
-	if !needsOps {
-		return nil, nil
-	}
-
+func (c *CLI) loadBatchOperationMap(defaults callBatchDefaults) (map[string]apidocs.Operation, error) {
 	ops, err := c.loadAPIOperations(defaults.SpecFile, apiSyncRuntime{
 		Profile:    defaults.Profile,
 		GatewayURL: defaults.GatewayURL,
@@ -268,15 +348,29 @@ func readCallBatchItems(stdin io.Reader, source string) ([]callBatchItem, error)
 	}
 	defer closer()
 
+	items := make([]callBatchItem, 0, 16)
+	err = streamCallBatchItems(reader, func(index int, item callBatchItem) error {
+		items = append(items, item)
+		_ = index
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func streamCallBatchItems(reader io.Reader, handle func(index int, item callBatchItem) error) error {
 	buffered := bufio.NewReader(reader)
 	leadByte, isEOF := peekBatchLeadByte(buffered)
 	if isEOF {
-		return nil, &igwerr.UsageError{Msg: "batch input is empty"}
+		return &igwerr.UsageError{Msg: "batch input is empty"}
 	}
+
 	if leadByte == '[' {
-		return decodeBatchJSONArray(buffered)
+		return decodeBatchJSONArrayStream(buffered, handle)
 	}
-	return decodeBatchNDJSON(buffered)
+	return decodeBatchNDJSONStream(buffered, handle)
 }
 
 func peekBatchLeadByte(reader *bufio.Reader) (byte, bool) {
@@ -294,13 +388,13 @@ func peekBatchLeadByte(reader *bufio.Reader) (byte, bool) {
 	}
 }
 
-func decodeBatchNDJSON(reader *bufio.Reader) ([]callBatchItem, error) {
+func decodeBatchNDJSONStream(reader *bufio.Reader, handle func(index int, item callBatchItem) error) error {
 	scanner := bufio.NewScanner(reader)
 	// Allow large NDJSON payload lines for agent workflows.
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 
-	items := make([]callBatchItem, 0, 16)
 	line := 0
+	itemCount := 0
 	for scanner.Scan() {
 		line++
 		text := strings.TrimSpace(scanner.Text())
@@ -309,44 +403,74 @@ func decodeBatchNDJSON(reader *bufio.Reader) ([]callBatchItem, error) {
 		}
 		var item callBatchItem
 		if err := json.Unmarshal([]byte(text), &item); err != nil {
-			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch NDJSON line %d: %v", line, err)}
+			return &igwerr.UsageError{Msg: fmt.Sprintf("parse batch NDJSON line %d: %v", line, err)}
 		}
-		items = append(items, item)
+		if err := handle(itemCount, item); err != nil {
+			return err
+		}
+		itemCount++
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, igwerr.NewTransportError(err)
+		return igwerr.NewTransportError(err)
+	}
+	return nil
+}
+
+func decodeBatchJSONArrayStream(reader *bufio.Reader, handle func(index int, item callBatchItem) error) error {
+	decoder := json.NewDecoder(reader)
+	token, err := decoder.Token()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
+	}
+	openDelim, ok := token.(json.Delim)
+	if !ok || openDelim != '[' {
+		return &igwerr.UsageError{Msg: "parse batch JSON array: expected '['"}
+	}
+
+	index := 0
+	for decoder.More() {
+		var item callBatchItem
+		if err := decoder.Decode(&item); err != nil {
+			return &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array item: %v", err)}
+		}
+		if err := handle(index, item); err != nil {
+			return err
+		}
+		index++
+	}
+	closeToken, err := decoder.Token()
+	if err != nil {
+		return &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
+	}
+	if closeDelim, ok := closeToken.(json.Delim); !ok || closeDelim != ']' {
+		return &igwerr.UsageError{Msg: "parse batch JSON array: expected ']'"}
+	}
+	if index == 0 {
+		return &igwerr.UsageError{Msg: "batch input is empty"}
+	}
+	return nil
+}
+
+func decodeBatchNDJSON(reader *bufio.Reader) ([]callBatchItem, error) {
+	items := make([]callBatchItem, 0, 16)
+	err := decodeBatchNDJSONStream(reader, func(_ int, item callBatchItem) error {
+		items = append(items, item)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return items, nil
 }
 
 func decodeBatchJSONArray(reader *bufio.Reader) ([]callBatchItem, error) {
-	decoder := json.NewDecoder(reader)
-	token, err := decoder.Token()
-	if err != nil {
-		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
-	}
-	openDelim, ok := token.(json.Delim)
-	if !ok || openDelim != '[' {
-		return nil, &igwerr.UsageError{Msg: "parse batch JSON array: expected '['"}
-	}
-
 	items := make([]callBatchItem, 0, 16)
-	for decoder.More() {
-		var item callBatchItem
-		if err := decoder.Decode(&item); err != nil {
-			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array item: %v", err)}
-		}
+	err := decodeBatchJSONArrayStream(reader, func(_ int, item callBatchItem) error {
 		items = append(items, item)
-	}
-	closeToken, err := decoder.Token()
+		return nil
+	})
 	if err != nil {
-		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
-	}
-	if closeDelim, ok := closeToken.(json.Delim); !ok || closeDelim != ']' {
-		return nil, &igwerr.UsageError{Msg: "parse batch JSON array: expected ']'"}
-	}
-	if len(items) == 0 {
-		return nil, &igwerr.UsageError{Msg: "batch input is empty"}
+		return nil, err
 	}
 	return items, nil
 }
