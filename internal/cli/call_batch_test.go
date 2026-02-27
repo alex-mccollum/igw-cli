@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,11 +16,9 @@ import (
 func TestCallBatchJSONOutput(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer srv.Close()
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
+	})
 
 	dir := t.TempDir()
 	batchFile := filepath.Join(dir, "batch.ndjson")
@@ -42,12 +39,12 @@ func TestCallBatchJSONOutput(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{
 		"call",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--batch", "@" + batchFile,
 		"--batch-output", "json",
@@ -70,16 +67,12 @@ func TestCallBatchJSONOutput(t *testing.T) {
 func TestCallBatchAggregatesExitCode(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path == "/missing" {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"missing"}`))
-			return
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"missing"}`, nil), nil
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
+	})
 
 	dir := t.TempDir()
 	batchFile := filepath.Join(dir, "batch.ndjson")
@@ -99,12 +92,12 @@ func TestCallBatchAggregatesExitCode(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	err := c.Execute([]string{
 		"call",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--batch", "@" + batchFile,
 	})

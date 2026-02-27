@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync"
@@ -19,11 +18,9 @@ import (
 func TestRPCModeHelloCallShutdown(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer srv.Close()
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -38,10 +35,10 @@ func TestRPCModeHelloCallShutdown(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
-	if err := c.Execute([]string{"rpc", "--gateway-url", srv.URL, "--api-key", "secret"}); err != nil {
+	if err := c.Execute([]string{"rpc", "--gateway-url", mockGatewayURL, "--api-key", "secret"}); err != nil {
 		t.Fatalf("rpc failed: %v", err)
 	}
 
@@ -332,16 +329,14 @@ func TestRPCModeStopsReadingAfterShutdown(t *testing.T) {
 func TestRPCModeCancelsInFlightCall(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		select {
 		case <-r.Context().Done():
-			return
+			return nil, r.Context().Err()
 		case <-time.After(2 * time.Second):
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"ok":true}`))
+			return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
 		}
-	}))
-	defer srv.Close()
+	})
 
 	inReader, inWriter := io.Pipe()
 	var out bytes.Buffer
@@ -355,13 +350,13 @@ func TestRPCModeCancelsInFlightCall(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	runErr := make(chan error, 1)
 	go func() {
 		runErr <- c.Execute([]string{
-			"rpc", "--gateway-url", srv.URL, "--api-key", "secret", "--workers", "2", "--queue-size", "4",
+			"rpc", "--gateway-url", mockGatewayURL, "--api-key", "secret", "--workers", "2", "--queue-size", "4",
 		})
 	}()
 
@@ -425,7 +420,7 @@ func TestRPCModeReloadConfigInvalidatesRuntimeCache(t *testing.T) {
 	receivedTokens := make([]string, 0, 3)
 	callCount := 0
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		mu.Lock()
 		receivedTokens = append(receivedTokens, r.Header.Get("X-Ignition-API-Token"))
 		callCount++
@@ -434,10 +429,8 @@ func TestRPCModeReloadConfigInvalidatesRuntimeCache(t *testing.T) {
 		}
 		mu.Unlock()
 
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -459,13 +452,13 @@ func TestRPCModeReloadConfigInvalidatesRuntimeCache(t *testing.T) {
 				ActiveProfile: "dev",
 				Profiles: map[string]config.Profile{
 					"dev": {
-						GatewayURL: srv.URL,
+						GatewayURL: mockGatewayURL,
 						Token:      token,
 					},
 				},
 			}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{"rpc", "--profile", "dev"}); err != nil {
@@ -491,18 +484,16 @@ func TestRPCModeReloadConfigInvalidatesRuntimeCache(t *testing.T) {
 func TestRPCModeSupportsNewSessionAfterShutdown(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer srv.Close()
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
+	})
 
 	c := &CLI{
 		Getenv: func(string) string { return "" },
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	runSession := func(in []string) []map[string]any {
@@ -511,7 +502,7 @@ func TestRPCModeSupportsNewSessionAfterShutdown(t *testing.T) {
 		c.In = strings.NewReader(strings.Join(in, "\n"))
 		c.Out = &out
 		c.Err = new(bytes.Buffer)
-		if err := c.Execute([]string{"rpc", "--gateway-url", srv.URL, "--api-key", "secret"}); err != nil {
+		if err := c.Execute([]string{"rpc", "--gateway-url", mockGatewayURL, "--api-key", "secret"}); err != nil {
 			t.Fatalf("rpc failed: %v", err)
 		}
 		return decodeRPCResponses(t, out.String())

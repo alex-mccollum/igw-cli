@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,16 +17,13 @@ func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
 	setIsolatedConfigDir(t)
 
 	var gotToken string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path != "/openapi" {
-			http.NotFound(w, r)
-			return
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
 		gotToken = r.Header.Get("X-Ignition-API-Token")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(apiSpecFixture))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, apiSpecFixture, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -38,12 +34,12 @@ func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{
 		"api", "sync",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--json",
 	}); err != nil {
@@ -75,15 +71,12 @@ func TestAPISyncWritesSpecToConfigDir(t *testing.T) {
 func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
 	setIsolatedConfigDir(t)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path != "/openapi" {
-			http.NotFound(w, r)
-			return
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(apiSpecFixture))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, apiSpecFixture, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -94,12 +87,12 @@ func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{
 		"api", "refresh",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--json",
 		"--select", "ok",
@@ -124,18 +117,16 @@ func TestAPIRefreshUsesSyncBehavior(t *testing.T) {
 func TestAPISyncFallsBackToOpenAPIJSONPath(t *testing.T) {
 	setIsolatedConfigDir(t)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/openapi":
-			http.NotFound(w, r)
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		case "/openapi.json":
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(apiSpecFixture))
+			return mockHTTPResponse(http.StatusOK, apiSpecFixture, nil), nil
 		default:
-			http.NotFound(w, r)
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
-	}))
-	defer srv.Close()
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -146,12 +137,12 @@ func TestAPISyncFallsBackToOpenAPIJSONPath(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{
 		"api", "sync",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--json",
 		"--select", "sourceURL",
@@ -267,15 +258,12 @@ func TestAPISyncErrorEnvelopeSubsetSelection(t *testing.T) {
 func TestAPISyncInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
 	setIsolatedConfigDir(t)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path != "/openapi" {
-			http.NotFound(w, r)
-			return
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(apiSpecFixture))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, apiSpecFixture, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -286,12 +274,12 @@ func TestAPISyncInvalidSelectPathReturnsUsageEnvelope(t *testing.T) {
 		ReadConfig: func() (config.File, error) {
 			return config.File{}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	err := c.Execute([]string{
 		"api", "sync",
-		"--gateway-url", srv.URL,
+		"--gateway-url", mockGatewayURL,
 		"--api-key", "secret",
 		"--json",
 		"--select", "missing.path",
@@ -328,15 +316,12 @@ func TestAPIListAutoSyncsMissingDefaultSpec(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prevWD) })
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path != "/openapi" {
-			http.NotFound(w, r)
-			return
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(apiSpecFixture))
-	}))
-	defer srv.Close()
+		return mockHTTPResponse(http.StatusOK, apiSpecFixture, nil), nil
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -346,11 +331,11 @@ func TestAPIListAutoSyncsMissingDefaultSpec(t *testing.T) {
 		Getenv: func(string) string { return "" },
 		ReadConfig: func() (config.File, error) {
 			return config.File{
-				GatewayURL: srv.URL,
+				GatewayURL: mockGatewayURL,
 				Token:      "secret",
 			}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{"api", "list"}); err != nil {
@@ -382,21 +367,18 @@ func TestCallOperationIDAutoSyncsMissingDefaultSpec(t *testing.T) {
 
 	var sawOpenAPI bool
 	var sawGatewayInfo bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newMockHTTPClient(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/openapi":
 			sawOpenAPI = true
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(callOpSpecFixture))
+			return mockHTTPResponse(http.StatusOK, callOpSpecFixture, nil), nil
 		case "/data/api/v1/gateway-info":
 			sawGatewayInfo = true
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"ok":true}`))
+			return mockHTTPResponse(http.StatusOK, `{"ok":true}`, nil), nil
 		default:
-			http.NotFound(w, r)
+			return mockHTTPResponse(http.StatusNotFound, `{"error":"not found"}`, nil), nil
 		}
-	}))
-	defer srv.Close()
+	})
 
 	var out bytes.Buffer
 	c := &CLI{
@@ -406,11 +388,11 @@ func TestCallOperationIDAutoSyncsMissingDefaultSpec(t *testing.T) {
 		Getenv: func(string) string { return "" },
 		ReadConfig: func() (config.File, error) {
 			return config.File{
-				GatewayURL: srv.URL,
+				GatewayURL: mockGatewayURL,
 				Token:      "secret",
 			}, nil
 		},
-		HTTPClient: srv.Client(),
+		HTTPClient: client,
 	}
 
 	if err := c.Execute([]string{
