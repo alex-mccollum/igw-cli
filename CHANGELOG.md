@@ -4,10 +4,17 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
+
 ### Added
 - `igw scan config` convenience wrapper for `POST /data/api/v1/scan/config` with the same mutation safety (`--yes`) and wrapper output/options as `scan projects`.
 - `scripts/install.sh` (Linux/macOS) and `scripts/install.ps1` (Windows) for pinned release installation with checksum verification.
 - `scripts/release/generate-manifest.sh` and release asset `release-manifest.json` for machine-readable artifact metadata (`os`, `arch`, `sha256`, `url`).
+- Stable latest release aliases (for example `igw_linux_amd64.tar.gz`) for direct `releases/latest/download/...` host pulls.
+- Persistent RPC protocol contract docs and host integration guidance (`docs/rpc-protocol.md`, `docs/host-integration.md`) with explicit handshake/capability expectations.
+- Machine-facing contract commands: `igw exit-codes` and `igw schema`.
+- Performance gate tooling and CI enforcement via `scripts/perf-gate.sh` and benchmark coverage of hot paths.
+- Installer and release-script contract tests to harden asset naming and download verification flows.
 
 ### Changed
 - `igw scan` now defaults to project scan when invoked without an explicit subcommand (for example, `igw scan --yes` maps to `scan projects`).
@@ -16,6 +23,11 @@ All notable user-facing changes to `igw` are documented here.
 - `docs/automation.md` now includes `igw scan config --yes --json` in the machine-oriented API execution examples.
 - `scripts/release/generate-checksums.sh` now writes artifact basenames in `checksums.txt`, improving direct verification for downloaded release files.
 - Release workflow now publishes `release-manifest.json` alongside archives and `checksums.txt`.
+- Installer default `latest` flow now uses stable latest alias artifacts, while pinned `vX.Y.Z` installs remain supported.
+- `call`, `call --batch`, and `rpc call` now share a stronger typed execution/stats contract (`stats.version=1`) with additional lifecycle/test coverage.
+- RPC execution internals now use a dedicated session runner to simplify queue/worker orchestration and improve maintainability.
+- Release and install scripts now share a centralized asset naming library to reduce cross-script drift.
+- CI now includes a Linux `go test -race` job.
 
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 
