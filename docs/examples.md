@@ -37,6 +37,8 @@ igw restart tasks --json
 
 ## Host Integration Pattern (RPC Primary, CLI Fallback)
 
+For a stricter host contract (startup checks, feature gating, and fallback rules), see `docs/host-integration.md`.
+
 Shell adapter:
 
 ```bash

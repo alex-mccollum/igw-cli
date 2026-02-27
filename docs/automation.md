@@ -2,6 +2,8 @@
 
 This guide is for scripts, CI jobs, and coding agents.
 
+For host-application adapter guidance, see `docs/host-integration.md`.
+
 ## Core Contract
 
 - Prefer `--json` whenever supported.
