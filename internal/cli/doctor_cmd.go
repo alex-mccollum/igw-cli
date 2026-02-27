@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
@@ -65,6 +66,7 @@ func (c *CLI) runDoctor(args []string) error {
 	}
 
 	checks := make([]doctorCheck, 0, 4)
+	stats := map[string]any{}
 
 	parsedURL, err := url.Parse(resolved.GatewayURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
@@ -75,7 +77,7 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Use a full URL like http://<windows-host-ip>:8088",
 		})
-		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, uerr)
 	}
 	checks = append(checks, doctorCheck{
 		Name:    "gateway_url",
@@ -92,9 +94,10 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: uerr.Error(),
 			Hint:    "Gateway URL must include a valid host and scheme",
 		})
-		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, uerr)
+		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, uerr)
 	}
 
+	tcpStart := time.Now()
 	conn, err := net.DialTimeout("tcp", addr, common.timeout)
 	if err != nil {
 		nerr := igwerr.NewTransportError(err)
@@ -104,7 +107,10 @@ func (c *CLI) runDoctor(args []string) error {
 			Message: nerr.Error(),
 			Hint:    doctorHintForError(nerr),
 		})
-		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, nerr)
+		if common.timing || common.jsonStats {
+			stats["tcpConnectMs"] = time.Since(tcpStart).Milliseconds()
+		}
+		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, nerr)
 	}
 	_ = conn.Close()
 	checks = append(checks, doctorCheck{
@@ -112,52 +118,112 @@ func (c *CLI) runDoctor(args []string) error {
 		OK:      true,
 		Message: addr,
 	})
+	if common.timing || common.jsonStats {
+		stats["tcpConnectMs"] = time.Since(tcpStart).Milliseconds()
+	}
 
 	client := &gateway.Client{
 		BaseURL: resolved.GatewayURL,
 		Token:   resolved.Token,
-		HTTP:    c.HTTPClient,
+		HTTP:    c.runtimeHTTPClient(),
 	}
-	resp, err := client.Call(context.Background(), gateway.CallRequest{
-		Method:  http.MethodGet,
-		Path:    "/data/api/v1/gateway-info",
-		Timeout: common.timeout,
-	})
-	if err != nil {
+
+	type doctorCallResult struct {
+		resp      *gateway.CallResponse
+		err       error
+		elapsedMs int64
+	}
+
+	var (
+		gatewayInfo doctorCallResult
+		scanWrite   doctorCallResult
+		wg          sync.WaitGroup
+	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		resp, callErr := client.Call(context.Background(), gateway.CallRequest{
+			Method:       http.MethodGet,
+			Path:         "/data/api/v1/gateway-info",
+			Timeout:      common.timeout,
+			EnableTiming: common.timing || common.jsonStats,
+		})
+		gatewayInfo = doctorCallResult{resp: resp, err: callErr, elapsedMs: time.Since(start).Milliseconds()}
+	}()
+
+	if checkWrite {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			resp, callErr := client.Call(context.Background(), gateway.CallRequest{
+				Method:       http.MethodPost,
+				Path:         "/data/api/v1/scan/projects",
+				Timeout:      common.timeout,
+				EnableTiming: common.timing || common.jsonStats,
+			})
+			scanWrite = doctorCallResult{resp: resp, err: callErr, elapsedMs: time.Since(start).Milliseconds()}
+		}()
+	}
+
+	wg.Wait()
+	if common.timing || common.jsonStats {
+		stats["gatewayInfoMs"] = gatewayInfo.elapsedMs
+		if gatewayInfo.resp != nil && gatewayInfo.resp.Timing != nil {
+			stats["gatewayInfoHTTP"] = gatewayInfo.resp.Timing
+		}
+		if checkWrite {
+			stats["scanProjectsMs"] = scanWrite.elapsedMs
+			if scanWrite.resp != nil && scanWrite.resp.Timing != nil {
+				stats["scanProjectsHTTP"] = scanWrite.resp.Timing
+			}
+		}
+	}
+
+	if gatewayInfo.err != nil {
 		checks = append(checks, doctorCheck{
 			Name:    "gateway_info",
 			OK:      false,
-			Message: err.Error(),
-			Hint:    doctorHintForError(err),
+			Message: gatewayInfo.err.Error(),
+			Hint:    doctorHintForError(gatewayInfo.err),
 		})
-		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, err)
-	}
-
-	checks = append(checks, doctorCheck{
-		Name:    "gateway_info",
-		OK:      true,
-		Message: fmt.Sprintf("status %d", resp.StatusCode),
-	})
-
-	if checkWrite {
-		writeResp, err := client.Call(context.Background(), gateway.CallRequest{
-			Method:  http.MethodPost,
-			Path:    "/data/api/v1/scan/projects",
-			Timeout: common.timeout,
-		})
-		if err != nil {
+		if checkWrite {
 			checks = append(checks, doctorCheck{
 				Name:    "scan_projects",
 				OK:      false,
-				Message: err.Error(),
-				Hint:    doctorHintForError(err),
+				Message: "skipped (gateway_info failed)",
 			})
-			return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, err)
+		} else {
+			checks = append(checks, doctorCheck{
+				Name:    "scan_projects",
+				OK:      true,
+				Message: "skipped (use --check-write)",
+			})
+		}
+		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, gatewayInfo.err)
+	}
+	checks = append(checks, doctorCheck{
+		Name:    "gateway_info",
+		OK:      true,
+		Message: fmt.Sprintf("status %d", gatewayInfo.resp.StatusCode),
+	})
+
+	if checkWrite {
+		if scanWrite.err != nil {
+			checks = append(checks, doctorCheck{
+				Name:    "scan_projects",
+				OK:      false,
+				Message: scanWrite.err.Error(),
+				Hint:    doctorHintForError(scanWrite.err),
+			})
+			return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, scanWrite.err)
 		}
 		checks = append(checks, doctorCheck{
 			Name:    "scan_projects",
 			OK:      true,
-			Message: fmt.Sprintf("status %d", writeResp.StatusCode),
+			Message: fmt.Sprintf("status %d", scanWrite.resp.StatusCode),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -167,7 +233,7 @@ func (c *CLI) runDoctor(args []string) error {
 		})
 	}
 
-	return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, nil)
+	return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, nil)
 }
 
 type doctorCheck struct {
@@ -178,19 +244,21 @@ type doctorCheck struct {
 }
 
 type doctorEnvelope struct {
-	OK         bool          `json:"ok"`
-	Code       int           `json:"code,omitempty"`
-	Error      string        `json:"error,omitempty"`
-	GatewayURL string        `json:"gatewayURL"`
-	Checks     []doctorCheck `json:"checks"`
+	OK         bool           `json:"ok"`
+	Code       int            `json:"code,omitempty"`
+	Error      string         `json:"error,omitempty"`
+	GatewayURL string         `json:"gatewayURL"`
+	Checks     []doctorCheck  `json:"checks"`
+	Stats      map[string]any `json:"stats,omitempty"`
 }
 
-func (c *CLI) printDoctorResult(jsonOutput bool, selectOpts jsonSelectOptions, gatewayURL string, checks []doctorCheck, err error) error {
+func (c *CLI) printDoctorResult(jsonOutput bool, selectOpts jsonSelectOptions, gatewayURL string, checks []doctorCheck, stats map[string]any, err error) error {
 	if jsonOutput {
 		payload := doctorEnvelope{
 			OK:         err == nil,
 			GatewayURL: gatewayURL,
 			Checks:     checks,
+			Stats:      stats,
 		}
 		if err != nil {
 			payload.Code = igwerr.ExitCode(err)

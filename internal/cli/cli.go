@@ -24,6 +24,7 @@ type CLI struct {
 	WriteConfig     func(config.File) error
 	DetectWSLHostIP func() (string, string, error)
 	HTTPClient      *http.Client
+	runtime         *runtimeState
 }
 
 func New() *CLI {
@@ -35,6 +36,7 @@ func New() *CLI {
 		ReadConfig:      config.Read,
 		WriteConfig:     config.Write,
 		DetectWSLHostIP: wsl.DetectWindowsHostIP,
+		runtime:         newRuntimeState(),
 	}
 }
 
@@ -46,7 +48,7 @@ type rootCommand struct {
 }
 
 var rootCommands = []rootCommand{
-	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search", "tags", "stats", "sync", "refresh"}, Run: (*CLI).runAPI},
+	{Name: "api", Summary: "Query local OpenAPI documentation", Subcommands: []string{"list", "show", "search", "tags", "stats", "capability", "sync", "refresh"}, Run: (*CLI).runAPI},
 	{Name: "backup", Summary: "Gateway backup export/restore", Subcommands: []string{"export", "restore"}, Run: (*CLI).runBackup},
 	{Name: "call", Summary: "Execute generic Ignition Gateway API request", Run: (*CLI).runCall},
 	{Name: "completion", Summary: "Output shell completion script", Run: (*CLI).runCompletion},
@@ -56,6 +58,7 @@ var rootCommands = []rootCommand{
 	{Name: "gateway", Summary: "Convenience gateway commands", Subcommands: []string{"info"}, Run: (*CLI).runGateway},
 	{Name: "logs", Summary: "Gateway log helpers", Subcommands: []string{"list", "download", "loggers", "logger", "level-reset"}, Run: (*CLI).runLogs},
 	{Name: "restart", Summary: "Restart task/gateway helpers", Subcommands: []string{"tasks", "gateway"}, Run: (*CLI).runRestart},
+	{Name: "rpc", Summary: "Persistent NDJSON RPC mode for machine callers", Run: (*CLI).runRPC},
 	{Name: "scan", Summary: "Convenience scan commands", Subcommands: scanSubcommands, Run: (*CLI).runScan},
 	{Name: "tags", Summary: "Tag import/export helpers", Subcommands: []string{"export", "import"}, Run: (*CLI).runTags},
 	{Name: "wait", Summary: "Wait for operational readiness conditions", Subcommands: []string{"gateway", "diagnostics-bundle", "restart-tasks"}, Run: (*CLI).runWait},
@@ -63,11 +66,11 @@ var rootCommands = []rootCommand{
 }
 
 var completionRootCommands = []string{
-	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "gateway", "help", "logs", "restart", "scan", "tags", "wait", "version",
+	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "gateway", "help", "logs", "restart", "rpc", "scan", "tags", "wait", "version",
 }
 
 var completionSubcommands = map[string][]string{
-	"api":         {"list", "show", "search", "tags", "stats", "sync", "refresh"},
+	"api":         {"list", "show", "search", "tags", "stats", "capability", "sync", "refresh"},
 	"backup":      {"export", "restore"},
 	"config":      {"set", "show", "profile"},
 	"diagnostics": {"bundle"},
@@ -186,9 +189,9 @@ func bashCompletionScript() string {
 	}
 
 	flags := strings.Join([]string{
-		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--include-headers",
+		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--timing", "--json-stats", "--include-headers",
 		"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
-		"--dry-run", "--retry", "--retry-backoff", "--out", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
+		"--dry-run", "--retry", "--retry-backoff", "--out", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
 		"--interval", "--wait-timeout", "--openapi-path",
 		"--check-write",
 		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",

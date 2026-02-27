@@ -48,7 +48,7 @@ type apiSyncRuntime struct {
 }
 
 func (c *CLI) loadAPIOperations(specFile string, runtime apiSyncRuntime) ([]apidocs.Operation, error) {
-	ops, resolvedSpecFile, candidates, err := loadAPIOperationsRaw(specFile)
+	ops, resolvedSpecFile, candidates, err := c.loadCachedAPIOperations(specFile)
 	if err == nil {
 		return ops, nil
 	}
@@ -78,7 +78,7 @@ func (c *CLI) loadAPIOperations(specFile string, runtime apiSyncRuntime) ([]apid
 		}
 	}
 
-	ops, resolvedSpecFile, candidates, err = loadAPIOperationsRaw(specFile)
+	ops, resolvedSpecFile, candidates, err = c.loadCachedAPIOperations(specFile)
 	if err != nil {
 		return nil, openAPILoadError(resolvedSpecFile, candidates, err)
 	}
@@ -105,7 +105,7 @@ func (c *CLI) syncOpenAPISpec(req apiSyncRequest) (apiSyncResult, error) {
 	client := &gateway.Client{
 		BaseURL: req.Resolved.GatewayURL,
 		Token:   req.Resolved.Token,
-		HTTP:    c.HTTPClient,
+		HTTP:    c.runtimeHTTPClient(),
 	}
 
 	specBody, sourcePath, operationCount, attemptedPaths, fetchErr := fetchOpenAPISpec(context.Background(), client, req.Timeout, paths)
@@ -135,6 +135,7 @@ func (c *CLI) syncOpenAPISpec(req apiSyncRequest) (apiSyncResult, error) {
 			return apiSyncResult{}, &igwerr.UsageError{Msg: fmt.Sprintf("save spec: %v", err)}
 		}
 	}
+	c.invalidateRuntimeCaches()
 
 	sourceURL, joinErr := gateway.JoinURL(req.Resolved.GatewayURL, sourcePath)
 	if joinErr != nil {

@@ -69,6 +69,14 @@ func ExitCode(err error) int {
 		return exitcode.Success
 	}
 
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var codedErr exitCoder
+	if errors.As(err, &codedErr) {
+		return codedErr.ExitCode()
+	}
+
 	var usageErr *UsageError
 	if errors.As(err, &usageErr) {
 		return exitcode.Usage

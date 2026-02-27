@@ -8,7 +8,7 @@ import (
 
 func (c *CLI) runAPI(args []string) error {
 	if len(args) == 0 {
-		fmt.Fprintln(c.Err, "Usage: igw api <list|show|search|tags|stats|sync|refresh> [flags]")
+		fmt.Fprintln(c.Err, "Usage: igw api <list|show|search|tags|stats|capability|sync|refresh> [flags]")
 		return &igwerr.UsageError{Msg: "required api subcommand"}
 	}
 
@@ -23,6 +23,8 @@ func (c *CLI) runAPI(args []string) error {
 		return c.runAPITags(args[1:])
 	case "stats":
 		return c.runAPIStats(args[1:])
+	case "capability":
+		return c.runAPICapability(args[1:])
 	case "sync":
 		return c.runAPISync(args[1:])
 	case "refresh":

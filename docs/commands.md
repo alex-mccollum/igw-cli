@@ -5,9 +5,12 @@ For script/agent workflow guidance, see `docs/automation.md`.
 
 Defaults and behavior:
 - `igw call` defaults `--method` to `GET` when `--path` is provided.
+- `igw call --batch` supports JSON array or NDJSON input (`--batch @file|file|-`) with one response envelope per item.
+- `igw call --stream` streams successful response bodies directly in non-JSON mode.
 - Repeat `--select` to extract a subset JSON object from output (requires `--json`), with dot paths and array indexes (`checks.0.name`).
 - `--raw` prints one plain selected value and requires exactly one `--select`.
 - `--compact` prints one-line JSON (requires `--json`).
+- `--timing` and `--json-stats` expose latency/runtime stats on machine-facing commands.
 - `igw tags export` defaults `--provider=default` and `--type=json`.
 - `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
 - `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames whenever `--out` is omitted.
@@ -44,6 +47,7 @@ igw api search --spec-file /path/to/openapi.json --query scan
 igw api tags --spec-file /path/to/openapi.json
 igw api stats --spec-file /path/to/openapi.json --json
 igw api stats --spec-file /path/to/openapi.json --prefix-depth 2 --json
+igw api capability --spec-file /path/to/openapi.json --json file-write
 igw api sync --profile dev --json
 igw api refresh --profile dev --json --select operationCount --raw
 igw api sync --profile dev --openapi-path /openapi.json --json
@@ -82,8 +86,13 @@ igw call --method POST --path /data/api/v1/scan/projects --yes
 igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
 igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
 igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
+igw call --method GET --path /data/api/v1/gateway-info --stream --out gateway-info.json
+igw call --method GET --path /data/api/v1/gateway-info --stream --max-body-bytes 1048576
+igw call --batch @batch.ndjson --batch-output ndjson
+igw call --batch @batch.json --batch-output json --parallel 4
 igw call --method GET --path /data/api/v1/gateway-info --json --select response.status --raw
 igw call --method GET --path /data/api/v1/gateway-info --json --select ok --select response.status --compact
+igw call --method GET --path /data/api/v1/gateway-info --json --json-stats
 ```
 
 Config:
@@ -171,8 +180,15 @@ Shell completion:
 source <(igw completion bash)
 ```
 
+Persistent RPC mode:
+
+```bash
+igw rpc --profile dev
+```
+
 Smoke test script:
 
 ```bash
 IGW_PROFILE=dev ./scripts/smoke.sh
+ITERATIONS=25 IGW_PROFILE=dev ./scripts/perf-baseline.sh
 ```

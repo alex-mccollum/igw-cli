@@ -59,6 +59,7 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 		return c.printAPISyncError(common.jsonOutput, selectOpts, err)
 	}
 
+	start := time.Now()
 	result, err := c.syncOpenAPISpec(apiSyncRequest{
 		Resolved:    resolved,
 		Timeout:     common.timeout,
@@ -67,6 +68,7 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 	if err != nil {
 		return c.printAPISyncError(common.jsonOutput, selectOpts, err)
 	}
+	elapsedMs := time.Since(start).Milliseconds()
 
 	if common.jsonOutput {
 		payload := map[string]any{
@@ -77,6 +79,11 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 			"bytes":          result.Bytes,
 			"changed":        result.Changed,
 			"attemptedPaths": result.AttemptedPaths,
+		}
+		if common.timing || common.jsonStats {
+			payload["stats"] = map[string]any{
+				"elapsedMs": elapsedMs,
+			}
 		}
 		if selectWriteErr := printJSONSelection(c.Out, payload, selectOpts); selectWriteErr != nil {
 			return c.printAPISyncError(common.jsonOutput, selectionErrorOptions(selectOpts), selectWriteErr)
@@ -89,6 +96,9 @@ func (c *CLI) runAPISyncLike(args []string, mode string) error {
 	fmt.Fprintf(c.Out, "operations\t%d\n", result.OperationCount)
 	fmt.Fprintf(c.Out, "bytes\t%d\n", result.Bytes)
 	fmt.Fprintf(c.Out, "changed\t%t\n", result.Changed)
+	if common.timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", elapsedMs)
+	}
 	return nil
 }
 

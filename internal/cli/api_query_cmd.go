@@ -19,11 +19,15 @@ func (c *CLI) runAPIList(args []string) error {
 	var method string
 	var pathContains string
 	var jsonOutput bool
+	var timing bool
+	var jsonStats bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
 	fs.StringVar(&pathContains, "path-contains", "", "Filter by path substring")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 
 	if err := fs.Parse(args); err != nil {
 		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
@@ -32,6 +36,7 @@ func (c *CLI) runAPIList(args []string) error {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
+	start := time.Now()
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{Timeout: 8 * time.Second})
 	if err != nil {
 		return c.printJSONCommandError(jsonOutput, err)
@@ -39,12 +44,23 @@ func (c *CLI) runAPIList(args []string) error {
 
 	ops = apidocs.FilterByMethod(ops, method)
 	ops = apidocs.FilterByPathContains(ops, pathContains)
+	stats := map[string]any{
+		"elapsedMs": time.Since(start).Milliseconds(),
+		"count":     len(ops),
+	}
 
 	if jsonOutput {
-		return writeJSON(c.Out, map[string]any{"count": len(ops), "operations": ops})
+		payload := map[string]any{"count": len(ops), "operations": ops}
+		if timing || jsonStats {
+			payload["stats"] = stats
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	writeOperationTable(c.Out, ops)
+	if timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", stats["elapsedMs"])
+	}
 	return nil
 }
 
@@ -56,11 +72,15 @@ func (c *CLI) runAPIShow(args []string) error {
 	var method string
 	var path string
 	var jsonOutput bool
+	var timing bool
+	var jsonStats bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
 	fs.StringVar(&path, "path", "", "Exact API path to show")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 
 	if err := fs.Parse(args); err != nil {
 		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
@@ -74,6 +94,7 @@ func (c *CLI) runAPIShow(args []string) error {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "required: --path (or one positional path argument)"})
 	}
 
+	start := time.Now()
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{Timeout: 8 * time.Second})
 	if err != nil {
 		return c.printJSONCommandError(jsonOutput, err)
@@ -81,13 +102,21 @@ func (c *CLI) runAPIShow(args []string) error {
 
 	ops = apidocs.FilterByPath(ops, strings.TrimSpace(path))
 	ops = apidocs.FilterByMethod(ops, method)
+	stats := map[string]any{
+		"elapsedMs": time.Since(start).Milliseconds(),
+		"count":     len(ops),
+	}
 
 	if len(ops) == 0 {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("no API operation found for path %q", path)})
 	}
 
 	if jsonOutput {
-		return writeJSON(c.Out, map[string]any{"count": len(ops), "operations": ops})
+		payload := map[string]any{"count": len(ops), "operations": ops}
+		if timing || jsonStats {
+			payload["stats"] = stats
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	for i, op := range ops {
@@ -106,6 +135,9 @@ func (c *CLI) runAPIShow(args []string) error {
 			fmt.Fprintf(c.Out, "description\t%s\n", op.Description)
 		}
 	}
+	if timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", stats["elapsedMs"])
+	}
 
 	return nil
 }
@@ -118,11 +150,15 @@ func (c *CLI) runAPISearch(args []string) error {
 	var method string
 	var query string
 	var jsonOutput bool
+	var timing bool
+	var jsonStats bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
 	fs.StringVar(&query, "query", "", "Search text")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 
 	if err := fs.Parse(args); err != nil {
 		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
@@ -136,6 +172,7 @@ func (c *CLI) runAPISearch(args []string) error {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "required: --query (or one positional query argument)"})
 	}
 
+	start := time.Now()
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{Timeout: 8 * time.Second})
 	if err != nil {
 		return c.printJSONCommandError(jsonOutput, err)
@@ -143,12 +180,23 @@ func (c *CLI) runAPISearch(args []string) error {
 
 	ops = apidocs.FilterByMethod(ops, method)
 	ops = apidocs.Search(ops, query)
+	stats := map[string]any{
+		"elapsedMs": time.Since(start).Milliseconds(),
+		"count":     len(ops),
+	}
 
 	if jsonOutput {
-		return writeJSON(c.Out, map[string]any{"query": query, "count": len(ops), "operations": ops})
+		payload := map[string]any{"query": query, "count": len(ops), "operations": ops}
+		if timing || jsonStats {
+			payload["stats"] = stats
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	writeOperationTable(c.Out, ops)
+	if timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", stats["elapsedMs"])
+	}
 	return nil
 }
 
@@ -160,11 +208,15 @@ func (c *CLI) runAPITags(args []string) error {
 	var method string
 	var pathContains string
 	var jsonOutput bool
+	var timing bool
+	var jsonStats bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
 	fs.StringVar(&pathContains, "path-contains", "", "Filter by path substring")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 
 	if err := fs.Parse(args); err != nil {
 		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
@@ -173,6 +225,7 @@ func (c *CLI) runAPITags(args []string) error {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "unexpected positional arguments"})
 	}
 
+	start := time.Now()
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{Timeout: 8 * time.Second})
 	if err != nil {
 		return c.printJSONCommandError(jsonOutput, err)
@@ -181,13 +234,24 @@ func (c *CLI) runAPITags(args []string) error {
 	ops = apidocs.FilterByMethod(ops, method)
 	ops = apidocs.FilterByPathContains(ops, pathContains)
 	tags := apidocs.UniqueTags(ops)
+	stats := map[string]any{
+		"elapsedMs": time.Since(start).Milliseconds(),
+		"count":     len(tags),
+	}
 
 	if jsonOutput {
-		return writeJSON(c.Out, map[string]any{"count": len(tags), "tags": tags})
+		payload := map[string]any{"count": len(tags), "tags": tags}
+		if timing || jsonStats {
+			payload["stats"] = stats
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	for _, tag := range tags {
 		fmt.Fprintln(c.Out, tag)
+	}
+	if timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", stats["elapsedMs"])
 	}
 	return nil
 }
@@ -202,6 +266,8 @@ func (c *CLI) runAPIStats(args []string) error {
 	var query string
 	var prefixDepth int
 	var jsonOutput bool
+	var timing bool
+	var jsonStats bool
 
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file")
 	fs.StringVar(&method, "method", "", "Filter by HTTP method")
@@ -209,6 +275,8 @@ func (c *CLI) runAPIStats(args []string) error {
 	fs.StringVar(&query, "query", "", "Search text")
 	fs.IntVar(&prefixDepth, "prefix-depth", 0, "Path prefix segment depth for aggregation (0 = auto)")
 	fs.BoolVar(&jsonOutput, "json", false, "Print JSON output")
+	fs.BoolVar(&timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 
 	if err := fs.Parse(args); err != nil {
 		return c.printJSONCommandError(jsonRequested, &igwerr.UsageError{Msg: err.Error()})
@@ -220,6 +288,7 @@ func (c *CLI) runAPIStats(args []string) error {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: "--prefix-depth must be >= 0"})
 	}
 
+	start := time.Now()
 	ops, err := c.loadAPIOperations(specFile, apiSyncRuntime{Timeout: 8 * time.Second})
 	if err != nil {
 		return c.printJSONCommandError(jsonOutput, err)
@@ -229,12 +298,28 @@ func (c *CLI) runAPIStats(args []string) error {
 	ops = apidocs.FilterByPathContains(ops, pathContains)
 	ops = apidocs.Search(ops, query)
 	stats := apidocs.BuildStatsWithPrefixDepth(ops, prefixDepth)
+	meta := map[string]any{
+		"elapsedMs": time.Since(start).Milliseconds(),
+		"count":     len(ops),
+	}
 
 	if jsonOutput {
-		return writeJSON(c.Out, stats)
+		payload := map[string]any{
+			"total":        stats.Total,
+			"methods":      stats.Methods,
+			"tags":         stats.Tags,
+			"pathPrefixes": stats.PathPrefixes,
+		}
+		if timing || jsonStats {
+			payload["stats"] = meta
+		}
+		return writeJSON(c.Out, payload)
 	}
 
 	writeStatsTable(c.Out, stats)
+	if timing {
+		fmt.Fprintf(c.Err, "timing\telapsedMs=%d\n", meta["elapsedMs"])
+	}
 	return nil
 }
 

@@ -114,7 +114,7 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 	client := &gateway.Client{
 		BaseURL: resolved.GatewayURL,
 		Token:   resolved.Token,
-		HTTP:    c.HTTPClient,
+		HTTP:    c.runtimeHTTPClient(),
 	}
 
 	check := waitCheckForTarget(client, target, common.timeout)
@@ -124,6 +124,14 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 		return c.printWaitError(common.jsonOutput, selectOpts, waitErr)
 	}
 	result.ElapsedMs = time.Since(start).Milliseconds()
+	stats := map[string]any{}
+	if common.timing || common.jsonStats {
+		stats["attempts"] = result.Attempts
+		stats["elapsedMs"] = result.ElapsedMs
+		if result.LastHTTP != nil {
+			stats["lastHTTP"] = result.LastHTTP
+		}
+	}
 
 	if common.jsonOutput {
 		payload := map[string]any{
@@ -135,6 +143,9 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 			"elapsedMs": result.ElapsedMs,
 			"state":     result.State,
 			"message":   result.Message,
+		}
+		if common.jsonStats || common.timing {
+			payload["stats"] = stats
 		}
 		if selectWriteErr := printJSONSelection(c.Out, payload, selectOpts); selectWriteErr != nil {
 			return c.printWaitError(common.jsonOutput, selectionErrorOptions(selectOpts), selectWriteErr)
@@ -149,6 +160,9 @@ func (c *CLI) runWaitTarget(target string, suffix string, args []string) error {
 		time.Duration(result.ElapsedMs)*time.Millisecond,
 		result.Message,
 	)
+	if common.timing {
+		fmt.Fprintf(c.Err, "timing\tattempts=%d\telapsedMs=%d\n", result.Attempts, result.ElapsedMs)
+	}
 
 	return nil
 }
@@ -157,6 +171,7 @@ type waitObservation struct {
 	Ready   bool
 	Message string
 	State   map[string]any
+	HTTP    *gateway.CallTiming
 }
 
 type waitResult struct {
@@ -166,6 +181,7 @@ type waitResult struct {
 	ElapsedMs int64
 	Message   string
 	State     map[string]any
+	LastHTTP  *gateway.CallTiming
 }
 
 type waitCheck func() (waitObservation, error)
@@ -194,6 +210,8 @@ func runWaitLoop(check waitCheck, target string, condition string, interval time
 	attempts := 0
 	var lastObservation waitObservation
 	var lastErr error
+	sleep := interval
+	maxSleep := adaptiveWaitMaxInterval(interval)
 
 	for {
 		attempts++
@@ -208,6 +226,7 @@ func runWaitLoop(check waitCheck, target string, condition string, interval time
 					Attempts:  attempts,
 					Message:   observation.Message,
 					State:     observation.State,
+					LastHTTP:  observation.HTTP,
 				}, nil
 			}
 		} else {
@@ -232,8 +251,28 @@ func runWaitLoop(check waitCheck, target string, condition string, interval time
 			return waitResult{}, igwerr.NewTransportError(errors.New(msg))
 		}
 
-		time.Sleep(interval)
+		time.Sleep(sleep)
+		sleep = nextAdaptiveWaitInterval(sleep, maxSleep)
 	}
+}
+
+func adaptiveWaitMaxInterval(base time.Duration) time.Duration {
+	max := base * 4
+	if max < 2*time.Second {
+		max = 2 * time.Second
+	}
+	if max > 30*time.Second {
+		max = 30 * time.Second
+	}
+	return max
+}
+
+func nextAdaptiveWaitInterval(current time.Duration, max time.Duration) time.Duration {
+	next := current + current/2
+	if next > max {
+		return max
+	}
+	return next
 }
 
 func retryableWaitError(err error) bool {
@@ -255,40 +294,41 @@ func waitCheckForTarget(client *gateway.Client, target string, timeout time.Dura
 	case "gateway":
 		return func() (waitObservation, error) {
 			resp, err := client.Call(context.Background(), gateway.CallRequest{
-				Method:  "GET",
-				Path:    "/data/api/v1/gateway-info",
-				Timeout: timeout,
+				Method:       "GET",
+				Path:         "/data/api/v1/gateway-info",
+				Timeout:      timeout,
+				EnableTiming: true,
 			})
-			if err != nil {
-				return waitObservation{}, err
-			}
-			body, err := decodeJSONBody(resp.Body)
 			if err != nil {
 				return waitObservation{}, err
 			}
 			return waitObservation{
 				Ready:   true,
 				Message: "gateway responded with HTTP 200",
-				State:   body,
+				State: map[string]any{
+					"status": resp.StatusCode,
+				},
+				HTTP: resp.Timing,
 			}, nil
 		}
 	case "diagnostics-bundle":
 		return func() (waitObservation, error) {
 			resp, err := client.Call(context.Background(), gateway.CallRequest{
-				Method:  "GET",
-				Path:    "/data/api/v1/diagnostics/bundle/status",
-				Timeout: timeout,
+				Method:       "GET",
+				Path:         "/data/api/v1/diagnostics/bundle/status",
+				Timeout:      timeout,
+				EnableTiming: true,
 			})
 			if err != nil {
 				return waitObservation{}, err
 			}
-			body, err := decodeJSONBody(resp.Body)
+			body, err := decodeDiagnosticsStatusBody(resp.Body)
 			if err != nil {
 				return waitObservation{}, err
 			}
 
-			state := strings.ToUpper(strings.TrimSpace(stringFromMap(body, "state")))
-			fileSize := intFromMap(body, "fileSize")
+			state := strings.ToUpper(strings.TrimSpace(body.State))
+			fileSize := body.FileSize
 			ready := fileSize > 0 || diagnosticsReadyState(state)
 			message := fmt.Sprintf("state=%s fileSize=%d", state, fileSize)
 
@@ -301,31 +341,39 @@ func waitCheckForTarget(client *gateway.Client, target string, timeout time.Dura
 			return waitObservation{
 				Ready:   ready,
 				Message: message,
-				State:   body,
+				State: map[string]any{
+					"state":    state,
+					"fileSize": fileSize,
+				},
+				HTTP: resp.Timing,
 			}, nil
 		}
 	default: // restart-tasks
 		return func() (waitObservation, error) {
 			resp, err := client.Call(context.Background(), gateway.CallRequest{
-				Method:  "GET",
-				Path:    "/data/api/v1/restart-tasks/pending",
-				Timeout: timeout,
+				Method:       "GET",
+				Path:         "/data/api/v1/restart-tasks/pending",
+				Timeout:      timeout,
+				EnableTiming: true,
 			})
 			if err != nil {
 				return waitObservation{}, err
 			}
-			body, err := decodeJSONBody(resp.Body)
+			body, err := decodePendingTasksBody(resp.Body)
 			if err != nil {
 				return waitObservation{}, err
 			}
 
-			pending := stringSliceFromMap(body, "pending")
+			pending := body.Pending
 			ready := len(pending) == 0
 
 			return waitObservation{
 				Ready:   ready,
 				Message: fmt.Sprintf("pending=%d", len(pending)),
-				State:   body,
+				State: map[string]any{
+					"pending": pending,
+				},
+				HTTP: resp.Timing,
 			}, nil
 		}
 	}
@@ -353,6 +401,31 @@ func decodeJSONBody(body []byte) (map[string]any, error) {
 	var out map[string]any
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, igwerr.NewTransportError(fmt.Errorf("decode response json: %w", err))
+	}
+	return out, nil
+}
+
+type diagnosticsStatusBody struct {
+	State    string `json:"state"`
+	FileSize int    `json:"fileSize"`
+}
+
+func decodeDiagnosticsStatusBody(body []byte) (diagnosticsStatusBody, error) {
+	var out diagnosticsStatusBody
+	if err := json.Unmarshal(body, &out); err != nil {
+		return diagnosticsStatusBody{}, igwerr.NewTransportError(fmt.Errorf("decode response json: %w", err))
+	}
+	return out, nil
+}
+
+type pendingTasksBody struct {
+	Pending []string `json:"pending"`
+}
+
+func decodePendingTasksBody(body []byte) (pendingTasksBody, error) {
+	var out pendingTasksBody
+	if err := json.Unmarshal(body, &out); err != nil {
+		return pendingTasksBody{}, igwerr.NewTransportError(fmt.Errorf("decode response json: %w", err))
 	}
 	return out, nil
 }

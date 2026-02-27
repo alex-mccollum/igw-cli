@@ -21,6 +21,8 @@ type wrapperCommon struct {
 	selectors      stringList
 	rawOutput      bool
 	includeHeaders bool
+	timing         bool
+	jsonStats      bool
 }
 
 func bindWrapperCommon(fs *flag.FlagSet, common *wrapperCommon) {
@@ -37,6 +39,8 @@ func bindWrapperCommonWithDefaults(fs *flag.FlagSet, common *wrapperCommon, time
 	fs.BoolVar(&common.compactJSON, "compact", false, "Print compact one-line JSON (requires --json)")
 	fs.Var(&common.selectors, "select", "Select JSON path from output (repeatable, requires --json)")
 	fs.BoolVar(&common.rawOutput, "raw", false, "Print selected value as plain text (requires --json and exactly one --select)")
+	fs.BoolVar(&common.timing, "timing", false, "Include command timing output")
+	fs.BoolVar(&common.jsonStats, "json-stats", false, "Include runtime stats in JSON output")
 	if includeHeaders {
 		fs.BoolVar(&common.includeHeaders, "include-headers", false, "Include response headers")
 	}
@@ -80,6 +84,12 @@ func (w wrapperCommon) callArgsExcludingTimeout() []string {
 	}
 	if w.includeHeaders {
 		args = append(args, "--include-headers")
+	}
+	if w.timing {
+		args = append(args, "--timing")
+	}
+	if w.jsonStats {
+		args = append(args, "--json-stats")
 	}
 	return args
 }

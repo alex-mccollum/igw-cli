@@ -148,6 +148,7 @@ func (c *CLI) runConfigSet(args []string) error {
 	if err := c.WriteConfig(cfg); err != nil {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
 	}
+	c.invalidateRuntimeCaches()
 
 	path, pathErr := config.Path()
 	pathValue := ""
@@ -345,6 +346,7 @@ func (c *CLI) runConfigProfileAdd(args []string) error {
 	if err := c.WriteConfig(cfg); err != nil {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
 	}
+	c.invalidateRuntimeCaches()
 
 	if jsonOutput {
 		payload := map[string]any{
@@ -406,6 +408,7 @@ func (c *CLI) runConfigProfileUse(args []string) error {
 	if err := c.WriteConfig(cfg); err != nil {
 		return c.printJSONCommandError(jsonOutput, &igwerr.UsageError{Msg: fmt.Sprintf("save config: %v", err)})
 	}
+	c.invalidateRuntimeCaches()
 
 	if jsonOutput {
 		return writeJSON(c.Out, map[string]any{
@@ -478,15 +481,5 @@ func (c *CLI) runConfigProfileList(args []string) error {
 }
 
 func (c *CLI) resolveRuntimeConfig(profile string, gatewayURL string, apiKey string) (config.Effective, error) {
-	cfg, err := c.ReadConfig()
-	if err != nil {
-		return config.Effective{}, &igwerr.UsageError{Msg: fmt.Sprintf("load config: %v", err)}
-	}
-
-	resolved, err := config.ResolveWithProfile(cfg, c.Getenv, gatewayURL, apiKey, profile)
-	if err != nil {
-		return config.Effective{}, &igwerr.UsageError{Msg: err.Error()}
-	}
-
-	return resolved, nil
+	return c.resolveRuntimeConfigCached(profile, gatewayURL, apiKey)
 }

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -21,25 +22,33 @@ func (c *CLI) runCall(args []string) error {
 	fs.SetOutput(c.Err)
 
 	var (
-		common       wrapperCommon
-		op           string
-		specFile     string
-		method       string
-		path         string
-		body         string
-		contentType  string
-		dryRun       bool
-		yes          bool
-		retry        int
-		retryBackoff time.Duration
-		outPath      string
-		queries      stringList
-		headers      stringList
+		common        wrapperCommon
+		op            string
+		specFile      string
+		batchInput    string
+		batchOutput   string
+		batchParallel int
+		method        string
+		path          string
+		body          string
+		contentType   string
+		dryRun        bool
+		yes           bool
+		stream        bool
+		maxBodyBytes  int64
+		retry         int
+		retryBackoff  time.Duration
+		outPath       string
+		queries       stringList
+		headers       stringList
 	)
 
 	bindWrapperCommonWithDefaults(fs, &common, 8*time.Second, true)
 	fs.StringVar(&op, "op", "", "OpenAPI operationId to call")
 	fs.StringVar(&specFile, "spec-file", apidocs.DefaultSpecFile, "Path to OpenAPI JSON file (used with --op)")
+	fs.StringVar(&batchInput, "batch", "", "Batch request source (@file, file, or - for stdin)")
+	fs.StringVar(&batchOutput, "batch-output", "ndjson", "Batch output format: ndjson|json")
+	fs.IntVar(&batchParallel, "parallel", 1, "Batch parallel worker count (requires --batch)")
 	fs.StringVar(&method, "method", "", "HTTP method")
 	fs.StringVar(&path, "path", "", "API path")
 	fs.Var(&queries, "query", "Query parameter key=value (repeatable)")
@@ -48,6 +57,8 @@ func (c *CLI) runCall(args []string) error {
 	fs.StringVar(&contentType, "content-type", "", "Content-Type header value")
 	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
 	fs.BoolVar(&yes, "yes", false, "Confirm mutating requests (POST/PUT/PATCH/DELETE)")
+	fs.BoolVar(&stream, "stream", false, "Stream response body directly (non-JSON mode)")
+	fs.Int64Var(&maxBodyBytes, "max-body-bytes", 0, "Maximum response bytes to read/stream (0 = unlimited)")
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
@@ -63,6 +74,23 @@ func (c *CLI) runCall(args []string) error {
 
 	if fs.NArg() > 0 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "unexpected positional arguments"})
+	}
+
+	batchRequested := strings.TrimSpace(batchInput) != ""
+	if !batchRequested && batchParallel != 1 {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--parallel requires --batch"})
+	}
+	if batchRequested && len(common.selectors) > 0 {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--select is not supported with --batch"})
+	}
+	if batchRequested && common.rawOutput {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--raw is not supported with --batch"})
+	}
+	if batchRequested && strings.TrimSpace(outPath) != "" {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--out is not supported with --batch"})
+	}
+	if batchRequested && stream {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--stream is not supported with --batch"})
 	}
 
 	if common.apiKeyStdin {
@@ -82,6 +110,9 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	if strings.TrimSpace(op) != "" {
+		if batchRequested {
+			return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--op is not supported with --batch (set op per batch item)"})
+		}
 		if strings.TrimSpace(method) != "" || strings.TrimSpace(path) != "" {
 			return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "use either --op or --method/--path, not both"})
 		}
@@ -118,6 +149,23 @@ func (c *CLI) runCall(args []string) error {
 	if strings.TrimSpace(resolved.Token) == "" {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "required: --api-key (or IGNITION_API_TOKEN/config)"})
 	}
+	if batchRequested {
+		defaults := callBatchDefaults{
+			Retry:        retry,
+			RetryBackoff: retryBackoff,
+			Timeout:      common.timeout,
+			Yes:          yes,
+			SpecFile:     specFile,
+			Profile:      common.profile,
+			GatewayURL:   common.gatewayURL,
+			APIKey:       common.apiKey,
+			IncludeHeads: common.includeHeaders,
+			OutputFormat: batchOutput,
+			Parallel:     batchParallel,
+			Compact:      common.compactJSON,
+		}
+		return c.runCallBatch(resolved.GatewayURL, resolved.Token, batchInput, defaults)
+	}
 	if strings.TrimSpace(path) == "" {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "required: --path"})
 	}
@@ -126,6 +174,9 @@ func (c *CLI) runCall(args []string) error {
 	}
 	if common.timeout <= 0 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--timeout must be positive"})
+	}
+	if maxBodyBytes < 0 {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--max-body-bytes must be >= 0"})
 	}
 	if retry < 0 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--retry must be >= 0"})
@@ -150,6 +201,12 @@ func (c *CLI) runCall(args []string) error {
 			Msg: fmt.Sprintf("--retry is only supported for idempotent methods; got %s", method),
 		})
 	}
+	if stream && common.jsonOutput {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--stream is not supported with --json"})
+	}
+	if stream && common.includeHeaders && strings.TrimSpace(outPath) == "" {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--include-headers with --stream requires --out"})
+	}
 
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
@@ -163,7 +220,24 @@ func (c *CLI) runCall(args []string) error {
 	client := &gateway.Client{
 		BaseURL: resolved.GatewayURL,
 		Token:   resolved.Token,
-		HTTP:    c.HTTPClient,
+		HTTP:    c.runtimeHTTPClient(),
+	}
+
+	var (
+		streamWriter io.Writer
+		outFile      *os.File
+	)
+	if stream {
+		if strings.TrimSpace(outPath) != "" {
+			outFile, err = os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+			if err != nil {
+				return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(err))
+			}
+			defer outFile.Close()
+			streamWriter = outFile
+		} else {
+			streamWriter = c.Out
+		}
 	}
 
 	resp, err := client.Call(context.Background(), gateway.CallRequest{
@@ -176,17 +250,32 @@ func (c *CLI) runCall(args []string) error {
 		Timeout:      common.timeout,
 		Retry:        retry,
 		RetryBackoff: retryBackoff,
+		Stream:       streamWriter,
+		MaxBodyBytes: maxBodyBytes,
+		EnableTiming: common.timing || common.jsonStats,
 	})
 	if err != nil {
 		return c.printCallError(common.jsonOutput, selectOpts, err)
 	}
 
 	bodyFile := ""
-	if strings.TrimSpace(outPath) != "" {
+	if strings.TrimSpace(outPath) != "" && !stream {
 		if writeErr := os.WriteFile(outPath, resp.Body, 0o600); writeErr != nil {
 			return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(writeErr))
 		}
 		bodyFile = outPath
+	}
+	if strings.TrimSpace(outPath) != "" && stream {
+		bodyFile = outPath
+	}
+
+	timingPayload := map[string]any{}
+	if resp.Timing != nil {
+		timingPayload["http"] = resp.Timing
+	}
+	timingPayload["bodyBytes"] = resp.BodyBytes
+	if resp.Truncated {
+		timingPayload["truncated"] = true
 	}
 
 	if common.jsonOutput {
@@ -197,11 +286,16 @@ func (c *CLI) runCall(args []string) error {
 				URL:    resp.URL,
 			},
 			Response: callJSONResponse{
-				Status:   resp.StatusCode,
-				Headers:  maybeHeaders(resp.Headers, common.includeHeaders),
-				Body:     string(resp.Body),
-				BodyFile: bodyFile,
+				Status:    resp.StatusCode,
+				Headers:   maybeHeaders(resp.Headers, common.includeHeaders),
+				Body:      string(resp.Body),
+				BodyFile:  bodyFile,
+				Truncated: resp.Truncated,
+				Bytes:     resp.BodyBytes,
 			},
+		}
+		if common.jsonStats || common.timing {
+			payload.Stats = timingPayload
 		}
 		if selectWriteErr := printJSONSelection(c.Out, payload, selectOpts); selectWriteErr != nil {
 			return c.printCallError(common.jsonOutput, selectionErrorOptions(selectOpts), selectWriteErr)
@@ -221,6 +315,16 @@ func (c *CLI) runCall(args []string) error {
 
 	if bodyFile != "" {
 		fmt.Fprintf(c.Out, "saved response body: %s\n", bodyFile)
+		if common.timing {
+			printTimingSummary(c.Err, timingPayload)
+		}
+		return nil
+	}
+
+	if stream && strings.TrimSpace(outPath) == "" {
+		if common.timing {
+			printTimingSummary(c.Err, timingPayload)
+		}
 		return nil
 	}
 
@@ -228,6 +332,9 @@ func (c *CLI) runCall(args []string) error {
 		if _, err := c.Out.Write(resp.Body); err != nil {
 			return igwerr.NewTransportError(err)
 		}
+	}
+	if common.timing {
+		printTimingSummary(c.Err, timingPayload)
 	}
 
 	return nil
@@ -276,6 +383,7 @@ type callJSONEnvelope struct {
 	Details  map[string]any   `json:"details,omitempty"`
 	Request  callJSONRequest  `json:"request,omitempty"`
 	Response callJSONResponse `json:"response,omitempty"`
+	Stats    map[string]any   `json:"stats,omitempty"`
 }
 
 type callJSONRequest struct {
@@ -284,10 +392,12 @@ type callJSONRequest struct {
 }
 
 type callJSONResponse struct {
-	Status   int                 `json:"status"`
-	Headers  map[string][]string `json:"headers,omitempty"`
-	Body     string              `json:"body"`
-	BodyFile string              `json:"bodyFile,omitempty"`
+	Status    int                 `json:"status"`
+	Headers   map[string][]string `json:"headers,omitempty"`
+	Body      string              `json:"body"`
+	BodyFile  string              `json:"bodyFile,omitempty"`
+	Truncated bool                `json:"truncated,omitempty"`
+	Bytes     int64               `json:"bytes,omitempty"`
 }
 
 func maybeHeaders(headers http.Header, include bool) map[string][]string {
@@ -321,6 +431,41 @@ func writeJSONWithOptions(w io.Writer, payload any, compact bool) error {
 		return igwerr.NewTransportError(err)
 	}
 	return nil
+}
+
+func printTimingSummary(w io.Writer, payload map[string]any) {
+	if w == nil || len(payload) == 0 {
+		return
+	}
+	httpTiming, _ := payload["http"]
+	bodyBytes, _ := payload["bodyBytes"]
+	truncated := false
+	if raw, ok := payload["truncated"]; ok {
+		if t, ok := raw.(bool); ok {
+			truncated = t
+		}
+	}
+	if httpTiming != nil {
+		fmt.Fprintf(w, "timing\thttp=%v\tbodyBytes=%v\ttruncated=%t\n", httpTiming, bodyBytes, truncated)
+		return
+	}
+	if truncated || bodyBytes != nil {
+		fmt.Fprintf(w, "timing\tbodyBytes=%v\ttruncated=%t\n", bodyBytes, truncated)
+	}
+}
+
+func exitCodeFromCallError(err error) int {
+	if err == nil {
+		return 0
+	}
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var coded exitCoder
+	if errors.As(err, &coded) {
+		return coded.ExitCode()
+	}
+	return igwerr.ExitCode(err)
 }
 
 func isMutatingMethod(method string) bool {
