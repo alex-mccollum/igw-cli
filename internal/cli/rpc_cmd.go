@@ -133,7 +133,8 @@ func (c *CLI) runRPC(args []string) error {
 	scanner := bufio.NewScanner(c.In)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	type rpcWorkItem struct {
-		req rpcRequest
+		req        rpcRequest
+		enqueuedAt time.Time
 	}
 
 	workQueue := make(chan rpcWorkItem, queueSize)
@@ -146,7 +147,13 @@ func (c *CLI) runRPC(args []string) error {
 		go func() {
 			defer workerWG.Done()
 			for work := range workQueue {
-				results <- c.handleRPCRequest(work.req, common, specFile, session)
+				queueWaitMs := time.Since(work.enqueuedAt).Milliseconds()
+				queueDepth := len(workQueue)
+				resp := c.handleRPCRequest(work.req, common, specFile, session)
+				if strings.EqualFold(strings.TrimSpace(work.req.Op), "call") {
+					resp = withRPCCallQueueStats(resp, queueWaitMs, queueDepth)
+				}
+				results <- resp
 			}
 		}()
 	}
@@ -184,7 +191,7 @@ func (c *CLI) runRPC(args []string) error {
 			continue
 		}
 
-		workQueue <- rpcWorkItem{req: req}
+		workQueue <- rpcWorkItem{req: req, enqueuedAt: time.Now()}
 		if strings.EqualFold(strings.TrimSpace(req.Op), "shutdown") {
 			stopRead = true
 			break
@@ -209,6 +216,26 @@ func (c *CLI) runRPC(args []string) error {
 		return nil
 	}
 	return nil
+}
+
+func withRPCCallQueueStats(resp rpcResponse, queueWaitMs int64, queueDepth int) rpcResponse {
+	data, ok := resp.Data.(map[string]any)
+	if !ok || data == nil {
+		return resp
+	}
+
+	stats, ok := data["stats"].(map[string]any)
+	if !ok || stats == nil {
+		stats = make(map[string]any)
+		data["stats"] = stats
+	}
+
+	stats["rpc"] = map[string]any{
+		"queueWaitMs": queueWaitMs,
+		"queueDepth":  queueDepth,
+	}
+	resp.Data = data
+	return resp
 }
 
 func rpcFeatureFlags() map[string]bool {

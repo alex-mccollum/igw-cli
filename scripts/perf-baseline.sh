@@ -25,7 +25,17 @@ if [[ -n "$PROFILE" ]]; then
 fi
 
 measure() {
+  measure_internal "$1" "" "${@:2}"
+}
+
+measure_with_stdin() {
+  measure_internal "$1" "$2" "${@:3}"
+}
+
+measure_internal() {
   local label="$1"
+  local stdin_file="$2"
+  shift
   shift
 
   local -a samples=()
@@ -34,7 +44,15 @@ measure() {
   for ((i = 0; i < ITERATIONS; i++)); do
     local start_ms end_ms elapsed_ms
     start_ms="$(date +%s%3N)"
-    if "$@" >/dev/null 2>&1; then
+    if [[ -n "$stdin_file" ]]; then
+      if "$@" <"$stdin_file" >/dev/null 2>&1; then
+        end_ms="$(date +%s%3N)"
+        elapsed_ms=$((end_ms - start_ms))
+        samples+=("$elapsed_ms")
+      else
+        failures=$((failures + 1))
+      fi
+    elif "$@" >/dev/null 2>&1; then
       end_ms="$(date +%s%3N)"
       elapsed_ms=$((end_ms - start_ms))
       samples+=("$elapsed_ms")
@@ -61,8 +79,25 @@ measure() {
     "$label" "$ITERATIONS" "$count" "$failures" "$min" "$p50" "$p95" "$max"
 }
 
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+batch_file="$tmp_dir/batch.ndjson"
+cat >"$batch_file" <<'EOF'
+{"id":"perf-1","method":"GET","path":"/data/api/v1/gateway-info"}
+EOF
+
+rpc_file="$tmp_dir/rpc.ndjson"
+cat >"$rpc_file" <<'EOF'
+{"id":"h1","op":"hello"}
+{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}
+{"id":"s1","op":"shutdown"}
+EOF
+
 results=()
 results+=("$(measure "call.gateway_info" "$IGW_BIN" call "${profile_args[@]}" --path /data/api/v1/gateway-info --json)")
+results+=("$(measure "call.batch_single" "$IGW_BIN" call "${profile_args[@]}" --batch "@$batch_file")")
+results+=("$(measure_with_stdin "rpc.session" "$rpc_file" "$IGW_BIN" rpc "${profile_args[@]}")")
 results+=("$(measure "api.list" "$IGW_BIN" api list "${profile_args[@]}" --json)")
 
 if [[ "$INCLUDE_SCAN" == "1" ]]; then

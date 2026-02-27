@@ -70,6 +70,20 @@ Hosts should:
 - If the target request id is active, `data.cancelled=true` and the matching `call` returns a cancellation transport error.
 - If no active request matches, `data.cancelled=false` and the stream continues.
 
+## Call Stats Schema
+
+`call` responses include `data.stats` with the same base fields used by one-shot and batch execution:
+
+- `timingMs`
+- `bodyBytes`
+- `http` (when HTTP timing collection is enabled)
+- `truncated` (when body truncation occurred)
+
+RPC adds queue telemetry under `data.stats.rpc`:
+
+- `queueWaitMs`: time spent waiting in the RPC work queue.
+- `queueDepth`: queue depth observed when the request was dequeued.
+
 ## Load Governance
 
 `rpc` supports bounded execution controls:

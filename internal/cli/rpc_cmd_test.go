@@ -77,6 +77,24 @@ func TestRPCModeHelloCallShutdown(t *testing.T) {
 	if callResp["ok"] != true {
 		t.Fatalf("expected call ok response: %#v", callResp)
 	}
+	callData, ok := callResp["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected call response data payload: %#v", callResp)
+	}
+	callStats, ok := callData["stats"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected call stats payload: %#v", callData)
+	}
+	rpcStats, ok := callStats["rpc"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected rpc queue stats in call payload: %#v", callStats)
+	}
+	if queueWait, ok := rpcStats["queueWaitMs"].(float64); !ok || queueWait < 0 {
+		t.Fatalf("expected non-negative queueWaitMs in rpc stats: %#v", rpcStats)
+	}
+	if queueDepth, ok := rpcStats["queueDepth"].(float64); !ok || queueDepth < 0 {
+		t.Fatalf("expected non-negative queueDepth in rpc stats: %#v", rpcStats)
+	}
 }
 
 func TestRPCModeCapabilityOperation(t *testing.T) {
@@ -341,6 +359,20 @@ func TestRPCModeCancelsInFlightCall(t *testing.T) {
 	callData, ok := callResp["data"].(map[string]any)
 	if !ok || callData["cancelled"] != true {
 		t.Fatalf("expected cancelled marker in call response data: %#v", callResp)
+	}
+	stats, ok := callData["stats"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected stats payload on cancelled call response: %#v", callData)
+	}
+	rpcStats, ok := stats["rpc"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected rpc queue stats on cancelled call response: %#v", stats)
+	}
+	if queueWait, ok := rpcStats["queueWaitMs"].(float64); !ok || queueWait < 0 {
+		t.Fatalf("expected non-negative queueWaitMs on cancelled call response: %#v", rpcStats)
+	}
+	if queueDepth, ok := rpcStats["queueDepth"].(float64); !ok || queueDepth < 0 {
+		t.Fatalf("expected non-negative queueDepth on cancelled call response: %#v", rpcStats)
 	}
 }
 
