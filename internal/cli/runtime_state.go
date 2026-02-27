@@ -149,7 +149,7 @@ func (c *CLI) loadCachedAPIOperations(specFile string) ([]apidocs.Operation, str
 	cached, ok := c.runtime.openAPIOps[resolvedSpecFile]
 	c.runtime.mu.RUnlock()
 	if ok && cached.modTimeUnixNano == stat.ModTime().UnixNano() && cached.size == stat.Size() {
-		return cloneOperations(cached.ops), resolvedSpecFile, candidates, nil
+		return cached.ops, resolvedSpecFile, candidates, nil
 	}
 
 	indexPath := apidocs.IndexPathForSpec(resolvedSpecFile)
@@ -166,20 +166,11 @@ func (c *CLI) loadCachedAPIOperations(specFile string) ([]apidocs.Operation, str
 	c.runtime.openAPIOps[resolvedSpecFile] = cachedOpenAPIOperations{
 		modTimeUnixNano: stat.ModTime().UnixNano(),
 		size:            stat.Size(),
-		ops:             cloneOperations(ops),
+		ops:             ops,
 	}
 	c.runtime.mu.Unlock()
 
-	return cloneOperations(ops), resolvedSpecFile, candidates, nil
-}
-
-func cloneOperations(in []apidocs.Operation) []apidocs.Operation {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]apidocs.Operation, len(in))
-	copy(out, in)
-	return out
+	return ops, resolvedSpecFile, candidates, nil
 }
 
 func (c *CLI) resolveRuntimeConfigCached(profile string, gatewayURL string, apiKey string) (config.Effective, error) {
