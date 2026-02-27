@@ -111,6 +111,21 @@ type callBatchWorkItem struct {
 	opMap map[string]apidocs.Operation
 }
 
+type batchOperationMapLoader struct {
+	cli      *CLI
+	defaults callBatchDefaults
+	loaded   sync.Once
+	opMap    map[string]apidocs.Operation
+	err      error
+}
+
+func (l *batchOperationMapLoader) get() (map[string]apidocs.Operation, error) {
+	l.loaded.Do(func() {
+		l.opMap, l.err = l.cli.loadBatchOperationMap(l.defaults)
+	})
+	return l.opMap, l.err
+}
+
 func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, defaults callBatchDefaults) error {
 	if defaults.Parallel <= 0 {
 		return &igwerr.UsageError{Msg: "--parallel must be >= 1"}
@@ -144,90 +159,149 @@ func (c *CLI) runCallBatch(baseURL string, token string, inputSource string, def
 		Token:   token,
 		HTTP:    c.runtimeHTTPClient(),
 	}
+	opMapLoader := &batchOperationMapLoader{
+		cli:      c,
+		defaults: defaults,
+	}
 
 	var (
-		itemCount      = 0
+		resultsByIndex map[int]callBatchItemResult
+		itemCount      int
 		parseErr       error
-		opMap          map[string]apidocs.Operation
-		opMapErr       error
-		opMapOnce      sync.Once
-		resultsByIndex = make(map[int]callBatchItemResult)
 		exitState      batchExitState
 	)
 
-	loadOpMapIfNeeded := func() (map[string]apidocs.Operation, error) {
-		opMapOnce.Do(func() {
-			opMap, opMapErr = c.loadBatchOperationMap(defaults)
-		})
-		return opMap, opMapErr
-	}
-
 	if defaults.Parallel == 1 {
-		parseErr = streamCallBatchItems(reader, func(index int, item callBatchItem) error {
-			if strings.TrimSpace(item.OperationID) != "" {
-				callOpMap, err := loadOpMapIfNeeded()
-				if err != nil {
-					return err
-				}
-				opMap = callOpMap
-			}
-
-			result := c.executeBatchCallItem(client, index, item, defaults, opMap)
-			exitState.record(result.Code)
-			resultsByIndex[index] = result
-			itemCount++
-			return nil
-		})
+		resultsByIndex, exitState, itemCount, parseErr = c.runCallBatchSequential(reader, client, defaults, opMapLoader)
 	} else {
-		work := make(chan callBatchWorkItem, defaults.Parallel*2)
-		results := make(chan callBatchItemResult, defaults.Parallel*2)
-		var wg sync.WaitGroup
-
-		for worker := 0; worker < defaults.Parallel; worker++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for item := range work {
-					results <- c.executeBatchCallItem(client, item.index, item.call, defaults, item.opMap)
-				}
-			}()
-		}
-
-		parseErr = streamCallBatchItems(reader, func(index int, item callBatchItem) error {
-			if strings.TrimSpace(item.OperationID) != "" {
-				callOpMap, err := loadOpMapIfNeeded()
-				if err != nil {
-					return err
-				}
-				work <- callBatchWorkItem{index: index, call: item, opMap: callOpMap}
-			} else {
-				work <- callBatchWorkItem{index: index, call: item, opMap: nil}
-			}
-			itemCount++
-			return nil
-		})
-		close(work)
-		wg.Wait()
-		close(results)
-
-		for result := range results {
-			exitState.record(result.Code)
-			resultsByIndex[result.Index] = result
-		}
+		resultsByIndex, exitState, itemCount, parseErr = c.runCallBatchParallel(reader, client, defaults, opMapLoader)
 	}
 
 	if parseErr != nil {
 		return parseErr
 	}
+	if resultsByIndex == nil {
+		resultsByIndex = make(map[int]callBatchItemResult)
+	}
+	return c.finalizeBatchRun(resultsByIndex, itemCount, exitState, format, c.Out, defaults.Compact)
+}
+
+func (c *CLI) runCallBatchSequential(
+	reader io.Reader,
+	client *gateway.Client,
+	defaults callBatchDefaults,
+	opMapLoader *batchOperationMapLoader,
+) (map[int]callBatchItemResult, batchExitState, int, error) {
+	resultsByIndex := make(map[int]callBatchItemResult)
+	var (
+		itemCount int
+		exitState batchExitState
+	)
+	itemCount, parseErr := c.parseBatchItems(reader, opMapLoader, func(item callBatchWorkItem) error {
+		result := c.executeBatchCallItem(client, item.index, item.call, defaults, item.opMap)
+		exitState.record(result.Code)
+		resultsByIndex[result.Index] = result
+		return nil
+	})
+	if parseErr != nil {
+		return nil, batchExitState{}, 0, parseErr
+	}
+
+	return resultsByIndex, exitState, itemCount, nil
+}
+
+func (c *CLI) runCallBatchParallel(
+	reader io.Reader,
+	client *gateway.Client,
+	defaults callBatchDefaults,
+	opMapLoader *batchOperationMapLoader,
+) (map[int]callBatchItemResult, batchExitState, int, error) {
+	resultsByIndex := make(map[int]callBatchItemResult)
+	work := make(chan callBatchWorkItem, defaults.Parallel*2)
+	results := make(chan callBatchItemResult, defaults.Parallel*2)
+	var wg sync.WaitGroup
+	var exitState batchExitState
+	var itemCount int
+
+	for worker := 0; worker < defaults.Parallel; worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range work {
+				results <- c.executeBatchCallItem(client, item.index, item.call, defaults, item.opMap)
+			}
+		}()
+	}
+
+	itemCount, parseErr := c.parseBatchItems(reader, opMapLoader, func(item callBatchWorkItem) error {
+		work <- item
+		return nil
+	})
+	close(work)
+	wg.Wait()
+	close(results)
+
+	for result := range results {
+		exitState.record(result.Code)
+		resultsByIndex[result.Index] = result
+	}
+	if parseErr != nil {
+		return nil, batchExitState{}, 0, parseErr
+	}
+
+	return resultsByIndex, exitState, itemCount, nil
+}
+
+func (c *CLI) parseBatchItems(
+	reader io.Reader,
+	opMapLoader *batchOperationMapLoader,
+	emit func(callBatchWorkItem) error,
+) (int, error) {
+	itemCount := 0
+	parseErr := streamCallBatchItems(reader, func(index int, item callBatchItem) error {
+		workItem, err := c.makeBatchWorkItem(index, item, opMapLoader)
+		if err != nil {
+			return err
+		}
+		itemCount++
+		if emit == nil {
+			return nil
+		}
+		return emit(workItem)
+	})
+	return itemCount, parseErr
+}
+
+func (c *CLI) makeBatchWorkItem(
+	index int,
+	item callBatchItem,
+	opMapLoader *batchOperationMapLoader,
+) (callBatchWorkItem, error) {
+	if strings.TrimSpace(item.OperationID) == "" {
+		return callBatchWorkItem{index: index, call: item, opMap: nil}, nil
+	}
+	callOpMap, err := opMapLoader.get()
+	if err != nil {
+		return callBatchWorkItem{}, err
+	}
+	return callBatchWorkItem{index: index, call: item, opMap: callOpMap}, nil
+}
+
+func (c *CLI) finalizeBatchRun(
+	resultsByIndex map[int]callBatchItemResult,
+	itemCount int,
+	exitState batchExitState,
+	format string,
+	out io.Writer,
+	compact bool,
+) error {
 	if itemCount == 0 {
 		return &igwerr.UsageError{Msg: "batch request list is empty"}
 	}
-
 	results := orderedBatchResults(resultsByIndex, itemCount)
-	if err := writeBatchResults(c.Out, results, format, defaults.Compact); err != nil {
+	if err := writeBatchResults(out, results, format, compact); err != nil {
 		return igwerr.NewTransportError(err)
 	}
-
 	exit := exitState.result()
 	if exit == exitcode.Success {
 		return nil
@@ -515,39 +589,6 @@ func writeBatchResults(w io.Writer, items []callBatchItemResult, format string, 
 		}
 	}
 	return nil
-}
-
-func aggregateBatchExitCode(results []callBatchItemResult) int {
-	if len(results) == 0 {
-		return exitcode.Success
-	}
-
-	hasUsage := false
-	hasAuth := false
-	hasNetwork := false
-
-	for _, item := range results {
-		switch item.Code {
-		case exitcode.Success:
-		case exitcode.Usage:
-			hasUsage = true
-		case exitcode.Auth:
-			hasAuth = true
-		default:
-			hasNetwork = true
-		}
-	}
-
-	switch {
-	case hasUsage:
-		return exitcode.Usage
-	case hasNetwork:
-		return exitcode.Network
-	case hasAuth:
-		return exitcode.Auth
-	default:
-		return exitcode.Success
-	}
 }
 
 func exitCodeForError(err error) int {

@@ -189,28 +189,12 @@ func (c *CLI) runCall(args []string) error {
 		HTTP:    c.runtimeHTTPClient(),
 	}
 
-	var (
-		streamWriter io.Writer
-		outFile      *os.File
-	)
-	if stream {
-		if strings.TrimSpace(outPath) != "" {
-			outFile, err = os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-			if err != nil {
-				return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(err))
-			}
-			defer outFile.Close()
-			streamWriter = outFile
-		} else {
-			streamWriter = c.Out
-		}
-	} else if strings.TrimSpace(outPath) != "" && !common.jsonOutput {
-		outFile, err = os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-		if err != nil {
-			return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(err))
-		}
-		defer outFile.Close()
-		streamWriter = outFile
+	streamWriter, closeStreamWriter, err := c.callOutputWriter(outPath, stream, common.jsonOutput)
+	if err != nil {
+		return c.printCallError(common.jsonOutput, selectOpts, err)
+	}
+	if closeStreamWriter != nil {
+		defer closeStreamWriter()
 	}
 
 	bodyBytes, err := readBody(c.In, body)
@@ -306,6 +290,26 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	return nil
+}
+
+func (c *CLI) callOutputWriter(outPath string, stream bool, jsonOutput bool) (io.Writer, func() error, error) {
+	outPath = strings.TrimSpace(outPath)
+	if outPath == "" {
+		if stream {
+			return c.Out, nil, nil
+		}
+		return nil, nil, nil
+	}
+
+	if !stream && jsonOutput {
+		return nil, nil, nil
+	}
+
+	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return nil, nil, igwerr.NewTransportError(err)
+	}
+	return outFile, outFile.Close, nil
 }
 
 func resolveOperationsByID(ops []apidocs.Operation, operationID string) []apidocs.Operation {

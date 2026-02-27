@@ -29,7 +29,8 @@ type cachedRuntimeConfig struct {
 type cachedOpenAPIOperations struct {
 	modTimeUnixNano int64
 	size            int64
-	ops             []apidocs.Operation
+	// operations are intended to be treated as immutable snapshots across callers.
+	ops []apidocs.Operation
 }
 
 type runtimeState struct {
