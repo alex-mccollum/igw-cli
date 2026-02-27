@@ -3,14 +3,14 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: scripts/install.sh [--version vX.Y.Z] [--dir PATH] [--repo OWNER/REPO]
+usage: scripts/install.sh [--version latest|vX.Y.Z] [--dir PATH] [--repo OWNER/REPO]
 
 Installs igw from GitHub release artifacts (Linux/macOS).
 
 Defaults:
   --dir  $HOME/.local/bin
   --repo alex-mccollum/igw-cli
-  --version latest release tag
+  --version latest release alias
 EOF
 }
 
@@ -31,20 +31,6 @@ http_get_to_file() {
   fi
   if command -v wget >/dev/null 2>&1; then
     wget -qO "$out" "$url"
-    return
-  fi
-  echo "error: curl or wget is required" >&2
-  exit 1
-}
-
-http_get_text() {
-  local url="$1"
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url"
-    return
-  fi
-  if command -v wget >/dev/null 2>&1; then
-    wget -qO- "$url"
     return
   fi
   echo "error: curl or wget is required" >&2
@@ -138,23 +124,24 @@ if [[ "$ARCH" == "unsupported" ]]; then
   exit 1
 fi
 
-if [[ -z "$VERSION" ]]; then
-  latest_url="https://api.github.com/repos/${REPO}/releases/latest"
-  latest_json="$(http_get_text "$latest_url")"
-  VERSION="$(printf '%s\n' "$latest_json" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
-  if [[ -z "$VERSION" ]]; then
-    echo "error: failed to resolve latest release tag for ${REPO}" >&2
-    exit 1
-  fi
+if [[ "$VERSION" == "latest" ]]; then
+  VERSION=""
 fi
 
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "error: version must use semantic tag format vMAJOR.MINOR.PATCH" >&2
+if [[ -n "$VERSION" && ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: version must be 'latest' or use semantic tag format vMAJOR.MINOR.PATCH" >&2
   exit 2
 fi
 
-ARCHIVE="igw_${VERSION}_${OS}_${ARCH}.tar.gz"
-BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+if [[ -z "$VERSION" ]]; then
+  ARCHIVE="igw_${OS}_${ARCH}.tar.gz"
+  BASE_URL="https://github.com/${REPO}/releases/latest/download"
+  EXTRACTED_BINARY_GLOB="igw_v*_${OS}_${ARCH}/igw"
+else
+  ARCHIVE="igw_${VERSION}_${OS}_${ARCH}.tar.gz"
+  BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+  EXTRACTED_BINARY_GLOB="igw_${VERSION}_${OS}_${ARCH}/igw"
+fi
 ARCHIVE_URL="${BASE_URL}/${ARCHIVE}"
 CHECKSUMS_URL="${BASE_URL}/checksums.txt"
 
@@ -188,10 +175,23 @@ fi
 echo "==> extracting ${ARCHIVE}"
 tar -C "$TMP_DIR" -xzf "$ARCHIVE_PATH"
 
-BIN_PATH="${TMP_DIR}/igw_${VERSION}_${OS}_${ARCH}/igw"
+shopt -s nullglob
+BIN_PATHS=("${TMP_DIR}"/${EXTRACTED_BINARY_GLOB})
+shopt -u nullglob
+if [[ ${#BIN_PATHS[@]} -ne 1 ]]; then
+  echo "error: expected one extracted binary for ${ARCHIVE}, found ${#BIN_PATHS[@]}" >&2
+  exit 1
+fi
+BIN_PATH="${BIN_PATHS[0]}"
 if [[ ! -f "$BIN_PATH" ]]; then
   echo "error: extracted binary not found: ${BIN_PATH}" >&2
   exit 1
+fi
+
+BIN_DIR_NAME="$(basename "$(dirname "$BIN_PATH")")"
+INSTALLED_VERSION="unknown"
+if [[ "$BIN_DIR_NAME" =~ ^igw_(v[0-9]+\.[0-9]+\.[0-9]+)_[a-z0-9]+_[a-z0-9]+$ ]]; then
+  INSTALLED_VERSION="${BASH_REMATCH[1]}"
 fi
 
 mkdir -p "$INSTALL_DIR"
@@ -202,5 +202,5 @@ else
   chmod 0755 "${INSTALL_DIR}/igw"
 fi
 
-echo "ok: installed igw ${VERSION} to ${INSTALL_DIR}/igw"
+echo "ok: installed igw ${INSTALLED_VERSION} to ${INSTALL_DIR}/igw"
 echo "verify: ${INSTALL_DIR}/igw version"

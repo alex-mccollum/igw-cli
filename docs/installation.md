@@ -22,7 +22,7 @@ powershell -ExecutionPolicy Bypass -File "$env:TEMP\igw-install.ps1" -Version vX
 ```
 
 Installer options:
-- `--version` / `-Version`: explicit release tag to pin (`vMAJOR.MINOR.PATCH`).
+- `--version` / `-Version`: install channel (`latest`, default) or explicit release tag to pin (`vMAJOR.MINOR.PATCH`).
 - `--dir` / `-InstallDir`: install target directory.
 - `--repo` / `-Repo`: alternate GitHub repo (`OWNER/REPO`).
 
@@ -38,6 +38,9 @@ go install github.com/alex-mccollum/igw-cli/cmd/igw@vX.Y.Z
    - your OS/arch archive from GitHub Releases,
    - `checksums.txt`,
    - optional `release-manifest.json` (machine-readable artifact metadata).
+   - for always-latest channel, use stable filenames from:
+     - `https://github.com/<owner>/<repo>/releases/latest/download/igw_linux_amd64.tar.gz`
+     - `https://github.com/<owner>/<repo>/releases/latest/download/checksums.txt`
 2. Verify checksums:
 
 ```bash
