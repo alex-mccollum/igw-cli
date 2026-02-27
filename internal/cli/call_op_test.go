@@ -77,6 +77,82 @@ func TestCallOperationIDResolvesMethodAndPath(t *testing.T) {
 	}
 }
 
+func TestCallOperationIDCaseInsensitiveResolution(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeCallOpSpec(t, callOpSpecFixture)
+
+	var gotPath string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`ok`))
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", srv.URL,
+		"--api-key", "secret",
+		"--op", "GATEWAYINFO",
+		"--spec-file", specPath,
+	})
+	if err != nil {
+		t.Fatalf("call by op failed: %v", err)
+	}
+
+	if gotPath != "/data/api/v1/gateway-info" {
+		t.Fatalf("unexpected path %q", gotPath)
+	}
+}
+
+func TestCallOperationIDNotFoundSkipsBodyRead(t *testing.T) {
+	t.Parallel()
+
+	specPath := writeCallOpSpec(t, callOpSpecFixture)
+	missingBody := filepath.Join(t.TempDir(), "missing.json")
+
+	c := &CLI{
+		In:     strings.NewReader(""),
+		Out:    new(bytes.Buffer),
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+	}
+
+	err := c.Execute([]string{
+		"call",
+		"--gateway-url", "http://127.0.0.1:8088",
+		"--api-key", "secret",
+		"--op", "doesNotExist",
+		"--spec-file", specPath,
+		"--body", "@" + missingBody,
+	})
+	if err == nil {
+		t.Fatalf("expected not found error")
+	}
+	if code := igwerr.ExitCode(err); code != 2 {
+		t.Fatalf("unexpected exit code %d", code)
+	}
+	if !strings.Contains(err.Error(), "operationId") {
+		t.Fatalf("expected operationId error, got %v", err)
+	}
+}
+
 func TestCallOperationIDConflictWithMethodAndPath(t *testing.T) {
 	t.Parallel()
 

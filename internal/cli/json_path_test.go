@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -98,4 +99,91 @@ func TestExtractJSONPathRawInvalidPath(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "select path is empty") {
 		t.Fatalf("expected empty path error, got %v", err)
 	}
+}
+
+func TestNormalizeJSONPayloadNativeTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("native map and scalar values", func(t *testing.T) {
+		t.Parallel()
+
+		inputs := []any{
+			map[string]any{"a": "b"},
+			[]any{"x", 1},
+			"value",
+			true,
+			float64(3.14),
+			nil,
+		}
+
+		for _, input := range inputs {
+			got, err := normalizeJSONPayload(input)
+			if err != nil {
+				t.Fatalf("normalize failed for %T: %v", input, err)
+			}
+			if !reflect.DeepEqual(got, input) {
+				t.Fatalf("expected passthrough for %T; got %#v", input, got)
+			}
+		}
+	})
+
+	t.Run("JSON bytes decode", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := normalizeJSONPayload([]byte(`{"ok":true}`))
+		if err != nil {
+			t.Fatalf("decode bytes failed: %v", err)
+		}
+
+		decoded, ok := got.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", got)
+		}
+		if decoded["ok"] != true {
+			t.Fatalf("unexpected decoded value %#v", decoded)
+		}
+	})
+
+	t.Run("json.RawMessage decode", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := normalizeJSONPayload(json.RawMessage(`[1,2,3]`))
+		if err != nil {
+			t.Fatalf("decode raw message failed: %v", err)
+		}
+
+		decoded, ok := got.([]any)
+		if !ok {
+			t.Fatalf("expected []any, got %T", got)
+		}
+		if len(decoded) != 3 {
+			t.Fatalf("unexpected length %d", len(decoded))
+		}
+	})
+}
+
+func TestNormalizeJSONPayloadFallbackRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("struct fallback", func(t *testing.T) {
+		t.Parallel()
+
+		type fixture struct {
+			ID   string `json:"id"`
+			Flag bool   `json:"flag"`
+		}
+
+		got, err := normalizeJSONPayload(fixture{ID: "x", Flag: true})
+		if err != nil {
+			t.Fatalf("normalize fallback failed: %v", err)
+		}
+
+		decoded, ok := got.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", got)
+		}
+		if decoded["id"] != "x" || decoded["flag"] != true {
+			t.Fatalf("unexpected fallback decode %#v", decoded)
+		}
+	})
 }
