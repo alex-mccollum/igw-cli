@@ -208,4 +208,5 @@ Smoke test script:
 ```bash
 IGW_PROFILE=dev ./scripts/smoke.sh
 ITERATIONS=25 IGW_PROFILE=dev ./scripts/perf-baseline.sh
+./scripts/perf-gate.sh
 ```
