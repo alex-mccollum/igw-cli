@@ -56,6 +56,9 @@ done
 echo "==> verify packaged linux/amd64 artifact"
 ./scripts/release/verify-artifact.sh "$VERSION" linux amd64 "$DIST_DIR"
 
+echo "==> generate latest aliases"
+./scripts/release/generate-latest-aliases.sh "$VERSION" "$DIST_DIR"
+
 echo "==> generate checksums manifest"
 ./scripts/release/generate-checksums.sh "$DIST_DIR"
 

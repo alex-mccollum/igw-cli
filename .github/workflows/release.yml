@@ -155,6 +155,11 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Generate latest aliases
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: ./scripts/release/generate-latest-aliases.sh "${VERSION}" dist
+
       - name: Generate checksums manifest
         run: ./scripts/release/generate-checksums.sh dist
 

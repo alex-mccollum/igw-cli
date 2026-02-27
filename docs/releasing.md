@@ -40,6 +40,7 @@ Use:
    - verifies the release tag exists on `origin`,
    - builds and packages all platform artifacts,
    - runs packaged Linux `amd64` smoke verification,
+   - generates stable latest aliases (`igw_<os>_<arch>.<ext>`),
    - generates `checksums.txt`,
    - generates `release-manifest.json`,
    - publishes a GitHub Release with generated notes.
@@ -124,6 +125,13 @@ The provided tag must already exist and be pushed.
 - Linux: `igw_<version>_linux_<arch>.tar.gz`
 - macOS: `igw_<version>_darwin_<arch>.tar.gz`
 - Windows: `igw_<version>_windows_<arch>.zip`
+- Latest alias (Linux): `igw_linux_<arch>.tar.gz`
+- Latest alias (macOS): `igw_darwin_<arch>.tar.gz`
+- Latest alias (Windows): `igw_windows_<arch>.zip`
+
+Latest aliases are published on each release so host tools can use stable URLs:
+
+- `https://github.com/<owner>/<repo>/releases/latest/download/igw_linux_amd64.tar.gz`
 
 Each archive includes:
 
