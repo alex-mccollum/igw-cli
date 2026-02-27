@@ -67,3 +67,19 @@ jobs:
 
       - name: Run performance gate
         run: ./scripts/perf-gate.sh
+
+  race:
+    name: Race Detector
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run race tests
+        run: go test -race ./...
