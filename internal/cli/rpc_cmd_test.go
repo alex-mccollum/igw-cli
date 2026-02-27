@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -412,6 +414,127 @@ func TestRPCModeCancelsInFlightCall(t *testing.T) {
 	}
 	if queueDepth, ok := rpcStats["queueDepth"].(float64); !ok || queueDepth < 0 {
 		t.Fatalf("expected non-negative queueDepth on cancelled call response: %#v", rpcStats)
+	}
+}
+
+func TestRPCModeReloadConfigInvalidatesRuntimeCache(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	configToken := "token-a"
+	receivedTokens := make([]string, 0, 3)
+	callCount := 0
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedTokens = append(receivedTokens, r.Header.Get("X-Ignition-API-Token"))
+		callCount++
+		if callCount == 1 {
+			configToken = "token-b"
+		}
+		mu.Unlock()
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	c := &CLI{
+		In: strings.NewReader(strings.Join([]string{
+			`{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}`,
+			`{"id":"c2","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}`,
+			`{"id":"r1","op":"reload_config"}`,
+			`{"id":"c3","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}`,
+			`{"id":"s1","op":"shutdown"}`,
+		}, "\n")),
+		Out:    &out,
+		Err:    new(bytes.Buffer),
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			mu.Lock()
+			token := configToken
+			mu.Unlock()
+			return config.File{
+				ActiveProfile: "dev",
+				Profiles: map[string]config.Profile{
+					"dev": {
+						GatewayURL: srv.URL,
+						Token:      token,
+					},
+				},
+			}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	if err := c.Execute([]string{"rpc", "--profile", "dev"}); err != nil {
+		t.Fatalf("rpc failed: %v", err)
+	}
+
+	responses := decodeRPCResponses(t, out.String())
+	reload := responseByID(t, responses, "r1")
+	reloadData, ok := reload["data"].(map[string]any)
+	if !ok || reloadData["reloaded"] != true {
+		t.Fatalf("expected reload_config response with reloaded=true: %#v", reload)
+	}
+
+	mu.Lock()
+	gotTokens := slices.Clone(receivedTokens)
+	mu.Unlock()
+	wantTokens := []string{"token-a", "token-a", "token-b"}
+	if !slices.Equal(gotTokens, wantTokens) {
+		t.Fatalf("unexpected token sequence after reload_config: got=%v want=%v", gotTokens, wantTokens)
+	}
+}
+
+func TestRPCModeSupportsNewSessionAfterShutdown(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &CLI{
+		Getenv: func(string) string { return "" },
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	runSession := func(in []string) []map[string]any {
+		t.Helper()
+		var out bytes.Buffer
+		c.In = strings.NewReader(strings.Join(in, "\n"))
+		c.Out = &out
+		c.Err = new(bytes.Buffer)
+		if err := c.Execute([]string{"rpc", "--gateway-url", srv.URL, "--api-key", "secret"}); err != nil {
+			t.Fatalf("rpc failed: %v", err)
+		}
+		return decodeRPCResponses(t, out.String())
+	}
+
+	session1 := runSession([]string{
+		`{"id":"h1","op":"hello"}`,
+		`{"id":"s1","op":"shutdown"}`,
+	})
+	if !responseExistsByID(session1, "h1") || !responseExistsByID(session1, "s1") {
+		t.Fatalf("expected hello/shutdown responses in first session: %#v", session1)
+	}
+
+	session2 := runSession([]string{
+		`{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}`,
+		`{"id":"s2","op":"shutdown"}`,
+	})
+	callResp := responseByID(t, session2, "c1")
+	if callResp["ok"] != true {
+		t.Fatalf("expected second session call success response: %#v", callResp)
+	}
+	if !responseExistsByID(session2, "s2") {
+		t.Fatalf("expected shutdown response in second session: %#v", session2)
 	}
 }
 
