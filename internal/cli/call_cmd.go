@@ -126,7 +126,7 @@ func (c *CLI) runCall(args []string) error {
 			return c.printCallError(common.jsonOutput, selectOpts, loadErr)
 		}
 
-		matches := apidocs.FilterByOperationID(ops, op)
+		matches := resolveOperationsByID(ops, op)
 		if len(matches) == 0 {
 			return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{
 				Msg: fmt.Sprintf("operationId %q not found in spec %q", strings.TrimSpace(op), strings.TrimSpace(specFile)),
@@ -305,6 +305,33 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	return nil
+}
+
+func resolveOperationsByID(ops []apidocs.Operation, operationID string) []apidocs.Operation {
+	operationID = strings.TrimSpace(operationID)
+	if operationID == "" {
+		return nil
+	}
+
+	exact := make([]apidocs.Operation, 0, 2)
+	insensitive := make([]apidocs.Operation, 0, 2)
+	for _, op := range ops {
+		candidate := strings.TrimSpace(op.OperationID)
+		if candidate == "" {
+			continue
+		}
+		if candidate == operationID {
+			exact = append(exact, op)
+			continue
+		}
+		if strings.EqualFold(candidate, operationID) {
+			insensitive = append(insensitive, op)
+		}
+	}
+	if len(exact) > 0 {
+		return exact
+	}
+	return insensitive
 }
 
 func (c *CLI) printCallError(jsonOutput bool, selectOpts jsonSelectOptions, err error) error {
