@@ -145,6 +145,43 @@ func TestRPCModeCapabilityOperation(t *testing.T) {
 	}
 }
 
+func TestRPCOperationRegistryDrivesHelloMetadata(t *testing.T) {
+	t.Parallel()
+
+	c := &CLI{}
+	hello := c.handleRPCHello(rpcRequest{ID: "h1"})
+	if !hello.OK || hello.Code != 0 {
+		t.Fatalf("expected hello success response: %#v", hello)
+	}
+
+	data, ok := hello.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("expected hello data payload: %#v", hello)
+	}
+	rawOps, ok := data["ops"].([]string)
+	if !ok {
+		// JSON decoding in tests uses []any, but here we are using in-memory payload.
+		t.Fatalf("expected hello ops as []string payload: %#v", data["ops"])
+	}
+	features, ok := data["features"].(map[string]bool)
+	if !ok {
+		t.Fatalf("expected hello features as map[string]bool payload: %#v", data["features"])
+	}
+
+	defs := rpcOperationDefinitions()
+	if len(rawOps) != len(defs) {
+		t.Fatalf("expected hello ops length %d, got %d (%#v)", len(defs), len(rawOps), rawOps)
+	}
+	for i, def := range defs {
+		if rawOps[i] != def.Name {
+			t.Fatalf("expected hello op[%d]=%q, got %q", i, def.Name, rawOps[i])
+		}
+		if !features[def.Feature] {
+			t.Fatalf("expected hello features to contain %q: %#v", def.Feature, features)
+		}
+	}
+}
+
 func TestRPCModeValidatesQueueAndWorkers(t *testing.T) {
 	t.Parallel()
 
