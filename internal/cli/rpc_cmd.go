@@ -1,14 +1,12 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
@@ -62,92 +60,14 @@ func (c *CLI) runRPC(args []string) error {
 		return &igwerr.UsageError{Msg: "--queue-size must be >= 1"}
 	}
 
-	scanner := bufio.NewScanner(c.In)
-	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	type rpcWorkItem struct {
-		req        rpcRequest
-		enqueuedAt time.Time
+	runner := rpcSessionRunner{
+		cli:       c,
+		common:    common,
+		specFile:  specFile,
+		workers:   workers,
+		queueSize: queueSize,
 	}
-
-	workQueue := make(chan rpcWorkItem, queueSize)
-	results := make(chan rpcResponse, queueSize)
-	session := newRPCSessionState()
-
-	var workerWG sync.WaitGroup
-	for worker := 0; worker < workers; worker++ {
-		workerWG.Add(1)
-		go func() {
-			defer workerWG.Done()
-			for work := range workQueue {
-				queueWaitMs := time.Since(work.enqueuedAt).Milliseconds()
-				queueDepth := len(workQueue)
-				resp := c.handleRPCRequest(work.req, common, specFile, session)
-				if strings.EqualFold(strings.TrimSpace(work.req.Op), "call") {
-					resp = withRPCCallQueueStats(resp, queueWaitMs, queueDepth)
-				}
-				results <- resp
-			}
-		}()
-	}
-
-	writeErrCh := make(chan error, 1)
-	go func() {
-		enc := json.NewEncoder(c.Out)
-		enc.SetEscapeHTML(false)
-		var writeErr error
-		for result := range results {
-			if writeErr == nil {
-				if err := enc.Encode(result); err != nil {
-					writeErr = igwerr.NewTransportError(err)
-				}
-			}
-		}
-		writeErrCh <- writeErr
-	}()
-
-	scanErr := error(nil)
-	stopRead := false
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		var req rpcRequest
-		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			results <- rpcResponse{
-				OK:    false,
-				Code:  igwerr.ExitCode(&igwerr.UsageError{Msg: "invalid rpc request json"}),
-				Error: fmt.Sprintf("invalid rpc request json: %v", err),
-			}
-			continue
-		}
-
-		workQueue <- rpcWorkItem{req: req, enqueuedAt: time.Now()}
-		if strings.EqualFold(strings.TrimSpace(req.Op), "shutdown") {
-			stopRead = true
-			break
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		scanErr = igwerr.NewTransportError(err)
-	}
-
-	close(workQueue)
-	workerWG.Wait()
-	close(results)
-
-	writeErr := <-writeErrCh
-	if writeErr != nil {
-		return writeErr
-	}
-	if scanErr != nil {
-		return scanErr
-	}
-	if stopRead {
-		return nil
-	}
-	return nil
+	return runner.run()
 }
 
 func withRPCCallQueueStats(resp rpcResponse, queueWaitMs int64, queueDepth int) rpcResponse {
@@ -156,16 +76,13 @@ func withRPCCallQueueStats(resp rpcResponse, queueWaitMs int64, queueDepth int) 
 		return resp
 	}
 
-	stats, ok := data["stats"].(map[string]any)
-	if !ok || stats == nil {
-		stats = make(map[string]any)
-		data["stats"] = stats
+	stats, ok := data["stats"].(callStats)
+	if !ok {
+		return resp
 	}
 
-	stats["rpc"] = map[string]any{
-		"queueWaitMs": queueWaitMs,
-		"queueDepth":  queueDepth,
-	}
+	stats = withRPCQueueStats(stats, queueWaitMs, queueDepth)
+	data["stats"] = stats
 	resp.Data = data
 	return resp
 }

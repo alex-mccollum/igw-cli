@@ -60,7 +60,7 @@ type callBatchItemResult struct {
 	TimingMs int64            `json:"timingMs"`
 	Request  callJSONRequest  `json:"request,omitempty"`
 	Response callJSONResponse `json:"response,omitempty"`
-	Stats    map[string]any   `json:"stats,omitempty"`
+	Stats    *callStats       `json:"stats,omitempty"`
 }
 
 type batchExitError struct {
@@ -200,7 +200,8 @@ func (c *CLI) executeBatchCallItem(
 		out.OK = false
 		out.Code = exitCodeForError(err)
 		out.Error = err.Error()
-		out.Stats = buildCallStats(resp, out.TimingMs)
+		stats := buildCallStats(resp, out.TimingMs)
+		out.Stats = &stats
 		return out
 	}
 
@@ -218,7 +219,8 @@ func (c *CLI) executeBatchCallItem(
 		Bytes:     resp.BodyBytes,
 		Truncated: resp.Truncated,
 	}
-	out.Stats = buildCallStats(resp, out.TimingMs)
+	stats := buildCallStats(resp, out.TimingMs)
+	out.Stats = &stats
 	return out
 }
 

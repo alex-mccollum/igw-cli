@@ -262,7 +262,7 @@ func (c *CLI) runCall(args []string) error {
 			},
 		}
 		if common.jsonStats || common.timing {
-			payload.Stats = timingPayload
+			payload.Stats = &timingPayload
 		}
 		if selectWriteErr := printJSONSelection(c.Out, payload, selectOpts); selectWriteErr != nil {
 			return c.printCallError(common.jsonOutput, selectionErrorOptions(selectOpts), selectWriteErr)
@@ -350,7 +350,7 @@ type callJSONEnvelope struct {
 	Details  map[string]any   `json:"details,omitempty"`
 	Request  callJSONRequest  `json:"request,omitempty"`
 	Response callJSONResponse `json:"response,omitempty"`
-	Stats    map[string]any   `json:"stats,omitempty"`
+	Stats    *callStats       `json:"stats,omitempty"`
 }
 
 type callJSONRequest struct {
@@ -398,27 +398,6 @@ func writeJSONWithOptions(w io.Writer, payload any, compact bool) error {
 		return igwerr.NewTransportError(err)
 	}
 	return nil
-}
-
-func printTimingSummary(w io.Writer, payload map[string]any) {
-	if w == nil || len(payload) == 0 {
-		return
-	}
-	httpTiming, _ := payload["http"]
-	bodyBytes, _ := payload["bodyBytes"]
-	truncated := false
-	if raw, ok := payload["truncated"]; ok {
-		if t, ok := raw.(bool); ok {
-			truncated = t
-		}
-	}
-	if httpTiming != nil {
-		fmt.Fprintf(w, "timing\thttp=%v\tbodyBytes=%v\ttruncated=%t\n", httpTiming, bodyBytes, truncated)
-		return
-	}
-	if truncated || bodyBytes != nil {
-		fmt.Fprintf(w, "timing\tbodyBytes=%v\ttruncated=%t\n", bodyBytes, truncated)
-	}
 }
 
 func exitCodeFromCallError(err error) int {
