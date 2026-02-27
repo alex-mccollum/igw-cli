@@ -22,10 +22,21 @@ if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then
   exit 1
 fi
 
+BASENAMES=()
+for artifact in "${ARTIFACTS[@]}"; do
+  BASENAMES+=("$(basename "$artifact")")
+done
+
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "${ARTIFACTS[@]}" | sort > "$OUT_PATH"
+  (
+    cd "$DIST_DIR"
+    sha256sum "${BASENAMES[@]}" | sort > "checksums.txt"
+  )
 elif command -v shasum >/dev/null 2>&1; then
-  shasum -a 256 "${ARTIFACTS[@]}" | sort > "$OUT_PATH"
+  (
+    cd "$DIST_DIR"
+    shasum -a 256 "${BASENAMES[@]}" | sort > "checksums.txt"
+  )
 else
   echo "error: no sha256 checksum tool found (need sha256sum or shasum)" >&2
   exit 1

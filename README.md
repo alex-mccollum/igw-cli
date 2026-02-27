@@ -21,6 +21,12 @@ For operators and CI (release artifacts):
 - Verify artifact integrity with `checksums.txt`.
 - Extract it and place `igw` (or `igw.exe`) on your `PATH`.
 
+For host apps/agents (scripted install):
+
+- Linux/macOS: `scripts/install.sh`
+- Windows: `scripts/install.ps1`
+- Machine-readable release metadata: `release-manifest.json` asset
+
 Verify install:
 
 ```bash

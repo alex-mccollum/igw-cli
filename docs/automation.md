@@ -19,6 +19,17 @@ This guide is for scripts, CI jobs, and coding agents.
 4. Execute API calls.
 5. Write artifacts to files when needed.
 
+## Host-App Bootstrap Contract
+
+For applications that call `igw` as an external tool:
+
+1. Pin a release tag (`vMAJOR.MINOR.PATCH`).
+2. Resolve/download the matching artifact for OS/arch from GitHub Releases.
+3. Verify archive SHA-256 with `checksums.txt` (or the `sha256` value in `release-manifest.json`).
+4. Install `igw` in an app-managed bin directory.
+5. Run `igw version` and require success before enabling gateway-backed features.
+6. Probe capabilities with `igw api list --json` if your app gates behavior on available operations.
+
 ## Recommended Commands
 
 Config and profiles:
@@ -41,7 +52,9 @@ API execution:
 ```bash
 igw api sync --json
 igw call --path /data/api/v1/gateway-info --json
+igw api capability file-write --json
 igw call --method POST --path /data/api/v1/scan/projects --yes --json
+igw call --batch @batch.ndjson --batch-output ndjson
 igw scan config --yes --json
 ```
 
@@ -67,6 +80,12 @@ igw diagnostics bundle download --out diagnostics.zip --json
 igw backup export --out gateway.gwbk --json
 ```
 
+Persistent machine mode:
+
+```bash
+igw rpc --profile dev
+```
+
 Operational wait checks:
 
 ```bash
@@ -79,10 +98,13 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 
 - `doctor` is read-only by default; add `--check-write` for write checks.
 - `call` defaults `--method` to `GET` when `--path` is provided.
+- `call --stream` can reduce memory overhead for large payload workflows.
+- `call --batch` can reduce process startup/flag parsing overhead for many independent requests.
 - `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
 - Repeat `--select` for multiple selections.
 - `--raw` requires exactly one `--select`.
 - `--compact` requires `--json` and removes pretty indentation.
+- `--timing` and `--json-stats` expose latency/runtime stats for automation diagnostics.
 - API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
 - If no default spec is present, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
 - If you omit `--profile`, the active profile is used (when set).

@@ -59,6 +59,9 @@ echo "==> verify packaged linux/amd64 artifact"
 echo "==> generate checksums manifest"
 ./scripts/release/generate-checksums.sh "$DIST_DIR"
 
+echo "==> generate release manifest"
+./scripts/release/generate-manifest.sh "$VERSION" "$DIST_DIR"
+
 echo "dry-run complete for ${VERSION}"
 echo "artifacts:"
 shopt -s nullglob
@@ -66,6 +69,7 @@ ARTIFACTS=(
   "${DIST_DIR}/igw_${VERSION}_"*.tar.gz
   "${DIST_DIR}/igw_${VERSION}_"*.zip
   "${DIST_DIR}/checksums.txt"
+  "${DIST_DIR}/release-manifest.json"
 )
 shopt -u nullglob
 if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then

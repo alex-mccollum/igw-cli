@@ -1,6 +1,6 @@
 # Project Docs
 
-- `docs/installation.md`: install options and verification.
+- `docs/installation.md`: install options, installer scripts, checksum verification, and manifest usage.
 - `docs/configuration.md`: config precedence, env vars, profiles, and WSL helper.
 - `docs/examples.md`: practical command flows and wrapper examples.
 - `docs/troubleshooting.md`: common failures and remediation commands.

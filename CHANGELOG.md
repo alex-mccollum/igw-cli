@@ -6,12 +6,16 @@ All notable user-facing changes to `igw` are documented here.
 
 ### Added
 - `igw scan config` convenience wrapper for `POST /data/api/v1/scan/config` with the same mutation safety (`--yes`) and wrapper output/options as `scan projects`.
+- `scripts/install.sh` (Linux/macOS) and `scripts/install.ps1` (Windows) for pinned release installation with checksum verification.
+- `scripts/release/generate-manifest.sh` and release asset `release-manifest.json` for machine-readable artifact metadata (`os`, `arch`, `sha256`, `url`).
 
 ### Changed
 - `igw scan` now defaults to project scan when invoked without an explicit subcommand (for example, `igw scan --yes` maps to `scan projects`).
 - Scan wrapper command surface now includes both `scan projects` and `scan config` in command docs, usage, and shell completion.
 - `scripts/smoke.sh` adds an opt-in mutating wrapper check for `scan config` controlled by `IGW_SMOKE_INCLUDE_MUTATIONS=1`.
 - `docs/automation.md` now includes `igw scan config --yes --json` in the machine-oriented API execution examples.
+- `scripts/release/generate-checksums.sh` now writes artifact basenames in `checksums.txt`, improving direct verification for downloaded release files.
+- Release workflow now publishes `release-manifest.json` alongside archives and `checksums.txt`.
 
 ## [v0.4.0](https://github.com/alex-mccollum/igw-cli/compare/v0.3.1...v0.4.0) - 2026-02-23
 

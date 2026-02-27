@@ -41,6 +41,7 @@ Use:
    - builds and packages all platform artifacts,
    - runs packaged Linux `amd64` smoke verification,
    - generates `checksums.txt`,
+   - generates `release-manifest.json`,
    - publishes a GitHub Release with generated notes.
 
 ## Pre-push release guard (recommended)
@@ -82,12 +83,28 @@ If a pushed release tag fails preflight due to release metadata drift (for examp
 - Release publishing generates `checksums.txt` with SHA-256 digests for all `.tar.gz` and `.zip` artifacts.
 - Downloaded artifacts should be verified against this manifest before installation.
 
+Verify one artifact deterministically:
+
+```bash
+ARCHIVE="igw_v0.4.0_linux_amd64.tar.gz"
+grep "  ${ARCHIVE}$" checksums.txt | sha256sum -c -
+```
+
+## Release Manifest
+
+- Release publishing generates `release-manifest.json`.
+- Manifest fields include:
+  - top-level `version`,
+  - `artifacts[]` entries with `name`, `os`, `arch`, `archive`, `sha256`, and `url`.
+- Host applications can consume this manifest to select the correct artifact and verify checksums without scraping HTML pages.
+
 ## Post-Release Smoke Check
 
 After publishing, validate checksums and one installed artifact:
 
 ```bash
-sha256sum -c checksums.txt --ignore-missing
+ARCHIVE="igw_v0.4.0_linux_amd64.tar.gz"
+grep "  ${ARCHIVE}$" checksums.txt | sha256sum -c -
 ```
 
 Then run:
@@ -113,3 +130,8 @@ Each archive includes:
 - `igw` (or `igw.exe`)
 - `LICENSE`
 - `README.md`
+
+Additional release assets:
+
+- `checksums.txt`
+- `release-manifest.json`

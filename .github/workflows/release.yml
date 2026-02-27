@@ -158,6 +158,14 @@ jobs:
       - name: Generate checksums manifest
         run: ./scripts/release/generate-checksums.sh dist
 
+      - name: Generate release manifest
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ./scripts/release/generate-manifest.sh "${VERSION}" dist "https://github.com/${REPOSITORY}/releases/download/${VERSION}"
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -167,3 +175,4 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
+            dist/release-manifest.json
