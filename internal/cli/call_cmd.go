@@ -183,11 +183,6 @@ func (c *CLI) runCall(args []string) error {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--include-headers with --stream requires --out"})
 	}
 
-	bodyBytes, err := readBody(c.In, body)
-	if err != nil {
-		return c.printCallError(common.jsonOutput, selectOpts, err)
-	}
-
 	client := &gateway.Client{
 		BaseURL: resolved.GatewayURL,
 		Token:   resolved.Token,
@@ -209,6 +204,11 @@ func (c *CLI) runCall(args []string) error {
 		} else {
 			streamWriter = c.Out
 		}
+	}
+
+	bodyBytes, err := readBody(c.In, body)
+	if err != nil {
+		return c.printCallError(common.jsonOutput, selectOpts, err)
 	}
 
 	start := time.Now()

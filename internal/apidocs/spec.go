@@ -50,9 +50,17 @@ func LoadOperations(path string) ([]Operation, error) {
 		return nil, fmt.Errorf("read spec file %q: %w", path, err)
 	}
 
+	return loadOperationsFromJSON(b, path)
+}
+
+func LoadOperationsFromJSON(raw []byte) ([]Operation, error) {
+	return loadOperationsFromJSON(raw, "<memory>")
+}
+
+func loadOperationsFromJSON(raw []byte, source string) ([]Operation, error) {
 	var doc specDoc
-	if err := json.Unmarshal(b, &doc); err != nil {
-		return nil, fmt.Errorf("parse spec file %q: %w", path, err)
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("parse spec %q: %w", source, err)
 	}
 
 	ops := make([]Operation, 0, 256)
@@ -65,7 +73,7 @@ func LoadOperations(path string) ([]Operation, error) {
 
 			var op specOperation
 			if err := json.Unmarshal(raw, &op); err != nil {
-				return nil, fmt.Errorf("parse operation %s %s from %q: %w", normalized, apiPath, path, err)
+				return nil, fmt.Errorf("parse operation %s %s from %q: %w", normalized, apiPath, source, err)
 			}
 
 			ops = append(ops, Operation{

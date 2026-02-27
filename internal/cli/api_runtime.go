@@ -230,22 +230,7 @@ func fetchOpenAPISpec(ctx context.Context, client *gateway.Client, timeout time.
 }
 
 func validateOpenAPISpecBody(body []byte) (int, error) {
-	tmp, err := os.CreateTemp("", "igw-openapi-*.json")
-	if err != nil {
-		return 0, fmt.Errorf("create temp file: %w", err)
-	}
-	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
-
-	if _, err := tmp.Write(body); err != nil {
-		_ = tmp.Close()
-		return 0, fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return 0, fmt.Errorf("close temp file: %w", err)
-	}
-
-	ops, err := apidocs.LoadOperations(tmpPath)
+	ops, err := apidocs.LoadOperationsFromJSON(body)
 	if err != nil {
 		return 0, err
 	}

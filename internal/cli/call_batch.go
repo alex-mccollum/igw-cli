@@ -2,13 +2,11 @@ package cli
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -264,24 +262,40 @@ func (c *CLI) loadBatchOperationMap(items []callBatchItem, defaults callBatchDef
 }
 
 func readCallBatchItems(stdin io.Reader, source string) ([]callBatchItem, error) {
-	raw, err := readBatchSource(stdin, source)
+	reader, closer, err := readBatchSource(stdin, source)
 	if err != nil {
 		return nil, err
 	}
-	if len(bytes.TrimSpace(raw)) == 0 {
+	defer closer()
+
+	buffered := bufio.NewReader(reader)
+	leadByte, isEOF := peekBatchLeadByte(buffered)
+	if isEOF {
 		return nil, &igwerr.UsageError{Msg: "batch input is empty"}
 	}
-
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) > 0 && trimmed[0] == '[' {
-		var items []callBatchItem
-		if err := json.Unmarshal(trimmed, &items); err != nil {
-			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
-		}
-		return items, nil
+	if leadByte == '[' {
+		return decodeBatchJSONArray(buffered)
 	}
+	return decodeBatchNDJSON(buffered)
+}
 
-	scanner := bufio.NewScanner(bytes.NewReader(trimmed))
+func peekBatchLeadByte(reader *bufio.Reader) (byte, bool) {
+	for {
+		b, err := reader.ReadByte()
+		if err != nil {
+			return 0, true
+		}
+		if !isJSONWhitespace(b) {
+			if err := reader.UnreadByte(); err != nil {
+				return 0, true
+			}
+			return b, false
+		}
+	}
+}
+
+func decodeBatchNDJSON(reader *bufio.Reader) ([]callBatchItem, error) {
+	scanner := bufio.NewScanner(reader)
 	// Allow large NDJSON payload lines for agent workflows.
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 
@@ -305,48 +319,73 @@ func readCallBatchItems(stdin io.Reader, source string) ([]callBatchItem, error)
 	return items, nil
 }
 
-func readBatchSource(stdin io.Reader, source string) ([]byte, error) {
+func decodeBatchJSONArray(reader *bufio.Reader) ([]callBatchItem, error) {
+	decoder := json.NewDecoder(reader)
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
+	}
+	openDelim, ok := token.(json.Delim)
+	if !ok || openDelim != '[' {
+		return nil, &igwerr.UsageError{Msg: "parse batch JSON array: expected '['"}
+	}
+
+	items := make([]callBatchItem, 0, 16)
+	for decoder.More() {
+		var item callBatchItem
+		if err := decoder.Decode(&item); err != nil {
+			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array item: %v", err)}
+		}
+		items = append(items, item)
+	}
+	closeToken, err := decoder.Token()
+	if err != nil {
+		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse batch JSON array: %v", err)}
+	}
+	if closeDelim, ok := closeToken.(json.Delim); !ok || closeDelim != ']' {
+		return nil, &igwerr.UsageError{Msg: "parse batch JSON array: expected ']'"}
+	}
+	if len(items) == 0 {
+		return nil, &igwerr.UsageError{Msg: "batch input is empty"}
+	}
+	return items, nil
+}
+
+func readBatchSource(stdin io.Reader, source string) (io.Reader, func() error, error) {
 	source = strings.TrimSpace(source)
 	if source == "" {
-		return nil, &igwerr.UsageError{Msg: "required: --batch"}
+		return nil, func() error { return nil }, &igwerr.UsageError{Msg: "required: --batch"}
 	}
 	source = strings.TrimPrefix(source, "@")
 	if source == "-" {
-		b, err := io.ReadAll(stdin)
-		if err != nil {
-			return nil, igwerr.NewTransportError(err)
-		}
-		return b, nil
+		return stdin, func() error { return nil }, nil
 	}
 
-	b, err := os.ReadFile(source) //nolint:gosec // user-selected input path
+	file, err := os.Open(strings.TrimSpace(source))
 	if err != nil {
-		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("read batch file: %v", err)}
+		return nil, func() error { return nil }, &igwerr.UsageError{Msg: fmt.Sprintf("read batch file: %v", err)}
 	}
-	return b, nil
+	return file, file.Close, nil
+}
+
+func isJSONWhitespace(b byte) bool {
+	switch b {
+	case ' ', '\t', '\n', '\r':
+		return true
+	default:
+		return false
+	}
 }
 
 func writeBatchResults(w io.Writer, items []callBatchItemResult, format string, compact bool) error {
-	sorted := make([]callBatchItemResult, len(items))
-	copy(sorted, items)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].Index < sorted[j].Index
-	})
-
 	if format == "json" {
-		payload := make([]callBatchItemResult, len(sorted))
-		copy(payload, sorted)
-		for i := range payload {
-			payload[i].Index = 0
-		}
-		return writeJSONWithOptions(w, payload, compact)
+		return writeJSONWithOptions(w, items, compact)
 	}
 
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	for i := range sorted {
-		item := sorted[i]
-		item.Index = 0
+	for i := range items {
+		item := items[i]
 		if err := enc.Encode(item); err != nil {
 			return err
 		}

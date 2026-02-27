@@ -68,17 +68,42 @@ func extractJSONPathValue(payload any, path string) (any, error) {
 }
 
 func normalizeJSONPayload(payload any) (any, error) {
-	var root any
-
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("encode payload: %w", err)
+	switch root := payload.(type) {
+	case nil:
+		return nil, nil
+	case map[string]any, []any,
+		string, bool, float64, float32, int, int64, int32, int16, int8,
+		uint, uint64, uint32, uint16, uint8, uintptr, json.Number:
+		return root, nil
+	case []byte:
+		if len(root) == 0 {
+			return nil, nil
+		}
+		var decoded any
+		if err := json.Unmarshal(root, &decoded); err != nil {
+			return nil, fmt.Errorf("decode payload: %w", err)
+		}
+		return decoded, nil
+	case json.RawMessage:
+		if len(root) == 0 {
+			return nil, nil
+		}
+		var decoded any
+		if err := json.Unmarshal(root, &decoded); err != nil {
+			return nil, fmt.Errorf("decode payload: %w", err)
+		}
+		return decoded, nil
+	default:
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("encode payload: %w", err)
+		}
+		var decoded any
+		if err := json.Unmarshal(b, &decoded); err != nil {
+			return nil, fmt.Errorf("decode payload: %w", err)
+		}
+		return decoded, nil
 	}
-	if err := json.Unmarshal(b, &root); err != nil {
-		return nil, fmt.Errorf("decode payload: %w", err)
-	}
-
-	return root, nil
 }
 
 func extractJSONPathValueFromRoot(root any, path string) (any, error) {

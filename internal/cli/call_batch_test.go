@@ -115,3 +115,43 @@ func TestCallBatchAggregatesExitCode(t *testing.T) {
 		t.Fatalf("expected network exit code 7, got %d", code)
 	}
 }
+
+func TestReadCallBatchItemsSupportsJSONArray(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	batchFile := filepath.Join(tempDir, "batch.json")
+	content := `[
+		{"id":"a","method":"GET","path":"/data/api/v1/gateway-info"},
+		{"id":"b","operationId":"gatewayInfo"}
+	]`
+	if err := os.WriteFile(batchFile, []byte(content), 0o600); err != nil {
+		t.Fatalf("write batch file: %v", err)
+	}
+
+	items, err := readCallBatchItems(strings.NewReader(""), "@"+batchFile)
+	if err != nil {
+		t.Fatalf("read batch items failed: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+	if items[0].ID != "a" {
+		t.Fatalf("expected first id a, got %#v", items[0].ID)
+	}
+}
+
+func TestReadCallBatchItemsRejectsEmptyArray(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	batchFile := filepath.Join(tempDir, "batch-empty.json")
+	if err := os.WriteFile(batchFile, []byte("[]"), 0o600); err != nil {
+		t.Fatalf("write batch file: %v", err)
+	}
+
+	_, err := readCallBatchItems(strings.NewReader(""), "@"+batchFile)
+	if err == nil {
+		t.Fatalf("expected empty array usage error")
+	}
+}

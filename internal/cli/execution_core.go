@@ -78,9 +78,9 @@ func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway
 		}
 	}
 
-	query := append([]string(nil), input.Query...)
+	query := input.Query
 	if input.DryRun {
-		query = append(query, "dryRun=true")
+		query = append(append([]string(nil), input.Query...), "dryRun=true")
 	}
 
 	contentType := strings.TrimSpace(input.ContentType)
@@ -123,12 +123,5 @@ func resolveOperationByID(opMap map[string]apidocs.Operation, operationID string
 	if match, ok := opMap[lower]; ok {
 		return match, true
 	}
-
-	for id, match := range opMap {
-		if strings.EqualFold(id, operationID) {
-			return match, true
-		}
-	}
-
 	return apidocs.Operation{}, false
 }
