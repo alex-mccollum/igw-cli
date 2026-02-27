@@ -111,6 +111,8 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 - `call --stream` can reduce memory overhead for large payload workflows.
 - `call --batch` can reduce process startup/flag parsing overhead for many independent requests.
 - `rpc` should be preferred for high-frequency host integrations because it amortizes process startup and supports bounded worker/queue controls.
+- `call` retry handling honors `Retry-After` on `429` responses; otherwise it falls back to `--retry-backoff`.
+- `rpc` supports in-flight cancellation via `{"op":"cancel","args":{"id":"<request-id>"}}`.
 - `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
 - Repeat `--select` for multiple selections.
 - `--raw` requires exactly one `--select`.

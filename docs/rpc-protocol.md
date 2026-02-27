@@ -36,6 +36,7 @@
 - `hello`: protocol/version/features handshake.
 - `capability`: feature query (`args.name` optional).
 - `call`: execute one API call (same core behavior as `igw call` and `igw call --batch`).
+- `cancel`: cancel one in-flight `call` by request id (`args.id` or `args.requestId`).
 - `reload_config`: clear runtime caches for config/spec resolution.
 - `shutdown`: acknowledge and stop reading further input.
 
@@ -62,6 +63,12 @@ Hosts should:
 - Additive fields and operations are allowed in minor/patch versions.
 - Existing fields (`id`, `ok`, `code`, `status`, `data`, `error`) are stable.
 - Unknown fields must be ignored by hosts.
+
+## Cancellation Behavior
+
+- `cancel` only targets in-flight `call` operations.
+- If the target request id is active, `data.cancelled=true` and the matching `call` returns a cancellation transport error.
+- If no active request matches, `data.cancelled=false` and the stream continues.
 
 ## Load Governance
 

@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/config"
 )
@@ -66,6 +68,9 @@ func TestRPCModeHelloCallShutdown(t *testing.T) {
 	}
 	if features["capability"] != true {
 		t.Fatalf("expected capability feature in hello response: %#v", features)
+	}
+	if features["cancel"] != true {
+		t.Fatalf("expected cancel feature in hello response: %#v", features)
 	}
 
 	callResp := responseByID(t, responses, "c1")
@@ -263,6 +268,79 @@ func TestRPCModeStopsReadingAfterShutdown(t *testing.T) {
 	}
 	if !responseExistsByID(responses, "s1") {
 		t.Fatalf("expected shutdown response: %#v", responses)
+	}
+}
+
+func TestRPCModeCancelsInFlightCall(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(2 * time.Second):
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		}
+	}))
+	defer srv.Close()
+
+	inReader, inWriter := io.Pipe()
+	var out bytes.Buffer
+	c := &CLI{
+		In:  inReader,
+		Out: &out,
+		Err: new(bytes.Buffer),
+		Getenv: func(string) string {
+			return ""
+		},
+		ReadConfig: func() (config.File, error) {
+			return config.File{}, nil
+		},
+		HTTPClient: srv.Client(),
+	}
+
+	runErr := make(chan error, 1)
+	go func() {
+		runErr <- c.Execute([]string{
+			"rpc", "--gateway-url", srv.URL, "--api-key", "secret", "--workers", "2", "--queue-size", "4",
+		})
+	}()
+
+	_, _ = io.WriteString(inWriter, `{"id":"call-1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info","timeout":"5s"}}`+"\n")
+	time.Sleep(50 * time.Millisecond)
+	_, _ = io.WriteString(inWriter, `{"id":"cancel-1","op":"cancel","args":{"id":"call-1"}}`+"\n")
+	_, _ = io.WriteString(inWriter, `{"id":"s1","op":"shutdown"}`+"\n")
+	_ = inWriter.Close()
+
+	if err := <-runErr; err != nil {
+		t.Fatalf("rpc failed: %v", err)
+	}
+
+	responses := decodeRPCResponses(t, out.String())
+	if len(responses) != 3 {
+		t.Fatalf("expected 3 rpc responses, got %d: %q", len(responses), out.String())
+	}
+
+	cancelResp := responseByID(t, responses, "cancel-1")
+	cancelData, ok := cancelResp["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected cancel response data payload: %#v", cancelResp)
+	}
+	if cancelData["cancelled"] != true {
+		t.Fatalf("expected cancel op to cancel in-flight request: %#v", cancelData)
+	}
+
+	callResp := responseByID(t, responses, "call-1")
+	if callResp["ok"] != false {
+		t.Fatalf("expected cancelled call to fail: %#v", callResp)
+	}
+	if !strings.Contains(fmt.Sprint(callResp["error"]), "context canceled") {
+		t.Fatalf("expected context cancellation error for cancelled call: %#v", callResp)
+	}
+	callData, ok := callResp["data"].(map[string]any)
+	if !ok || callData["cancelled"] != true {
+		t.Fatalf("expected cancelled marker in call response data: %#v", callResp)
 	}
 }
 

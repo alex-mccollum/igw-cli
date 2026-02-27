@@ -14,6 +14,8 @@ import (
 )
 
 type callExecutionInput struct {
+	Context context.Context
+
 	Method       string
 	Path         string
 	OperationID  string
@@ -86,7 +88,12 @@ func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway
 		contentType = "application/json"
 	}
 
-	resp, err := client.Call(context.Background(), gateway.CallRequest{
+	callCtx := input.Context
+	if callCtx == nil {
+		callCtx = context.Background()
+	}
+
+	resp, err := client.Call(callCtx, gateway.CallRequest{
 		Method:       method,
 		Path:         path,
 		Query:        query,

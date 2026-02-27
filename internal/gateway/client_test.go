@@ -181,3 +181,52 @@ func TestCallRetriesOnServerError(t *testing.T) {
 		t.Fatalf("unexpected status %d", resp.StatusCode)
 	}
 }
+
+func TestRetryDelayForResponseUsesFallbackWhenUnavailable(t *testing.T) {
+	t.Parallel()
+
+	fallback := 250 * time.Millisecond
+	now := time.Unix(1700000000, 0).UTC()
+
+	if got := retryDelayForResponse(http.StatusInternalServerError, http.Header{}, fallback, now); got != fallback {
+		t.Fatalf("expected fallback for non-429 status, got %s", got)
+	}
+	if got := retryDelayForResponse(http.StatusTooManyRequests, http.Header{}, fallback, now); got != fallback {
+		t.Fatalf("expected fallback when Retry-After header missing, got %s", got)
+	}
+	if got := retryDelayForResponse(http.StatusTooManyRequests, http.Header{"Retry-After": []string{"invalid"}}, fallback, now); got != fallback {
+		t.Fatalf("expected fallback for invalid Retry-After header, got %s", got)
+	}
+}
+
+func TestRetryDelayForResponseParsesRetryAfterSeconds(t *testing.T) {
+	t.Parallel()
+
+	fallback := 250 * time.Millisecond
+	now := time.Unix(1700000000, 0).UTC()
+
+	got := retryDelayForResponse(http.StatusTooManyRequests, http.Header{"Retry-After": []string{"2"}}, fallback, now)
+	if got != 2*time.Second {
+		t.Fatalf("expected 2s retry delay, got %s", got)
+	}
+}
+
+func TestRetryDelayForResponseParsesRetryAfterDate(t *testing.T) {
+	t.Parallel()
+
+	fallback := 250 * time.Millisecond
+	now := time.Unix(1700000000, 0).UTC()
+	target := now.Add(3 * time.Second)
+	header := target.Format(http.TimeFormat)
+
+	got := retryDelayForResponse(http.StatusTooManyRequests, http.Header{"Retry-After": []string{header}}, fallback, now)
+	if got != 3*time.Second {
+		t.Fatalf("expected 3s retry delay from date header, got %s", got)
+	}
+
+	pastHeader := now.Add(-time.Second).Format(http.TimeFormat)
+	got = retryDelayForResponse(http.StatusTooManyRequests, http.Header{"Retry-After": []string{pastHeader}}, fallback, now)
+	if got != 0 {
+		t.Fatalf("expected zero retry delay when Retry-After date is in the past, got %s", got)
+	}
+}

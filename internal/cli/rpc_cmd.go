@@ -2,7 +2,9 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
@@ -34,6 +36,67 @@ const (
 	rpcProtocolSemver  = "1.0.0"
 	rpcProtocolMinHost = "1.0.0"
 )
+
+type rpcSessionState struct {
+	mu       sync.Mutex
+	inFlight map[string]context.CancelFunc
+}
+
+func newRPCSessionState() *rpcSessionState {
+	return &rpcSessionState{
+		inFlight: make(map[string]context.CancelFunc),
+	}
+}
+
+func rpcRequestIDKey(id any) (string, bool) {
+	if id == nil {
+		return "", false
+	}
+	key := strings.TrimSpace(fmt.Sprint(id))
+	if key == "" {
+		return "", false
+	}
+	return key, true
+}
+
+func (s *rpcSessionState) registerInFlight(id any, cancel context.CancelFunc) (string, bool) {
+	if s == nil || cancel == nil {
+		return "", false
+	}
+	key, ok := rpcRequestIDKey(id)
+	if !ok {
+		return "", false
+	}
+	s.mu.Lock()
+	s.inFlight[key] = cancel
+	s.mu.Unlock()
+	return key, true
+}
+
+func (s *rpcSessionState) unregisterInFlight(key string) {
+	if s == nil || key == "" {
+		return
+	}
+	s.mu.Lock()
+	delete(s.inFlight, key)
+	s.mu.Unlock()
+}
+
+func (s *rpcSessionState) cancelRequest(key string) bool {
+	if s == nil || strings.TrimSpace(key) == "" {
+		return false
+	}
+	s.mu.Lock()
+	cancel, ok := s.inFlight[key]
+	if ok {
+		delete(s.inFlight, key)
+	}
+	s.mu.Unlock()
+	if ok {
+		cancel()
+	}
+	return ok
+}
 
 func (c *CLI) runRPC(args []string) error {
 	fs := flag.NewFlagSet("rpc", flag.ContinueOnError)
@@ -75,6 +138,7 @@ func (c *CLI) runRPC(args []string) error {
 
 	workQueue := make(chan rpcWorkItem, queueSize)
 	results := make(chan rpcResponse, queueSize)
+	session := newRPCSessionState()
 
 	var workerWG sync.WaitGroup
 	for worker := 0; worker < workers; worker++ {
@@ -82,7 +146,7 @@ func (c *CLI) runRPC(args []string) error {
 		go func() {
 			defer workerWG.Done()
 			for work := range workQueue {
-				results <- c.handleRPCRequest(work.req, common, specFile)
+				results <- c.handleRPCRequest(work.req, common, specFile, session)
 			}
 		}()
 	}
@@ -151,6 +215,7 @@ func rpcFeatureFlags() map[string]bool {
 	return map[string]bool{
 		"hello":            true,
 		"call":             true,
+		"cancel":           true,
 		"reloadConfig":     true,
 		"capability":       true,
 		"shutdown":         true,
@@ -161,7 +226,7 @@ func rpcFeatureFlags() map[string]bool {
 	}
 }
 
-func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile string) rpcResponse {
+func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile string, session *rpcSessionState) rpcResponse {
 	switch strings.ToLower(strings.TrimSpace(req.Op)) {
 	case "hello":
 		return rpcResponse{
@@ -174,11 +239,13 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 				"minHostSemver":  rpcProtocolMinHost,
 				"version":        buildinfo.Long(),
 				"features":       rpcFeatureFlags(),
-				"ops":            []string{"hello", "capability", "call", "reload_config", "shutdown"},
+				"ops":            []string{"hello", "capability", "call", "cancel", "reload_config", "shutdown"},
 			},
 		}
 	case "capability":
 		return c.handleRPCCapability(req)
+	case "cancel":
+		return c.handleRPCCancel(req, session)
 	case "reload_config":
 		c.invalidateRuntimeCaches()
 		return rpcResponse{
@@ -195,7 +262,7 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 			Data: map[string]any{"shutdown": true},
 		}
 	case "call":
-		return c.handleRPCCall(req, common, specFile)
+		return c.handleRPCCall(req, common, specFile, session)
 	default:
 		err := &igwerr.UsageError{Msg: fmt.Sprintf("unknown rpc op %q", strings.TrimSpace(req.Op))}
 		return rpcResponse{
@@ -209,6 +276,11 @@ func (c *CLI) handleRPCRequest(req rpcRequest, common wrapperCommon, specFile st
 
 type rpcCapabilityArgs struct {
 	Name string `json:"name,omitempty"`
+}
+
+type rpcCancelArgs struct {
+	ID        any `json:"id,omitempty"`
+	RequestID any `json:"requestId,omitempty"`
 }
 
 func (c *CLI) handleRPCCapability(req rpcRequest) rpcResponse {
@@ -264,7 +336,47 @@ func (c *CLI) handleRPCCapability(req rpcRequest) rpcResponse {
 	}
 }
 
-func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile string) rpcResponse {
+func (c *CLI) handleRPCCancel(req rpcRequest, session *rpcSessionState) rpcResponse {
+	var args rpcCancelArgs
+	if len(req.Args) > 0 {
+		if err := json.Unmarshal(req.Args, &args); err != nil {
+			usageErr := &igwerr.UsageError{Msg: fmt.Sprintf("invalid cancel args: %v", err)}
+			return rpcResponse{
+				ID:    req.ID,
+				OK:    false,
+				Code:  igwerr.ExitCode(usageErr),
+				Error: usageErr.Error(),
+			}
+		}
+	}
+
+	target := args.RequestID
+	if target == nil {
+		target = args.ID
+	}
+	targetKey, ok := rpcRequestIDKey(target)
+	if !ok {
+		usageErr := &igwerr.UsageError{Msg: "cancel args require id or requestId"}
+		return rpcResponse{
+			ID:    req.ID,
+			OK:    false,
+			Code:  igwerr.ExitCode(usageErr),
+			Error: usageErr.Error(),
+		}
+	}
+
+	return rpcResponse{
+		ID:   req.ID,
+		OK:   true,
+		Code: 0,
+		Data: map[string]any{
+			"id":        targetKey,
+			"cancelled": session.cancelRequest(targetKey),
+		},
+	}
+}
+
+func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile string, session *rpcSessionState) rpcResponse {
 	var item callBatchItem
 	if len(req.Args) == 0 {
 		item = callBatchItem{}
@@ -350,8 +462,15 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 		yes = *item.Yes
 	}
 
+	callCtx, callCancel := context.WithCancel(context.Background())
+	defer callCancel()
+	if reqKey, ok := session.registerInFlight(req.ID, callCancel); ok {
+		defer session.unregisterInFlight(reqKey)
+	}
+
 	start := time.Now()
 	callResp, method, path, callErr := executeCallCore(client, callExecutionInput{
+		Context:      callCtx,
 		Method:       item.Method,
 		Path:         item.Path,
 		OperationID:  item.OperationID,
@@ -379,7 +498,8 @@ func (c *CLI) handleRPCCall(req rpcRequest, common wrapperCommon, specFile strin
 					Method: method,
 					URL:    path,
 				},
-				"stats": buildCallStats(callResp, elapsedMs),
+				"cancelled": errors.Is(callErr, context.Canceled),
+				"stats":     buildCallStats(callResp, elapsedMs),
 			},
 		}
 	}

@@ -168,7 +168,8 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 			}
 			lastErr = statusErr
 			if attempt < attempts && shouldRetryStatus(resp.StatusCode) {
-				if sleepErr := sleepWithContext(ctxReq, backoff); sleepErr != nil {
+				retryDelay := retryDelayForResponse(resp.StatusCode, resp.Header, backoff, time.Now())
+				if sleepErr := sleepWithContext(ctxReq, retryDelay); sleepErr != nil {
 					return nil, sleepErr
 				}
 				continue
@@ -372,6 +373,34 @@ func statusHint(statusCode int) string {
 
 func shouldRetryStatus(statusCode int) bool {
 	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+}
+
+func retryDelayForResponse(statusCode int, headers http.Header, fallback time.Duration, now time.Time) time.Duration {
+	if statusCode != http.StatusTooManyRequests || headers == nil {
+		return fallback
+	}
+
+	raw := strings.TrimSpace(headers.Get("Retry-After"))
+	if raw == "" {
+		return fallback
+	}
+
+	if secs, err := time.ParseDuration(raw + "s"); err == nil {
+		if secs < 0 {
+			return fallback
+		}
+		return secs
+	}
+
+	parsedAt, err := http.ParseTime(raw)
+	if err != nil {
+		return fallback
+	}
+	wait := parsedAt.Sub(now)
+	if wait < 0 {
+		return 0
+	}
+	return wait
 }
 
 func sleepWithContext(ctx context.Context, d time.Duration) error {

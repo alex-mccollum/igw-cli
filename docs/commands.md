@@ -187,6 +187,8 @@ igw rpc --profile dev
 igw rpc --profile dev --workers 4 --queue-size 128
 printf '%s\n' \
   '{"id":"h1","op":"hello"}' \
+  '{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info","timeout":"30s"}}' \
+  '{"id":"x1","op":"cancel","args":{"id":"c1"}}' \
   '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
   '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
 ```
