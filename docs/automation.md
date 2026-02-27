@@ -31,6 +31,9 @@ For applications that call `igw` as an external tool:
 6. Probe capabilities with `igw api list --json` if your app gates behavior on available operations.
 7. If using persistent mode, start `igw rpc` and run a `hello`/`capability` handshake before sending workload requests.
 8. Use `rpc` as the primary execution path for frequent requests, with `call --json` as a compatibility fallback.
+9. Read machine contracts directly from the CLI when bootstrapping:
+   - `igw exit-codes --json`
+   - `igw schema`
 
 ## Recommended Commands
 

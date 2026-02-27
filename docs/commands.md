@@ -37,6 +37,15 @@ Version:
 igw version
 ```
 
+Machine contracts:
+
+```bash
+igw exit-codes
+igw exit-codes --json
+igw schema
+igw schema --select command.subcommands.0.name --raw
+```
+
 API docs discovery:
 
 ```bash

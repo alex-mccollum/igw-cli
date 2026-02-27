@@ -31,6 +31,9 @@ func TestCompletionBash(t *testing.T) {
 	if !strings.Contains(script, "version") {
 		t.Fatalf("missing version completion entry")
 	}
+	if !strings.Contains(script, "exit-codes") || !strings.Contains(script, "schema") {
+		t.Fatalf("missing new machine contract command completion entries")
+	}
 	if !strings.Contains(script, "list download loggers logger level-reset") || !strings.Contains(script, "generate status download") {
 		t.Fatalf("missing new command completion entries")
 	}

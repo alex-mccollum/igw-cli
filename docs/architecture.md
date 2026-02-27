@@ -17,6 +17,8 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 11. `tags <export|import>`
 12. `restart <tasks|gateway>`
 13. `wait <gateway|diagnostics-bundle|restart-tasks>`
+14. `exit-codes`
+15. `schema`
 
 ## Contracts
 - Auth header: `X-Ignition-API-Token`.

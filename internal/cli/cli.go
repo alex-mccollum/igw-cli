@@ -55,18 +55,20 @@ var rootCommands = []rootCommand{
 	{Name: "config", Summary: "Manage local configuration", Subcommands: []string{"set", "show", "profile"}, Run: (*CLI).runConfig},
 	{Name: "diagnostics", Summary: "Diagnostics bundle helpers", Subcommands: []string{"bundle"}, Run: (*CLI).runDiagnostics},
 	{Name: "doctor", Summary: "Check connectivity and auth", Run: (*CLI).runDoctor},
+	{Name: "exit-codes", Summary: "Print stable machine exit code contract", Run: (*CLI).runExitCodes},
 	{Name: "gateway", Summary: "Convenience gateway commands", Subcommands: []string{"info"}, Run: (*CLI).runGateway},
 	{Name: "logs", Summary: "Gateway log helpers", Subcommands: []string{"list", "download", "loggers", "logger", "level-reset"}, Run: (*CLI).runLogs},
 	{Name: "restart", Summary: "Restart task/gateway helpers", Subcommands: []string{"tasks", "gateway"}, Run: (*CLI).runRestart},
 	{Name: "rpc", Summary: "Persistent NDJSON RPC mode for machine callers", Run: (*CLI).runRPC},
 	{Name: "scan", Summary: "Convenience scan commands", Subcommands: scanSubcommands, Run: (*CLI).runScan},
+	{Name: "schema", Summary: "Print machine-readable CLI command schema", Run: (*CLI).runSchema},
 	{Name: "tags", Summary: "Tag import/export helpers", Subcommands: []string{"export", "import"}, Run: (*CLI).runTags},
 	{Name: "wait", Summary: "Wait for operational readiness conditions", Subcommands: []string{"gateway", "diagnostics-bundle", "restart-tasks"}, Run: (*CLI).runWait},
 	{Name: "version", Summary: "Print build version information", Run: (*CLI).runVersion},
 }
 
 var completionRootCommands = []string{
-	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "gateway", "help", "logs", "restart", "rpc", "scan", "tags", "wait", "version",
+	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "exit-codes", "gateway", "help", "logs", "restart", "rpc", "scan", "schema", "tags", "wait", "version",
 }
 
 var completionSubcommands = map[string][]string{
@@ -86,6 +88,17 @@ var nestedCompletionCommands = map[string][]string{
 	"config profile":     {"add", "use", "list"},
 	"diagnostics bundle": {"generate", "status", "download"},
 	"logs logger":        {"set"},
+}
+
+var completionFlags = []string{
+	"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--timing", "--json-stats", "--include-headers",
+	"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
+	"--dry-run", "--retry", "--retry-backoff", "--out", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
+	"--interval", "--wait-timeout", "--openapi-path",
+	"--check-write",
+	"--workers", "--queue-size",
+	"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
+	"--recursive", "--include-udts",
 }
 
 func (c *CLI) Execute(args []string) error {
@@ -188,16 +201,7 @@ func bashCompletionScript() string {
 		fmt.Fprintf(&nested, "      ;;\n")
 	}
 
-	flags := strings.Join([]string{
-		"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--timing", "--json-stats", "--include-headers",
-		"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
-		"--dry-run", "--retry", "--retry-backoff", "--out", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
-		"--interval", "--wait-timeout", "--openapi-path",
-		"--check-write",
-		"--workers", "--queue-size",
-		"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
-		"--recursive", "--include-udts",
-	}, " ")
+	flags := strings.Join(completionFlags, " ")
 
 	return fmt.Sprintf(`# bash completion for igw
 _igw_profiles() {
