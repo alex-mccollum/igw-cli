@@ -100,7 +100,7 @@ func buildSchemaRoot() schemaCommand {
 		}
 		node := schemaCommand{
 			Name:    name,
-			Summary: schemaCommandSummaries[name],
+			Summary: rootCommandSummaries[name],
 			Path:    root.Path + " " + name,
 		}
 		for _, sub := range completionSubcommands[name] {
@@ -130,26 +130,6 @@ func buildSchemaRoot() schemaCommand {
 
 	sortSchemaCommands(&root)
 	return root
-}
-
-var schemaCommandSummaries = map[string]string{
-	"api":         "Query local OpenAPI documentation",
-	"backup":      "Gateway backup export/restore",
-	"call":        "Execute generic Ignition Gateway API request",
-	"completion":  "Output shell completion script",
-	"config":      "Manage local configuration",
-	"diagnostics": "Diagnostics bundle helpers",
-	"doctor":      "Check connectivity and auth",
-	"exit-codes":  "Print stable machine exit code contract",
-	"gateway":     "Convenience gateway commands",
-	"logs":        "Gateway log helpers",
-	"restart":     "Restart task/gateway helpers",
-	"rpc":         "Persistent NDJSON RPC mode for machine callers",
-	"scan":        "Convenience scan commands",
-	"schema":      "Print machine-readable CLI command schema",
-	"tags":        "Tag import/export helpers",
-	"version":     "Print build version information",
-	"wait":        "Wait for operational readiness conditions",
 }
 
 func sortSchemaCommands(node *schemaCommand) {
