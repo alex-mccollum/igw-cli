@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/buildinfo"
@@ -34,8 +35,12 @@ func (c *CLI) runRPC(args []string) error {
 
 	var common wrapperCommon
 	var specFile string
+	var workers int
+	var queueSize int
 	bindWrapperCommonWithDefaults(fs, &common, 8*time.Second, false)
 	fs.StringVar(&specFile, "spec-file", "openapi.json", "Path to OpenAPI JSON file (for op-based call resolution)")
+	fs.IntVar(&workers, "workers", 1, "Number of concurrent request workers")
+	fs.IntVar(&queueSize, "queue-size", 64, "RPC request queue capacity")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
@@ -49,12 +54,55 @@ func (c *CLI) runRPC(args []string) error {
 	if common.timeout <= 0 {
 		return &igwerr.UsageError{Msg: "--timeout must be positive"}
 	}
+	if workers <= 0 {
+		return &igwerr.UsageError{Msg: "--workers must be >= 1"}
+	}
+	if queueSize <= 0 {
+		return &igwerr.UsageError{Msg: "--queue-size must be >= 1"}
+	}
 
 	scanner := bufio.NewScanner(c.In)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	enc := json.NewEncoder(c.Out)
-	enc.SetEscapeHTML(false)
+	type rpcWorkItem struct {
+		req rpcRequest
+	}
+	type rpcWorkResult struct {
+		resp     rpcResponse
+		shutdown bool
+	}
 
+	workQueue := make(chan rpcWorkItem, queueSize)
+	results := make(chan rpcWorkResult, queueSize)
+
+	var workerWG sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		workerWG.Add(1)
+		go func() {
+			defer workerWG.Done()
+			for work := range workQueue {
+				resp, shutdown := c.handleRPCRequest(work.req, common, specFile)
+				results <- rpcWorkResult{resp: resp, shutdown: shutdown}
+			}
+		}()
+	}
+
+	writeErrCh := make(chan error, 1)
+	go func() {
+		enc := json.NewEncoder(c.Out)
+		enc.SetEscapeHTML(false)
+		var writeErr error
+		for result := range results {
+			if writeErr == nil {
+				if err := enc.Encode(result.resp); err != nil {
+					writeErr = igwerr.NewTransportError(err)
+				}
+			}
+		}
+		writeErrCh <- writeErr
+	}()
+
+	scanErr := error(nil)
+	stopRead := false
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -63,25 +111,39 @@ func (c *CLI) runRPC(args []string) error {
 
 		var req rpcRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			_ = enc.Encode(rpcResponse{
-				OK:    false,
-				Code:  igwerr.ExitCode(&igwerr.UsageError{Msg: "invalid rpc request json"}),
-				Error: fmt.Sprintf("invalid rpc request json: %v", err),
-			})
+			results <- rpcWorkResult{
+				resp: rpcResponse{
+					OK:    false,
+					Code:  igwerr.ExitCode(&igwerr.UsageError{Msg: "invalid rpc request json"}),
+					Error: fmt.Sprintf("invalid rpc request json: %v", err),
+				},
+			}
 			continue
 		}
 
-		resp, shutdown := c.handleRPCRequest(req, common, specFile)
-		if err := enc.Encode(resp); err != nil {
-			return igwerr.NewTransportError(err)
-		}
-		if shutdown {
-			return nil
+		workQueue <- rpcWorkItem{req: req}
+		if strings.EqualFold(strings.TrimSpace(req.Op), "shutdown") {
+			stopRead = true
+			break
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
-		return igwerr.NewTransportError(err)
+		scanErr = igwerr.NewTransportError(err)
+	}
+
+	close(workQueue)
+	workerWG.Wait()
+	close(results)
+
+	writeErr := <-writeErrCh
+	if writeErr != nil {
+		return writeErr
+	}
+	if scanErr != nil {
+		return scanErr
+	}
+	if stopRead {
+		return nil
 	}
 	return nil
 }
