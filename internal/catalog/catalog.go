@@ -25,7 +25,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/4"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/5"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 

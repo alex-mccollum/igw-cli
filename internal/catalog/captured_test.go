@@ -98,12 +98,29 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 					t.Fatalf("captured request contract: %v %v", issues, err)
 				}
 			}
-			// The vendor repeats identical $id values in config and backupConfig.
-			// Until a separate reviewed adapter exists, classify this as a schema
-			// availability defect, not an invalid user payload or successful check.
-			req, _ := http.NewRequest("POST", "http://gateway.test/data/api/v1/resources/ignition/schedule", strings.NewReader(`[{"name":"fixture"}]`))
+			for _, tc := range []struct {
+				method, body string
+				valid        bool
+			}{
+				{"POST", `[{"name":"fixture","config":{"profile":{"type":"basic schedule"},"settings":{"allDays":true}}}]`, true},
+				{"POST", `[{"name":"fixture","config":{"profile":{"type":"unknown"}}}]`, false},
+				{"POST", `[{"name":"fixture","config":{"settings":{"repeatOn":"bad"}}}]`, false},
+				{"POST", `[{"name":"fixture","backupConfig":{"settings":{"repeatOn":"bad"}}}]`, false},
+				{"PUT", `[{"name":"fixture","signature":"observed","config":{"settings":{"allDays":true}}}]`, true},
+				{"PUT", `[{"name":"fixture","config":{"settings":{"allDays":true}}}]`, false},
+			} {
+				req, _ := http.NewRequest(tc.method, "http://gateway.test/data/api/v1/resources/ignition/schedule", strings.NewReader(tc.body))
+				req.Header.Set("Content-Type", "application/json")
+				issues, err := c.Validate(tc.method+" /data/api/v1/resources/ignition/schedule", req)
+				if err != nil || (len(issues) == 0) != tc.valid {
+					t.Fatalf("captured schedule contract: %v %v", issues, err)
+				}
+			}
+			// Tag-provider variants contain references, so their duplicate IDs
+			// cannot use the reference-free adapter. Preserve a schema error.
+			req, _ := http.NewRequest("POST", "http://gateway.test/data/api/v1/resources/ignition/tag-provider", strings.NewReader(`[{"name":"fixture"}]`))
 			req.Header.Set("Content-Type", "application/json")
-			if _, err := c.Validate("POST /data/api/v1/resources/ignition/schedule", req); !errors.Is(err, ErrSchemaCompilation) {
+			if _, err := c.Validate("POST /data/api/v1/resources/ignition/tag-provider", req); !errors.Is(err, ErrSchemaCompilation) {
 				t.Fatalf("unqualified vendor schema was misrepresented: %v", err)
 			}
 		})

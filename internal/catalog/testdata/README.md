@@ -16,6 +16,10 @@ original document is fully compliant with OpenAPI.
 parameters with `allowReserved: false` and seven empty response objects.
 The adapter omits that inapplicable path annotation and represents an unknown
 response internally without inventing status codes or payload constraints.
+Current policy `ignition-openapi/2` also qualifies 288 duplicate unused settings
+identifiers across mirrored resource request variants. Reference-bearing or
+otherwise unreviewed variants remain schema errors. The current qualification
+records 638 total adjustments without changing the historical capture receipt.
 
 `ignition-8.3.9-defaults-repeat` retains a second capture from a fresh container
 using the same image and modules. Its 56 reordered `oneOf` arrays, four reordered

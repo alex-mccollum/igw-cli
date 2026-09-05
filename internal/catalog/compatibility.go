@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const compatibilityPolicy = "ignition-openapi/1"
+const compatibilityPolicy = "ignition-openapi/2"
 
 // Compatibility describes the model adapter, not a claim that original vendor
 // bytes satisfy the OAS schema. Receipts bind this policy to the raw SHA-256.
@@ -22,8 +22,8 @@ type Adjustment struct {
 	Rule      string `json:"rule"`
 }
 
-// normalizeIgnition handles only two reviewed structural defects captured from
-// IA's 8.3 API generator. It never rewrites request constraints or invents a
+// normalizeIgnition handles reviewed structural defects captured from IA's
+// 8.3 API generator. It never rewrites request assertions or invents a
 // response status/schema. Original bytes and descriptions are kept separately.
 func normalizeIgnition(value any) []Adjustment {
 	root, _ := value.(map[string]any)
@@ -54,6 +54,9 @@ func normalizeIgnition(value any) []Adjustment {
 			if responses, ok := op["responses"].(map[string]any); ok && len(responses) == 0 {
 				responses["default"] = map[string]any{"description": "Response undocumented by the Gateway; placeholder for parser compatibility only."}
 				adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + "/responses", Rule: "empty-responses"})
+			}
+			if method == "post" || method == "put" {
+				adjustments = append(adjustments, normalizeResourceIDs(op, key, path, pointer)...)
 			}
 		}
 	}

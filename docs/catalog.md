@@ -84,15 +84,21 @@ The vendor document needs a narrowly scoped adapter before OAS validation:
 - Seven operations declare an empty `responses` object. The private model uses
   an explicitly undocumented default response without inventing a status code
   or response schema. Operation descriptions expose the missing contract.
+- 288 unused `$id` occurrences are repeated across identical primary/backup
+  settings variants in resource POST/PUT request bodies. The private model
+  omits these identifiers only when every pair matches the observed generator
+  shape and every variant is free of references, anchors, nested identifiers,
+  and dialect changes. All pairs must qualify before an operation is adapted.
 
-Policy `ignition-openapi/1` matches the observed generator identity and those
+Policy `ignition-openapi/2` matches the observed generator identity and those
 exact structural shapes. Each snapshot binds the policy to its original raw
 SHA-256. It does not grant trust based on the document's title or license URL;
 the resulting model must still pass OAS validation and reference checks.
 Descriptions and exports retain the vendor definitions. `spec inspect` exposes
 every adjustment with its operation and JSON pointer; snapshot metadata reports
 counts by rule. Any additional defect remains an error. This adapter implements
-the [OAS parameter and response rules](https://spec.openapis.org/oas/v3.1.0.html).
+the [OAS parameter and response rules](https://spec.openapis.org/oas/v3.1.0.html)
+and the [JSON Schema rules for resource identifiers](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.1).
 
 Recursive arrays, such as required security-level children, accept finite trees
 and are checked against actual input values. The parser receives a formatted
@@ -103,11 +109,15 @@ roughly 600 MiB peak RSS on the development machine; memory needs optimization
 before release qualification.
 
 Document/model validation is not proof that every request schema is usable.
-For example, 8.3.9 schedule creation repeats `$id` in `config` and `backupConfig`,
-which fails JSON Schema compilation. This produces a `catalog_schema` error,
-not a claim that the user's payload is invalid. Explicit raw requests remain
-available. A separate reviewed solution and real mutation tests are required
-before those resource workflows are qualified.
+Captured 8.3.9 basic-schedule create/update/delete schemas now support request
+validation. Tests reject invalid primary/backup values and enforce required
+signatures. Tag-provider variants
+contain references and remain outside the identifier adapter. Uncompilable
+schemas produce `catalog_schema`, preserving the distinction from invalid
+user input. Explicit raw requests remain available. The adapter keeps all
+assertions, including potentially overlapping vendor `oneOf` branches; it
+does not infer a profile discriminator or rewrite polymorphic constraints.
+Real mutation and outcome checks are still required for workflow qualification.
 
 The two captures differ at 56 reordered `oneOf` arrays, four reordered `enum`
 arrays, and two scan-lock example timestamps. Their raw and document identities

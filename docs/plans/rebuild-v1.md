@@ -261,6 +261,20 @@ consistency, and docs lint passed with the bounded runner. The race run's
 observed cgroup peak was 2.62 GiB. Resource schema qualification, task workflows,
 and the remaining full v1 gates are still pending.
 
+Resource schema follow-up: policy `ignition-openapi/2` removes duplicated `$id`
+keywords only from identical, reference-free primary/backup settings variants
+in the observed resource POST/PUT shape. It retains assertions and refuses the
+whole operation if any variant has references, anchors, dialect changes, nested
+identifiers, or mismatched definitions. Both real captures qualify 288 such
+occurrences (638 total adjustments); their original bytes and all identities
+remain unchanged. Tag-provider schemas still require separate review. Real
+resource mutations and completion verification remain the next workflow gate.
+The full unit suite, catalog/CLI/capture race tests, all three builds, and docs
+checks passed. The observed race cgroup peak was 3.93 GiB within the 8 GiB cap.
+The read-only legacy smoke script builds but exits 2 at doctor with an empty
+Gateway URL/token; it remains unavailable as live acceptance evidence. No
+WSL or Docker Desktop lifecycle/configuration commands were used in this slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
