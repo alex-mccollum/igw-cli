@@ -1,0 +1,588 @@
+{
+  "version": "igw/reference/v1",
+  "name": "ignition-8.3.9-f90af2799c81-2112cbe1a55b",
+  "createdAt": "2026-09-05T19:37:18.392943972Z",
+  "image": {
+    "reference": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+    "configurationDigest": "sha256:f28a0c5a7a85dab32f0f0a04a80bc4dfd00a27de12f899bef979ffb9cce967fd",
+    "platform": "linux/amd64",
+    "gatewayVersion": "8.3.9 (b2026082511)"
+  },
+  "moduleInventorySha256": "f90af2799c819326bed389c9ba6a237fa4c15ef75bf8e2fee28639d735817fcd",
+  "moduleProfile": {
+    "policy": "igw-module-profile/1",
+    "name": "core-opcua",
+    "enabledModules": [
+      "com.inductiveautomation.opcua"
+    ]
+  },
+  "modules": [
+    {
+      "id": "com.inductiveautomation.alarm-notification",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.connectors.kafka",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.eam",
+      "version": "5.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.eventstream",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.historian",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.historian.sql",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.jdbc.mariadb",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.jdbc.mssql",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.jdbc.postgresql",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua",
+      "version": "10.3.9 (b2026082511)",
+      "state": "ACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.ablegacy",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.bacnet",
+      "version": "3.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.dnp3",
+      "version": "5.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.dnp3v2",
+      "version": "2.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.iec61850",
+      "version": "2.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.logix",
+      "version": "6.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.micro800",
+      "version": "2.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.mitsubishi",
+      "version": "2.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.modbus",
+      "version": "8.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.omron",
+      "version": "5.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.siemens",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.siemens-symbolic",
+      "version": "1.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.opcua.drivers.tcpudp",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.perspective",
+      "version": "3.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.phone-notification",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.reporting",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.sfc",
+      "version": "6.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.sms-notification",
+      "version": "7.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.sqlbridge",
+      "version": "11.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.symbol-factory",
+      "version": "8.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.vision",
+      "version": "12.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    },
+    {
+      "id": "com.inductiveautomation.webdev",
+      "version": "6.3.9 (b2026082511)",
+      "state": "INACTIVE",
+      "collection": "healthy"
+    }
+  ],
+  "catalog": {
+    "rawSha256": "19a2b41a24630d93d37fcad892771b31810536c1d63bd661a0bbb2eff0126096",
+    "documentSha256": "7b3b8f72a6e7223a9a99853164249536510805ce00e74de89143e49b7e4bfc27",
+    "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+    "contractPolicy": "igw-contract/2"
+  },
+  "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/12",
+  "qualification": {
+    "policy": "igw-reference-workflows/2",
+    "testBinarySha256": "9c1013b4c4afb5eca02a171c0ab4e02e979172b5c3005a0cb3121fff9cee6ded",
+    "scopes": [
+      "catalog/model",
+      "container/lifecycle",
+      "operations/backup-logs-diagnostics",
+      "projects/disabled-project",
+      "resources/basic-schedule",
+      "tags/memory-json"
+    ],
+    "capabilities": [
+      {
+        "id": "tag.export",
+        "description": "Export tags as JSON or XML",
+        "requiredOperations": [
+          "GET /data/api/v1/tags/export"
+        ],
+        "status": "advertised",
+        "missingOperations": []
+      },
+      {
+        "id": "tag.import",
+        "description": "Import XML/CSV or use Rename/Ignore; report acknowledgement without independent readback",
+        "requiredOperations": [
+          "POST /data/api/v1/tags/import"
+        ],
+        "status": "advertised",
+        "missingOperations": []
+      },
+      {
+        "id": "tag.import.verified-json",
+        "description": "Import JSON with Abort, Overwrite, or MergeOverwrite and verify exported properties",
+        "requiredOperations": [
+          "GET /data/api/v1/tags/export",
+          "POST /data/api/v1/tags/import"
+        ],
+        "status": "advertised",
+        "missingOperations": []
+      }
+    ]
+  },
+  "comparison": {
+    "beforeIdentity": {
+      "rawSha256": "2c40e5569b9cdd8acfb2a738f83c45192c3dc83b3a34b6fdfd1445a9e3705375",
+      "documentSha256": "d768d01bbdc658175d934055c7db9c779328409f3f1940798357faf2d685447e",
+      "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+      "contractPolicy": "igw-contract/2"
+    },
+    "afterIdentity": {
+      "rawSha256": "19a2b41a24630d93d37fcad892771b31810536c1d63bd661a0bbb2eff0126096",
+      "documentSha256": "7b3b8f72a6e7223a9a99853164249536510805ce00e74de89143e49b7e4bfc27",
+      "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+      "contractPolicy": "igw-contract/2"
+    },
+    "contractEqual": false,
+    "documentEqual": false,
+    "added": [],
+    "removed": [
+      "DELETE /data/alarm-notification/api/v1/pipeline",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.alarm-notification/alarm-notification-profile/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/agent-group/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/agent-management/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/eam-tasks/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/event-thresholds/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/hw-license-management/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/leased-license-management/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/module-certificates/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/module-eulas/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/module-settings/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.eam/remote-upgrade/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.historian/historian-provider/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.perspective/fonts/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.perspective/icons/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.perspective/themes/{name}/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.sfc/chart-settings/{signature}",
+      "DELETE /data/api/v1/resources/com.inductiveautomation.sip-notification/script-settings/{name}/{signature}",
+      "DELETE /data/api/v1/resources/datafile/com.inductiveautomation.perspective/fonts/{name}/{filename}",
+      "DELETE /data/api/v1/resources/datafile/com.inductiveautomation.perspective/icons/{name}/{filename}",
+      "DELETE /data/api/v1/resources/datafile/com.inductiveautomation.perspective/themes/{name}/{filename}",
+      "DELETE /data/api/v1/resources/ignition/roster-config/{name}/{signature}",
+      "DELETE /data/eam/api/v1/eam-tasks/clear-retry/{name}",
+      "DELETE /data/eam/api/v1/eam-tasks/delete-temp-folder",
+      "DELETE /data/eam/api/v1/quarantined-agents/{serverid}",
+      "DELETE /data/perspective/api/v1/sessions",
+      "DELETE /data/reporting/api/v1/cancel/{project}",
+      "DELETE /data/sfc/api/v1/charts/{uuid}/cancel",
+      "DELETE /data/vision/api/v1/client/{id}",
+      "GET /data/alarm-notification/api/v1/pipeline",
+      "GET /data/alarm-notification/api/v1/pipelines",
+      "GET /data/api/v1/resources/datafile/com.inductiveautomation.perspective/fonts/{name}/{filename}",
+      "GET /data/api/v1/resources/datafile/com.inductiveautomation.perspective/icons/{name}/{filename}",
+      "GET /data/api/v1/resources/datafile/com.inductiveautomation.perspective/themes/{name}/{filename}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.alarm-notification/alarm-notification-profile/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/agent-group/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/agent-management/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/eam-tasks/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/hw-license-management/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/leased-license-management/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/module-certificates/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/module-eulas/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.eam/remote-upgrade/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.historian/historian-provider/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.perspective/fonts/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.perspective/icons/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.perspective/themes/{name}",
+      "GET /data/api/v1/resources/find/com.inductiveautomation.sip-notification/script-settings/{name}",
+      "GET /data/api/v1/resources/find/ignition/roster-config/{name}",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/agent-group",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/agent-management",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/eam-tasks",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/hw-license-management",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/leased-license-management",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/module-certificates",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/module-eulas",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.eam/remote-upgrade",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.historian/historian-provider",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.perspective/fonts",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.perspective/icons",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.perspective/themes",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.sip-notification/script-settings",
+      "GET /data/api/v1/resources/list/ignition/roster-config",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/agent-group",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/agent-management",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/eam-tasks",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/hw-license-management",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/leased-license-management",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/module-certificates",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/module-eulas",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.eam/remote-upgrade",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.historian/historian-provider",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.perspective/fonts",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.perspective/icons",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.perspective/themes",
+      "GET /data/api/v1/resources/names/com.inductiveautomation.sip-notification/script-settings",
+      "GET /data/api/v1/resources/names/ignition/roster-config",
+      "GET /data/api/v1/resources/singleton/com.inductiveautomation.eam/event-thresholds",
+      "GET /data/api/v1/resources/singleton/com.inductiveautomation.eam/module-settings",
+      "GET /data/api/v1/resources/singleton/com.inductiveautomation.sfc/chart-settings",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/agent-group",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/agent-management",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/eam-tasks",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/event-thresholds",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/hw-license-management",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/leased-license-management",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/module-certificates",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/module-eulas",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/module-settings",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.eam/remote-upgrade",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.historian/historian-provider",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.perspective/fonts",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.perspective/icons",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.perspective/themes",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.sfc/chart-settings",
+      "GET /data/api/v1/resources/type/com.inductiveautomation.sip-notification/script-settings",
+      "GET /data/api/v1/resources/type/ignition/roster-config",
+      "GET /data/eam/api/v1/agent-approval-status/{controllerId}/{localServerId}",
+      "GET /data/eam/api/v1/agent-details/{serverid}",
+      "GET /data/eam/api/v1/agent-licenses/{serverid}",
+      "GET /data/eam/api/v1/agent-management/modules",
+      "GET /data/eam/api/v1/agent-management/project-resources",
+      "GET /data/eam/api/v1/agent-management/projects",
+      "GET /data/eam/api/v1/agent-management/upgrade-info",
+      "GET /data/eam/api/v1/agents",
+      "GET /data/eam/api/v1/agents-by-group",
+      "GET /data/eam/api/v1/eam-tasks/history",
+      "GET /data/eam/api/v1/eam-tasks/module-cert",
+      "GET /data/eam/api/v1/eam-tasks/module-eula",
+      "GET /data/eam/api/v1/eam-tasks/retry",
+      "GET /data/eam/api/v1/eam-tasks/scheduled/{running}",
+      "GET /data/eam/api/v1/quarantined-agents",
+      "GET /data/eam/api/v1/storage/archived-backups",
+      "GET /data/eam/api/v1/storage/archived-modules",
+      "GET /data/event-stream/api/v1/streams/details/{project}",
+      "GET /data/event-stream/api/v1/streams/status",
+      "GET /data/fsql/api/v1/status/project/{name}",
+      "GET /data/fsql/api/v1/status/projects",
+      "GET /data/perspective/api/v1/session/{sessionId}",
+      "GET /data/perspective/api/v1/session/{sessionId}/page/{pageId}/views",
+      "GET /data/perspective/api/v1/session/{sessionId}/pages",
+      "GET /data/perspective/api/v1/sessions/",
+      "GET /data/reporting/api/v1/reports/completed",
+      "GET /data/reporting/api/v1/reports/current",
+      "GET /data/reporting/api/v1/reports/published",
+      "GET /data/reporting/api/v1/reports/totals",
+      "GET /data/reporting/api/v1/reports/upcoming",
+      "GET /data/sfc/api/v1/charts/status",
+      "GET /data/sfc/api/v1/charts/totals",
+      "GET /data/sfc/api/v1/charts/{projectName}/{chartPath}",
+      "GET /data/vision/api/v1/client/{id}",
+      "GET /data/vision/api/v1/clients",
+      "POST /data/api/v1/resources/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/agent-group",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/agent-management",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/eam-tasks",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/event-thresholds",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/hw-license-management",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/leased-license-management",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/module-certificates",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/module-eulas",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/module-settings",
+      "POST /data/api/v1/resources/com.inductiveautomation.eam/remote-upgrade",
+      "POST /data/api/v1/resources/com.inductiveautomation.historian/historian-provider",
+      "POST /data/api/v1/resources/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "POST /data/api/v1/resources/com.inductiveautomation.perspective/fonts",
+      "POST /data/api/v1/resources/com.inductiveautomation.perspective/icons",
+      "POST /data/api/v1/resources/com.inductiveautomation.perspective/themes",
+      "POST /data/api/v1/resources/com.inductiveautomation.sfc/chart-settings",
+      "POST /data/api/v1/resources/com.inductiveautomation.sip-notification/script-settings",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/agent-group",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/agent-management",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/eam-tasks",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/hw-license-management",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/leased-license-management",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/module-certificates",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/module-eulas",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.eam/remote-upgrade",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.historian/historian-provider",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.perspective/fonts",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.perspective/icons",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.perspective/themes",
+      "POST /data/api/v1/resources/delete/com.inductiveautomation.sip-notification/script-settings",
+      "POST /data/api/v1/resources/delete/ignition/roster-config",
+      "POST /data/api/v1/resources/ignition/roster-config",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.alarm-notification/alarm-notification-profile/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/agent-group/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/agent-management/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/eam-tasks/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/hw-license-management/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/leased-license-management/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/module-certificates/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/module-eulas/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.eam/remote-upgrade/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.historian/historian-provider/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.perspective/fonts/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.perspective/icons/{name}",
+      "POST /data/api/v1/resources/rename/com.inductiveautomation.perspective/themes/{name}",
+      "POST /data/api/v1/resources/rename/ignition/roster-config/{name}",
+      "POST /data/eam/api/v1/approve-agent/{serverid}",
+      "POST /data/eam/api/v1/approve-agents",
+      "POST /data/eam/api/v1/eam-tasks/cancel/{name}",
+      "POST /data/eam/api/v1/eam-tasks/force/{owner}/{name}",
+      "POST /data/eam/api/v1/eam-tasks/module-cert",
+      "POST /data/eam/api/v1/eam-tasks/module-eula",
+      "POST /data/eam/api/v1/eam-tasks/resume/{name}",
+      "POST /data/eam/api/v1/eam-tasks/store-gwbk",
+      "POST /data/eam/api/v1/eam-tasks/store-module",
+      "POST /data/eam/api/v1/eam-tasks/store-module-from-archive",
+      "POST /data/eam/api/v1/eam-tasks/store-upgrade-zip",
+      "POST /data/eam/api/v1/eam-tasks/suspend/{name}",
+      "POST /data/eam/api/v1/quarantined-agents/delete",
+      "POST /data/eam/api/v1/upgrade-agent/{groupName}/{serverid}",
+      "POST /data/eam/api/v1/upgrade-agents",
+      "POST /data/perspective/api/v1/themes/copy-base-themes",
+      "POST /data/sfc/api/v1/charts/{uuid}/pause",
+      "POST /data/sfc/api/v1/charts/{uuid}/resume",
+      "PUT /data/api/v1/resources/com.inductiveautomation.alarm-notification/alarm-notification-profile",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/agent-group",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/agent-management",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/eam-tasks",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/event-thresholds",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/hw-license-management",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/leased-license-management",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/module-certificates",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/module-eulas",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/module-settings",
+      "PUT /data/api/v1/resources/com.inductiveautomation.eam/remote-upgrade",
+      "PUT /data/api/v1/resources/com.inductiveautomation.historian/historian-provider",
+      "PUT /data/api/v1/resources/com.inductiveautomation.opcua.drivers.bacnet/BacnetIpLocalDeviceConfig",
+      "PUT /data/api/v1/resources/com.inductiveautomation.perspective/fonts",
+      "PUT /data/api/v1/resources/com.inductiveautomation.perspective/icons",
+      "PUT /data/api/v1/resources/com.inductiveautomation.perspective/themes",
+      "PUT /data/api/v1/resources/com.inductiveautomation.sfc/chart-settings",
+      "PUT /data/api/v1/resources/com.inductiveautomation.sip-notification/script-settings",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/fonts/{name}",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/fonts/{name}/{filename}",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/icons/{name}",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/icons/{name}/{filename}",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/themes/{name}",
+      "PUT /data/api/v1/resources/datafile/com.inductiveautomation.perspective/themes/{name}/{filename}",
+      "PUT /data/api/v1/resources/ignition/roster-config"
+    ],
+    "changedOperationDocuments": [
+      "GET /data/api/v1/resources/find/com.inductiveautomation.opcua/device/{name}",
+      "GET /data/api/v1/resources/find/ignition/identity-provider/{name}",
+      "GET /data/api/v1/resources/find/ignition/service-connector/{name}",
+      "GET /data/api/v1/resources/find/ignition/user-source/{name}",
+      "GET /data/api/v1/resources/list/com.inductiveautomation.opcua/device",
+      "GET /data/api/v1/resources/list/ignition/identity-provider",
+      "GET /data/api/v1/resources/list/ignition/service-connector",
+      "GET /data/api/v1/resources/list/ignition/user-source",
+      "GET /data/api/v1/resources/type/ignition/user-source",
+      "GET /data/api/v1/scim/{profile-name}/{scim-version}/Users",
+      "GET /data/api/v1/scim/{profile-name}/{scim-version}/Users/{user-id}",
+      "POST /data/api/v1/resources/com.inductiveautomation.opcua/device",
+      "POST /data/api/v1/resources/ignition/identity-provider",
+      "POST /data/api/v1/resources/ignition/service-connector",
+      "POST /data/api/v1/resources/ignition/user-source",
+      "POST /data/api/v1/scan-lock/config",
+      "POST /data/api/v1/scan-lock/projects",
+      "POST /data/api/v1/scim/{profile-name}/{scim-version}/Users",
+      "PUT /data/api/v1/resources/com.inductiveautomation.opcua/device",
+      "PUT /data/api/v1/resources/ignition/identity-provider",
+      "PUT /data/api/v1/resources/ignition/service-connector",
+      "PUT /data/api/v1/resources/ignition/user-source",
+      "PUT /data/api/v1/scim/{profile-name}/{scim-version}/Users/{user-id}"
+    ],
+    "sharedOrPathDocumentChanged": true,
+    "compatibility": "requires_review"
+  },
+  "files": [
+    {
+      "path": "capture.json",
+      "sha256": "b9ce87d7f80c384f8cd2a2043eaeffffd2e36a5629017d25c612101f200071c7",
+      "bytes": 10121
+    },
+    {
+      "path": "lifecycle.json",
+      "sha256": "debdb9851d2eb8d3390ed0c97fce70055f6693eec5a8bc04c58a73bdf17471f6",
+      "bytes": 783
+    },
+    {
+      "path": "openapi.json.gz",
+      "sha256": "a2b45efa0e2254645b3ba6280edd1e0c44e98c1edef525f698a95c24207a697c",
+      "bytes": 438327
+    },
+    {
+      "path": "operational-workflows.json",
+      "sha256": "ab8d27b015ae3cc6dcd67f0f24e49eb5cb6de06c862e2d00f4fb20a35ebc55dc",
+      "bytes": 15268
+    },
+    {
+      "path": "project-tag-workflows.json",
+      "sha256": "97c01695f42dfa1992ac8149a46de4d868342faeccaf3b880018a6d70355a01c",
+      "bytes": 17591
+    },
+    {
+      "path": "registry-index.json",
+      "sha256": "28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "bytes": 1432
+    },
+    {
+      "path": "registry-manifest.json",
+      "sha256": "1e6778e8b787baf0b46d9018ac1b77ba58b5c618ea0f3ae543a465fb657d4295",
+      "bytes": 2115
+    },
+    {
+      "path": "resolution.json",
+      "sha256": "5ba19acb426973f48cd2e99d145e9b541ca0b6d65fcb2abd20da4695d229b041",
+      "bytes": 464
+    },
+    {
+      "path": "resource-workflows.json",
+      "sha256": "4f5e7c1c6bad32308de6c7b5bf0da6194951614dbd9b9c95e163020472bd18a6",
+      "bytes": 13097
+    }
+  ]
+}

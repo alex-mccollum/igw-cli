@@ -50,14 +50,14 @@ func TestReferenceCommandsWorkWithoutGatewayAndPreserveEvidence(t *testing.T) {
 	}
 	r := decodeResult(t, out)
 	items := r.Data.([]any)
-	if len(items) != 1 || items[0].(map[string]any)["selector"] != builtinReference || r.Meta.Target != nil || r.Meta.Catalog != nil {
+	if len(items) != 4 || items[3].(map[string]any)["selector"] != builtinReference || r.Meta.Target != nil || r.Meta.Catalog != nil {
 		t.Fatalf("unexpected reference list: %+v", r)
 	}
 	if err := app.Run(ctx, []string{"spec", "references", "inspect", builtinReference, "--spec-pin", builtinContract, "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	r = decodeResult(t, out)
-	if r.Meta.Reference == nil || r.Meta.Reference.ModuleCount != 32 || r.Meta.Reference.InspectionParserVersion != "" || len(r.Data.(map[string]any)["modules"].([]any)) != 32 {
+	if r.Meta.Reference == nil || r.Meta.Reference.ModuleCount != 32 || r.Meta.Reference.ActiveModuleCount != 32 || r.Meta.Reference.InspectionParserVersion != "" || len(r.Data.(map[string]any)["modules"].([]any)) != 32 {
 		t.Fatalf("reference metadata missing or overstated: %+v", r.Meta)
 	}
 	dir := filepath.Join(t.TempDir(), "reference")
@@ -131,6 +131,50 @@ func TestAPIDiscoveryUsesQualifiedReferenceWithoutTarget(t *testing.T) {
 	}
 }
 
+func TestReferenceMatrixCapabilitiesAndModuleInventory(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		active int
+		tags   bool
+	}{
+		{"ignition-8.3.0-defaults", 32, false},
+		{"ignition-8.3.0-core", 1, false},
+		{"ignition-8.3.9-core", 1, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			app, out, _ := testApp(t, nil)
+			forbidReferenceRuntime(t, &app)
+			if err := app.Run(context.Background(), []string{"api", "capabilities", "--reference", tt.name, "--json"}); err != nil {
+				t.Fatal(err)
+			}
+			r := decodeResult(t, out)
+			ref := r.Meta.Reference
+			if !r.OK || ref == nil || ref.Selector != tt.name || ref.ModuleCount != 32 || ref.ActiveModuleCount != tt.active || r.Meta.Target != nil || r.Meta.Catalog != nil || r.Meta.Stale {
+				t.Fatalf("incorrect offline reference provenance: %+v", r)
+			}
+			if tt.active == 1 && (ref.ModuleProfile == nil || ref.ModuleProfile.Name != "core-opcua") {
+				t.Fatal("missing core profile evidence")
+			}
+			status, unavailable := "advertised", 0
+			if !tt.tags {
+				status, unavailable = "unavailable", 1
+			}
+			items := r.Data.([]any)
+			if len(items) != 3 || len(ref.Qualification.UnavailableScopes) != unavailable {
+				t.Fatal("unexpected capability coverage")
+			}
+			for _, item := range items {
+				if item.(map[string]any)["status"] != status {
+					t.Fatalf("incorrect tag capability: %+v", item)
+				}
+			}
+			if _, err := os.Stat(app.CacheDir); !os.IsNotExist(err) {
+				t.Fatal("offline reference inspection touched target cache")
+			}
+		})
+	}
+}
+
 func TestReferenceFailuresNeverFallBackToGateway(t *testing.T) {
 	for _, args := range [][]string{
 		{"api", "list", "--reference", ""},
@@ -198,7 +242,7 @@ func TestReferenceCancellationAndHumanProvenance(t *testing.T) {
 	if err := app.Run(context.Background(), []string{"spec", "references", "list"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), builtinReference+"\t8.3.9") || !strings.Contains(out.String(), "32 modules") {
+	if !strings.Contains(out.String(), builtinReference+"\t8.3.9") || !strings.Contains(out.String(), "32 modules (32 active)") || !strings.Contains(out.String(), "core-opcua\t32 modules (1 active)") {
 		t.Fatal("human listing omitted identity")
 	}
 	out.Reset()

@@ -227,17 +227,24 @@ func (i *invocation) withSnapshot(snapshot *catalog.Snapshot, data any) {
 	i.output.Meta = result.Metadata{Target: &snapshot.Metadata.Target, Catalog: &snapshot.Metadata, Stale: snapshot.Stale, Warnings: snapshot.Warnings}
 }
 
+func referenceProfile(ref reference.Summary) string {
+	if ref.ModuleProfile != nil {
+		return ref.ModuleProfile.Name
+	}
+	return "legacy all-active"
+}
+
 func human(out io.Writer, r result.Result) error {
 	if references, ok := r.Data.([]reference.Summary); ok {
 		for _, item := range references {
-			if _, err := fmt.Fprintf(out, "%s\t%s\t%d modules\t%s\n", item.Selector, item.Image.GatewayVersion, item.ModuleCount, item.Catalog.ContractSHA256); err != nil {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%d modules (%d active)\t%s\n", item.Selector, item.Image.GatewayVersion, referenceProfile(item), item.ModuleCount, item.ActiveModuleCount, item.Catalog.ContractSHA256); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 	if ref := r.Meta.Reference; ref != nil {
-		if _, err := fmt.Fprintf(out, "Reference: %s (%s; %d modules)\n", ref.Selector, ref.Image.GatewayVersion, ref.ModuleCount); err != nil {
+		if _, err := fmt.Fprintf(out, "Reference: %s (%s; %s; %d modules, %d active)\n", ref.Selector, ref.Image.GatewayVersion, referenceProfile(*ref), ref.ModuleCount, ref.ActiveModuleCount); err != nil {
 			return err
 		}
 	}

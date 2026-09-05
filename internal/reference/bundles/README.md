@@ -2,24 +2,34 @@
 
 These directories preserve exact compressed vendor OpenAPI documents, registry
 manifests, capture and acceptance receipts, and a checksummed reference manifest.
-The source image, actual module inventory, parser, test executable, and exercised
-workflows are identified. No customer configuration or credentials are included.
+The source image, complete observed module inventory, parser, test executable,
+and exercised workflows are identified. No customer configuration or credentials
+are included.
 
-`ignition-8.3.9-defaults` was assembled from a fresh 32-module default Gateway
-capture and 98 recorded checks: 10 lifecycle, 27 resource, 38 project/tag, and 23
-operational checks. Its stable contract has 687 operations. The versioned
-qualification policy covers the named workflow scopes; it does not qualify every
-operation/request schema, deployment, module configuration, or Gateway version.
+| Selector | Operations | Active / installed modules | Workflow policy | Recorded checks |
+| --- | ---: | ---: | --- | ---: |
+| ignition-8.3.0-defaults | 672 | 32 / 32 | 2 | 87 |
+| ignition-8.3.0-core | 446 | 1 / 32 | 2 | 87 |
+| ignition-8.3.9-defaults | 687 | 32 / 32 | 1 | 98 |
+| ignition-8.3.9-core | 454 | 1 / 32 | 2 | 99 |
 
-The lifecycle and workflow receipts all identify test executable
-`63aaa19c9a60f3872419f3cadbd75102e21f440b0863f72d32fb7f67c560a800`.
-The module inventory hash is
-`8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd`.
-The manifest's comparison is against the previously qualified default fixture;
-equal contract hashes are not a proof of general backward compatibility.
+The original `ignition-8.3.9-defaults` bundle remains byte-for-byte unchanged,
+including its historical policy, identity, timestamps, and receipts. A separate
+new default-profile qualification under policy 2 is retained with contributor
+evidence. The other three embedded bundles are exact copies of reviewed
+candidates under `internal/referencebuild/testdata/`. Core references record the
+explicit OPC UA selection and retain all 31 inactive/disabled module records.
+Historical manifests without a named profile retain their all-active rule.
 
-Keep previous qualified bundles available when an update fails. Candidate
-assembly is local and does not publish, select a new default, or authorize live
-Gateway writes. Checksums establish integrity; the repository/release channel
-providing a bundle remains the trust source. Preserve vendor license metadata
-in the exact original document.
+8.3.0 does not advertise tag import/export. Its qualification requires explicit
+pre-dispatch refusals and lists tag round trips as unavailable. 8.3.9 includes
+live tag round trips. See `docs/compatibility-matrix.md` for the complete initial
+version/profile matrix. These references qualify the named workflow scopes,
+not every operation, request schema, deployment, or cross-version migration.
+
+Keep previous qualified bundles available when an update fails. Adding a
+selector does not select a default or authorize live Gateway writes. Checksums
+establish integrity; the repository/release channel providing a bundle remains
+the trust source. Comparisons against a different module set require review;
+removed module routes do not alone establish a version regression. Preserve
+vendor license metadata in the exact original document.

@@ -1042,6 +1042,25 @@ remains unverified. Request encoding, batch outcomes, additional workflow
 capabilities, restart verification, performance, migration/cutover, and release
 qualification remain part of the active v1 goal.
 
+The development CLI now embeds the three missing reviewed cells alongside the
+unchanged original 8.3.9 default reference. All copied payloads and manifests
+match their qualified candidates byte for byte. JSON summaries add
+`activeModuleCount`, derived from the verified inventory; human output includes
+the recorded profile and active/installed counts. Core references preserve
+31 inactive observations. Historical manifests keep their original identities
+and all-active interpretation without a synthesized profile field.
+
+The full unit suite, focused reference/qualification/CLI race checks, both CLI
+builds, command/docs checks, and all eight coordinator tests passed using
+serialized bounded validation. Compiled offline listing reports all four
+selectors, and minimum core capability discovery reports the expected three
+unavailable tag workflows with no target metadata. Logs are in
+`bin/reference-matrix-{focused,unit,race,build-docs}.log`. The legacy smoke build
+succeeded, then `doctor` exited 2 because the default Gateway URL and token
+remain unconfigured (`bin/reference-matrix-smoke.log`). Separate disposable
+Gateway qualification above provides the live evidence. No host settings or
+validation limits changed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

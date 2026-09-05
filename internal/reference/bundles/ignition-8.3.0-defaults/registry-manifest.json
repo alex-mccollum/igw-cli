@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:3ccb0dd03f8237048a0cc8554abd29a25429d684be85bbbe0c8bd1c42a95be85",
+    "size": 7364
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:76249c7cd50397d2e8c06a75106723d057deaba0ffbc7f4af1bb02bcf71d81cf",
+      "size": 29723064
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:87d67b70d93adeeeb801f6147ab96f1342815d7bb8b9977c251bf4f1afb7b452",
+      "size": 29569900
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+      "size": 32
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:d745ad342da06fa1804936f16bd1ca710525242d863f866ab2e910ee39128fd9",
+      "size": 157
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:14d45374ffd3ad4e158a85604bf4b0640721a1efd927ffe1c68c9b2655992860",
+      "size": 1972211698
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:b057ac3e69cbfbaa3f7935afd58c4b001d3ff8b13ee04a695c325b313ea8e47e",
+      "size": 1001156
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:5ae1e80ae82a6c10d1fc21c8254c228f6ab083247f4e1bf746b9a298e9fb9f5b",
+      "size": 1272
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.base.name": "docker.io/library/ubuntu:24.04",
+    "org.opencontainers.image.created": "2025-09-15T18:03:05.185092726Z",
+    "org.opencontainers.image.description": "Ignition by Inductive Automation",
+    "org.opencontainers.image.documentation": "https://links.inductiveautomation.com/83-docker-image",
+    "org.opencontainers.image.revision": "d1ffc6fff6a05133f691bf4979f914a1e9b23ff3",
+    "org.opencontainers.image.version": "8.3.0"
+  }
+}

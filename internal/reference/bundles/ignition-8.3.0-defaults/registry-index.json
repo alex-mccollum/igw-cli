@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:b260d75e3b7bb657aeab6d89fae710990ea4660cc22690a9810760637abb0dc0",
+      "size": 2116,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:4f6cdfd71108fdf4950caa5ddb03f8bc06c4fd840fbff5673758269cb7654feb",
+      "size": 2115,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:2b04b4e45b5b7e2727609407c30b5ca876bf5bac4347bc8ef8db96c724c5d39e",
+      "size": 2120,
+      "platform": {
+        "architecture": "arm",
+        "os": "linux",
+        "variant": "v7"
+      }
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.base.name": "docker.io/library/ubuntu:24.04",
+    "org.opencontainers.image.created": "2025-09-15T18:03:05.185092726Z",
+    "org.opencontainers.image.description": "Ignition by Inductive Automation",
+    "org.opencontainers.image.documentation": "https://links.inductiveautomation.com/83-docker-image",
+    "org.opencontainers.image.revision": "d1ffc6fff6a05133f691bf4979f914a1e9b23ff3",
+    "org.opencontainers.image.version": "8.3.0"
+  }
+}

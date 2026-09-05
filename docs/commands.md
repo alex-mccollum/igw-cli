@@ -33,7 +33,17 @@ bin/igw-next spec references export ignition-8.3.9-defaults --out ./reference-8.
 bin/igw-next api list --reference ignition-8.3.9-defaults --search gateway --json
 bin/igw-next api describe 'GET /data/api/v1/gateway-info' --reference ./reference-8.3.9 --json
 bin/igw-next api capabilities --reference ignition-8.3.9-defaults --json
+bin/igw-next api capabilities --reference ignition-8.3.0-core --json
 ```
+
+Bundled selectors cover 8.3.0 and 8.3.9 with suffixes `-defaults` and `-core`.
+For example, `ignition-8.3.9-core` records the minimal OPC UA profile. JSON
+metadata includes `moduleCount` for all installed observations and
+`activeModuleCount` for those observed active; the core profile has 32 and 1
+respectively. `moduleProfile` identifies explicit newer qualification; older
+manifests retain their original all-active evidence. Human output shows both
+counts and labels historical manifests `legacy all-active`. The 8.3.0 references
+report tag-transfer workflows as unavailable. See the [qualification matrix](compatibility-matrix.md).
 
 `REFERENCE` accepts a bundled selector or a local bundle directory; prefix a
 relative directory with `./` if it has the same name as a bundled selector.

@@ -44,6 +44,7 @@ type Summary struct {
 	ModuleInventorySHA256   string                   `json:"moduleInventorySha256"`
 	ModuleProfile           *moduleprofile.Selection `json:"moduleProfile,omitempty"`
 	ModuleCount             int                      `json:"moduleCount"`
+	ActiveModuleCount       int                      `json:"activeModuleCount"`
 	Catalog                 catalog.Identity         `json:"catalog"`
 	ParserVersion           string                   `json:"parserVersion"`
 	InspectionParserVersion string                   `json:"inspectionParserVersion,omitempty"`
@@ -52,9 +53,15 @@ type Summary struct {
 }
 
 func (b Bundle) Summary(m Manifest) Summary {
+	active := 0
+	for _, module := range m.Modules {
+		if module.State == "ACTIVE" {
+			active++
+		}
+	}
 	return Summary{Selector: b.selector, SourceKind: "reference", Origin: b.origin,
 		Version: m.Version, Name: m.Name, CreatedAt: m.CreatedAt, Image: m.Image,
-		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleProfile: m.ModuleProfile, ModuleCount: len(m.Modules),
+		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleProfile: m.ModuleProfile, ModuleCount: len(m.Modules), ActiveModuleCount: active,
 		Catalog: m.Catalog, ParserVersion: m.ParserVersion, Qualification: m.Qualification}
 }
 

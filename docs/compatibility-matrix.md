@@ -31,10 +31,14 @@ contract identity, test executable, workflow scopes, and receipt checksums.
 See [reference updates](reference-updates.md#recorded-real-run) for dated results
 and [catalog authority](catalog.md) for freshness and pinning semantics.
 
-Both policy-2 candidates are independently readable by specifying their
-directories; they are not yet embedded runtime selectors. The original bundled
-8.3.9 reference remains unchanged. Reopening historical evidence never renews
-its live verification timestamp.
+The CLI embeds exact reviewed bundles for all four cells. List selectors with
+`spec references list`: use `ignition-8.3.0-defaults`, `ignition-8.3.0-core`,
+`ignition-8.3.9-defaults`, or `ignition-8.3.9-core`. The original 8.3.9 default
+bundle remains unchanged, with its historical policy-1 evidence; the fresh
+policy-2 default qualification is retained separately under contributor
+testdata. Reopening historical evidence never renews its live verification
+timestamp. References support offline inspection and export; live requests
+continue to use the selected Gateway's own catalog.
 
 ## Observed module profiles
 

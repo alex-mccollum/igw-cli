@@ -241,7 +241,11 @@ modules, the 687-operation contract, and 98 recorded checks from one binary:
 memory-JSON-tag, and backup/log/diagnostics workflows; it does not qualify every
 request schema or prove general backward compatibility.
 
-The development CLI embeds this complete bundle. `spec references list` exposes
+The development CLI preserves that complete bundle and adds exact qualified
+bundles for `ignition-8.3.0-defaults`, `ignition-8.3.0-core`, and
+`ignition-8.3.9-core`. The [qualification matrix](compatibility-matrix.md)
+identifies each version/profile's observed workflow coverage.
+`spec references list` exposes
 the available selectors; `inspect REFERENCE` checks every payload and reports
 the full manifest; `export REFERENCE --out NEW_DIRECTORY` preserves all ten
 original files. A selector can be a bundled name or an explicit local directory.
@@ -250,7 +254,10 @@ same current parser
 and operation model as Gateway discovery, after checksum and identity checks.
 All reference paths work without Gateway configuration, credentials, cache, or
 network. They return `meta.reference` with explicit source kind, origin, image,
-module inventory hash, qualification scope, and contract identities. Assembly
+module inventory hash, qualification scope, and contract identities. Summaries
+also report `moduleCount` and `activeModuleCount` from the verified observations,
+with the explicit `moduleProfile` when recorded. Core references retain all 32
+installed module records, including 31 inactive ones. Assembly
 time is `createdAt`; it is not a current Gateway verification timestamp.
 API discovery additionally reports `inspectionParserVersion` and
 `inspectionCatalog`, distinguishing current parsing and identity policy from
@@ -390,7 +397,8 @@ OPC UA must be `ACTIVE`/`enabled`, and every excluded module must be
 upgrades, or missing selected modules. Captured whitelists must match lifecycle
 and workflow receipts. New reference manifests expose `moduleProfile`, and
 reading a bundle checks its module claims against the complete original
-capture. Historical manifests still require all-active defaults.
+capture. Historical manifests retain their all-active rule, including explicitly
+recorded whitelists; they are never relabeled as a new named profile.
 
 After `StatusPing` reports RUNNING, the tool authenticates to the disposable
 Gateway's built-in IdP and waits for three identical OpenAPI responses. This
@@ -462,11 +470,12 @@ parameters and missing cancellation-ID schema have reviewed adapters, but the
 keyboard-layout references also required the definition expansion above. The
 full 446-operation model now parses with 334 reported adjustments and unchanged
 raw/document/contract identities. The historical capture is not a qualified
-reference: current containment, module inventory, and authenticated workflow
-evidence are still required for that image. The complete version/module matrix and additional reference profiles
-remain tracked in the [execution plan](plans/rebuild-v1.md). The serialized
-[reference updater](reference-updates.md) has passed local 8.3.9 acceptance;
-remote scheduling still requires a provisioned runner and explicit activation.
+reference. Subsequent fresh clean pipelines have separately qualified the
+8.3.0 and 8.3.9 core and default profiles with current containment, full module
+inventory, and authenticated workflow evidence. Original historical captures
+remain unchanged. The [qualification matrix](compatibility-matrix.md) records
+these results; the [execution plan](plans/rebuild-v1.md) tracks the remaining v1
+work. Remote scheduling still requires a provisioned runner and an observed run.
 
 A fresh 8.3.0 default-module capture subsequently passed containment and recorded
 32 healthy active first-party modules. Its capture-time parser rejected the EAM
