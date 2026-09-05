@@ -367,6 +367,46 @@ length, credentials, and preview without dispatch. Source-file replacement,
 size limits, cancellation, closed streams, and schema/framing bypasses have
 specific regressions. Project and tag imports use these opaque wire contracts.
 
+Project/tag workflow follow-up: the development command tree now includes
+project list/get/inspect/export/import and tag export/import. Typed services
+share one execution scope and invocation deadline across preparation and
+readback. Project archives are inspected without extraction, compared by
+content manifest, and validated before publishing export files. Replacement
+requires a reviewed before-digest and reports the absence of an atomic server
+revision precondition. JSON tag verification compares supplied properties and
+named children while allowing Gateway defaults. Exact JSON comparison is
+shared with resources; ambiguous structures and duplicate keys are refused.
+Unknown reports, failed readback, and mismatches cannot establish completion.
+Tag report failures inside HTTP 200 return exit 7, preserving known partial
+outcomes. XML/CSV and Rename/Ignore currently provide acknowledged acceptance
+only, with verification explicitly unavailable.
+
+The real 8.3.9 transfer workflow test passed 38 checks in 174.34 seconds. Its
+immutable receipt is
+`internal/testgateway/testdata/ignition-8.3.9-project-tag-workflows.json`, for
+binary SHA-256
+`d6faec44e524b5dd767914409318b46b1e07c3e2c5c7c7d5ba6968ccede0bcc1`.
+It qualifies the generic wire contracts plus dedicated project import and
+replacement, stale-digest refusal, archive readback, tag JSON import/overwrite,
+and preview absence/unchanged-state checks. Duplicate Abort returned a partial
+report while the existing memory-tag value stayed unchanged; transport 2xx is
+insufficient and Abort does not imply transactional rollback. The Gateway was
+removed successfully through exact-owner cleanup. The captured document still
+declares a quality-code array although 8.3.9 returns a count envelope; raw
+vendor bytes remain unchanged and the discrepancy is documented.
+
+Full unit and race suites, all three builds, command-doc consistency, and docs
+lint passed for this slice. Observed validation cgroup peak was 5.06 GiB under
+the approved 8 GiB cap. The read-only legacy smoke script rebuilt successfully
+and stopped with exit 2 at the unset default Gateway URL/token. The disposable
+receipt above supplies real transfer acceptance; no host lifecycle or memory
+configuration changes were made. Existing user script-mode edits are preserved.
+
+Remaining v1 work includes operational workflows and polling, bounded batch,
+singleton/filter qualification, broader tag/version/module acceptance,
+scheduled reference updates and distribution, migration/cutover, and release
+artifact qualification. The full goal remains active.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

@@ -278,3 +278,17 @@ record this discrepancy; reviewed workflow policy must interpret the report
 and verify resulting state. Unknown report shapes cannot establish completion.
 This is a concrete reason that scheduled source updates must run workflow
 acceptance as well as schema parsing and diffing.
+
+The dedicated transfer workflow run passed 38 checks in 174.34 seconds on the
+same image; its receipt is
+`internal/testgateway/testdata/ignition-8.3.9-project-tag-workflows.json`.
+Run `TestLiveProjectTagWorkflows` with the same opt-in environment above to
+include these checks. It repeats the generic contract tests and qualifies
+project listing, local archive inspection, verified imports, stale replacement
+digest refusal, and replacement/readback. It also qualifies JSON memory-tag
+import and overwrite, independent proof of preview absence/unchanged values,
+and a duplicate Abort result reported as `partial` with exit 7 while the
+existing tag value remains unchanged. Abort must not be assumed to roll back
+every successful item in an import report. XML/CSV, UDT configurations,
+Rename/Ignore verification, other modules, and other Gateway versions require
+separate evidence.

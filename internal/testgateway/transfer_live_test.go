@@ -39,6 +39,14 @@ type transferCheck struct {
 }
 
 func TestLiveProjectTagContract(t *testing.T) {
+	testLiveProjectTag(t, false)
+}
+
+func TestLiveProjectTagWorkflows(t *testing.T) {
+	testLiveProjectTag(t, true)
+}
+
+func testLiveProjectTag(t *testing.T, workflows bool) {
 	image := os.Getenv("IGW_ACCEPTANCE_TEST_IMAGE")
 	if image == "" {
 		t.Skip("requires a pinned image and guarded live invocation")
@@ -210,6 +218,9 @@ func TestLiveProjectTagContract(t *testing.T) {
 	if json.Unmarshal(conflict.Data, &codes) != nil || codes.FailureCount < 1 || len(codes.Failures) < 1 {
 		t.Fatal("tag Abort did not report duplicate problems")
 	}
+	if workflows {
+		qualifyTransferWorkflows(t, run, dir, sourceName, source)
+	}
 	for _, name := range []string{sourceName, targetName} {
 		confirmed("project-delete", run("project-delete-"+name, "api", "request", "DELETE /data/api/v1/projects/{name}", "--path-param", "name="+name, "--query", "confirm=true", "--yes"))
 	}
@@ -245,6 +256,9 @@ func TestLiveProjectTagContract(t *testing.T) {
 			Cleanup          bool              `json:"cleanup"`
 			Passed           bool              `json:"passed"`
 		}{1, "project-tag-contract", image, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, sortedKeys(sourceFiles), true, true}
+		if workflows {
+			receipt.Kind = "project-tag-workflows"
+		}
 		b, err := json.MarshalIndent(receipt, "", "  ")
 		if err != nil {
 			t.Fatal(err)

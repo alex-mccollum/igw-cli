@@ -25,6 +25,10 @@ Examples for this entrypoint are maintained in the development section of
 - `gateway doctor`, which only reads Gateway information.
 - `resource types`, `describe`, `list`, `get`, and named-resource
   `create`/`update`/`delete` with signatures, previews, and state verification.
+- `project list`, `get`, `inspect`, `export`, and verified ZIP `import`, with a
+  reviewed content digest required for replacement.
+- `tag export` and `import`, with explicit collision policies, import-report
+  checks, and property readback for supported JSON imports.
 - `schema`, help, version metadata, and generated shell completions.
 
 `--json` emits one result using `version: "igw/v1"`, including parse errors.
@@ -58,9 +62,9 @@ to private disk storage and streams it once, with a default 1 GiB limit.
 Schema-assisted streaming requires a declared media type without a body schema
 and reports `declared_transport` validation. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
-bounded batch, singleton resources, project/tag workflows, profile migration,
-reference bundles, and the complete container qualification matrix remain on
-the rebuild roadmap.
+bounded batch, singleton resources, broader tag format/policy verification,
+profile migration, reference bundles, and the complete container qualification
+matrix remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local

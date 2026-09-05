@@ -93,6 +93,70 @@ values that cannot be compared can prevent verification; inspect current state
 before retrying. Singleton resources and forced reference changes still use
 explicit generic API requests.
 
+Project workflows transfer a complete project ZIP, inspect its file manifest,
+and verify the imported contents through a fresh export:
+
+```bash
+bin/igw-next project list --limit 50 --offset 0 --json
+bin/igw-next project get Example --json
+bin/igw-next project export Example --out project.zip --json
+bin/igw-next project inspect project.zip --json
+bin/igw-next project import Copy --in project.zip --dry-run --json
+bin/igw-next project import Copy --in project.zip --yes --json
+bin/igw-next project import Copy --in project.zip --overwrite --dry-run --json
+bin/igw-next project import Copy --in project.zip --overwrite --if-project-sha256 REVIEWED_DIGEST --yes --json
+```
+
+`project inspect` is local and requires no Gateway configuration. Exports are
+validated privately before publication; an existing output file requires
+`--overwrite`. Import defaults to requiring destination absence. Replacing an
+existing Gateway project requires `--overwrite` and the `data.beforeSha256`
+from a reviewed preview as `REVIEWED_DIGEST`. The project API has no atomic
+revision precondition: this digest detects earlier changes but cannot prevent
+a concurrent edit between the check and import. The result reports that limit.
+
+Project fingerprints ignore ZIP timestamps and entry order. JSON files up to
+4 MiB use key-order and number normalization; other files compare byte digests.
+Only standard ZIPs with unique relative paths and an object-valued
+`project.json` are accepted, with at most 10,000 entries, an 8 MiB central
+directory, and 1 GiB total expanded content. ZIP64, prefixed archives, and
+symbolic links are unsupported. Nothing is extracted or executed locally.
+Post-import export must match the complete file manifest before the command
+reports `completed` and `verified`. This checks project files, not runtime
+health. Project exports do not contain Gateway resources or tag providers.
+
+Tag imports default to the `Abort` collision policy and verify supported JSON
+inputs through independent tag exports:
+
+```bash
+bin/igw-next tag export --provider default --path Example --out tags.json --json
+bin/igw-next tag import --provider default --in tags.json --dry-run --json
+bin/igw-next tag import --provider default --in tags.json --yes --json
+bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --dry-run --json
+bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --yes --json
+```
+
+Provider defaults to `default`; `--path` is relative to that provider. Export
+defaults to JSON, recursively including children and UDT definitions; use
+`--recursive=false`, `--include-udts=false`, or `--type xml` explicitly.
+Export requires `--out` and publishes the completed download atomically.
+Import accepts JSON, XML, or CSV; type is inferred from a known extension,
+defaults to JSON for an extensionless file, and can be set with `--type`.
+JSON verification inputs are limited to 32 MiB; opaque uploads default to 1 GiB.
+
+The CLI checks import reports even when HTTP status is 200. Failures return
+exit 7; known mixed results report `partial`. JSON with `Abort`, `Overwrite`,
+or `MergeOverwrite` requires all supplied tag properties and named children to
+match a readback before reporting `completed` and `verified`. This allows
+Gateway defaults and does not prove removal of unspecified properties or
+children, atomic application, or future values of dynamic tags. Redacted,
+normalized, inherited, or changing values can prevent verification. XML/CSV
+and `Rename`/`Ignore` currently report `accepted` with verification unavailable
+when the Gateway reports no failures. Unknown reports and readback mismatches
+remain `uncertain`; inspect exported state before retrying. Imports are never
+automatically replayed. Previews describe structure and digests without tag
+values or project file contents; explicit exports contain the selected data.
+
 ## Current Release Entrypoint
 
 This file is the canonical command example reference.

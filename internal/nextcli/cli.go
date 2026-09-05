@@ -130,7 +130,7 @@ func (i *invocation) commands() *cobra.Command {
 	f.BoolVar(&i.offline, "offline", false, "Use a local catalog for discovery and previews")
 	f.StringVar(&i.pin, "spec-pin", "", "Require this canonical catalog SHA-256")
 	f.BoolVar(&i.allowStale, "allow-stale-spec", false, "Explicitly permit a target-matched stale catalog for a write")
-	root.AddCommand(i.specCommands(), i.apiCommands(), i.profileCommands(), i.resourceCommands())
+	root.AddCommand(i.specCommands(), i.apiCommands(), i.profileCommands(), i.resourceCommands(), i.projectCommands(), i.tagCommands())
 	root.AddCommand(&cobra.Command{Use: "version", Short: "Show development build metadata", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			i.output = result.Success(map[string]any{"version": buildinfo.Short(), "commit": buildinfo.Commit, "date": buildinfo.Date, "developmentPreview": true})
