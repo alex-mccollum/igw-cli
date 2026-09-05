@@ -497,6 +497,17 @@ Full unit/race suites, all three builds, command-doc consistency, and docs lint
 passed. The validation scope's observed memory peak was 4.39 GiB within its
 8 GiB cap. No host settings or WSL/Docker Desktop lifecycle actions changed.
 
+Document comparison now lives in `internal/catalog.Compare`, shared by
+`spec diff` and the forthcoming reference update packager. It reads immutable
+catalog indexes directly, avoiding redundant full-document/operation copies,
+and preserves the existing JSON comparison fields with sorted non-null lists.
+Regression checks distinguish annotations, inherited path constraints, shared
+large-integer constraints, and added/removed routes. Full unit/race/build/docs
+gates passed. Comparing the two guarded real 8.3.9 captures also passed:
+different document hashes and six changed operation documents, no added or
+removed routes, and equal contracts under `igw-contract/1`. The local result is
+`bin/image-reference-comparison.json`; this is not backward-compatibility proof.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

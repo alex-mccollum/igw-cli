@@ -134,6 +134,11 @@ list describes document differences. Equal contracts report
 `unchanged_under_policy`; different contracts require review. Neither result
 certifies Gateway runtime behavior or backward compatibility.
 
+Comparison is owned by `internal/catalog.Compare`; the CLI renders its typed
+result. Reference-update tooling can use the same rules without invoking a
+CLI subprocess. It compares immutable indexes directly, preserving exact
+numbers and avoiding redundant full-document copies.
+
 ## Contributor capture
 
 Resolve the official `8.3` channel or an explicit `8.3.<patch>` release before

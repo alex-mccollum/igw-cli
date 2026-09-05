@@ -1,8 +1,6 @@
 package nextcli
 
 import (
-	"bytes"
-	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -111,60 +109,10 @@ func (i *invocation) specCommands() *cobra.Command {
 				return err
 			}
 			defer after.Close()
-			previous := make(map[string]catalog.Operation)
-			for _, op := range before.Operations() {
-				previous[op.Key] = op
-			}
-			added, removed, changed := []string{}, []string{}, []string{}
-			for _, op := range after.Operations() {
-				old, ok := previous[op.Key]
-				if !ok {
-					added = append(added, op.Key)
-				} else if !jsonEqual(old.Definition, op.Definition) {
-					changed = append(changed, op.Key)
-				}
-				delete(previous, op.Key)
-			}
-			for _, op := range before.Operations() {
-				if _, ok := previous[op.Key]; ok {
-					removed = append(removed, op.Key)
-				}
-			}
-			var oldDoc, newDoc map[string]json.RawMessage
-			_ = json.Unmarshal(before.Raw(), &oldDoc)
-			_ = json.Unmarshal(after.Raw(), &newDoc)
-			sharedChanged := !jsonEqual(oldDoc["components"], newDoc["components"]) || !jsonEqual(oldDoc["security"], newDoc["security"]) || !jsonEqual(oldDoc["paths"], newDoc["paths"])
-			contractEqual := before.ContractHash() == after.ContractHash()
-			compatibility := "requires_review"
-			if contractEqual {
-				compatibility = "unchanged_under_policy"
-			}
-			i.output = result.Success(map[string]any{
-				"beforeIdentity": before.Identity(), "afterIdentity": after.Identity(),
-				"contractEqual": contractEqual, "documentEqual": before.DocumentHash() == after.DocumentHash(),
-				"added": added, "removed": removed, "changedOperationDocuments": changed,
-				"sharedOrPathDocumentChanged": sharedChanged, "compatibility": compatibility,
-			})
+			i.output = result.Success(catalog.Compare(before, after))
 			return nil
 		}})
 	return group
-}
-
-func jsonEqual(a, b []byte) bool {
-	if len(a) == 0 || len(b) == 0 {
-		return len(a) == len(b)
-	}
-	decode := func(raw []byte) []byte {
-		var value any
-		d := json.NewDecoder(bytes.NewReader(raw))
-		d.UseNumber()
-		if d.Decode(&value) != nil {
-			return nil
-		}
-		normalized, _ := json.Marshal(value)
-		return normalized
-	}
-	return bytes.Equal(decode(a), decode(b))
 }
 
 func (i *invocation) readCatalog(path string) (*catalog.Catalog, error) {
