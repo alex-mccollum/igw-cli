@@ -43,6 +43,8 @@ func TestNamedQueryParameterContract(t *testing.T) {
 		{"array number constraint", `{"type":"array","items":{"type":"number","multipleOf":0.25}}`, []string{"0.3"}, false},
 		{"array boolean constraint", `{"type":"array","items":{"type":"boolean","enum":[false]}}`, []string{"false", "true"}, false},
 		{"array precise integer", `{"type":"array","items":{"type":"integer","minimum":0}}`, []string{"18446744073709551616"}, true},
+		{"nullable array items", `{"type":"array","items":{"type":["null","integer"],"minimum":1}}`, []string{"2", "3"}, true},
+		{"no implicit null item", `{"type":"array","items":{"type":["null","integer"]}}`, []string{"null"}, false},
 		{"numeric exponent limit", `{"type":"number","minimum":0}`, []string{"1e999999999999999999999"}, false},
 		{"numeric text limit", `{"type":"integer","minimum":0}`, []string{strings.Repeat("1", maxParameterNumberChars+1)}, false},
 		{"nonfinite number", `{"type":"number"}`, []string{"NaN"}, false},

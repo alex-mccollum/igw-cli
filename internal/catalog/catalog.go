@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/17"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/18"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -137,21 +137,25 @@ func Parse(raw []byte) (*Catalog, error) {
 		doc.Release()
 		return nil, errors.New("document does not satisfy its OpenAPI version schema")
 	}
-	if strings.HasPrefix(version, "3.1.") {
+	changed := false
+	if strings.HasPrefix(version, "3.0.") {
+		normalizeSchema30(value, "document")
+		changed = true
+	} else {
 		// Validate the document before adapting valid boolean schemas into
 		// equivalent object forms for the upstream high-level renderer.
-		_, changed := normalizeBooleanSchemas(value, "document")
-		if changed {
-			adapted, err := json.MarshalIndent(value, "", "  ")
-			if err != nil {
-				doc.Release()
-				return nil, errors.New("could not prepare OpenAPI model")
-			}
+		_, changed = normalizeBooleanSchemas(value, "document")
+	}
+	if changed {
+		adapted, err := json.MarshalIndent(value, "", "  ")
+		if err != nil {
 			doc.Release()
-			doc, err = newParserDocument(adapted)
-			if err != nil {
-				return nil, errors.New("could not prepare OpenAPI model")
-			}
+			return nil, errors.New("could not prepare OpenAPI model")
+		}
+		doc.Release()
+		doc, err = newParserDocument(adapted)
+		if err != nil {
+			return nil, errors.New("could not prepare OpenAPI model")
 		}
 	}
 	model, err := doc.BuildV3Model()
@@ -421,10 +425,20 @@ func (c *Catalog) validateRequest(key string, request *http.Request) ([]Issue, s
 		// The default eagerly compiles every request/response schema. A CLI
 		// invocation needs only the selected contract, and unrelated vendor
 		// schema defects must not interfere with that operation.
-		c.validator = validator.NewValidatorFromV3Model(&c.model.Model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
+		// The index retains original 3.0 reference/rendering behavior. Only the
+		// validator's shallow document view selects the prepared schema dialect.
+		model := c.model.Model
+		if strings.HasPrefix(model.Version, "3.0.") {
+			model.Version = "3.1.0"
+		}
+		c.validator = validator.NewValidatorFromV3Model(&model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
 	})
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
-	item, request, bindingIssues, err := c.filterValidationView(item, request)
+	item, bindingIssues, err := c.pathValidationView(item, request, op.Path)
+	if err != nil || len(bindingIssues) != 0 {
+		return bindingIssues, "", err
+	}
+	item, request, bindingIssues, err = c.filterValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, "", err
 	}

@@ -85,7 +85,7 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 			if kind == "array" {
 				members := make([]any, 0, len(input))
 				for _, text := range input {
-					member, rule := parameterPrimitive(schema.Items.A.Schema().Type[0], text)
+					member, rule := parameterPrimitive(querySchemaKind(schema.Items.A.Schema()), text)
 					if rule != "" {
 						return refuse(name, rule)
 					}
@@ -102,7 +102,7 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 					return refuse(name, rule)
 				}
 			}
-			issues, err := c.validateQueryValue(name, schema, value)
+			issues, err := c.validateParameterValue("query", name, schema, value)
 			if err != nil || len(issues) > 0 {
 				return item, request, issues, err
 			}
@@ -115,10 +115,23 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 }
 
 func querySchemaKind(schema *base.Schema) string {
-	if schema == nil || len(schema.Type) != 1 {
+	if schema == nil {
 		return ""
 	}
-	switch kind := schema.Type[0]; kind {
+	kinds := schema.Type
+	// Null has no implicit parameter spelling. A nullable schema still checks
+	// the supplied primitive; the caller never substitutes null for text.
+	if len(kinds) == 2 {
+		if kinds[0] == "null" {
+			kinds = kinds[1:]
+		} else if kinds[1] == "null" {
+			kinds = kinds[:1]
+		}
+	}
+	if len(kinds) != 1 {
+		return ""
+	}
+	switch kind := kinds[0]; kind {
 	case "string", "integer", "number", "boolean":
 		return kind
 	case "array":
@@ -167,10 +180,10 @@ func parameterPrimitive(kind, text string) (any, string) {
 }
 
 // Caller holds Catalog.validationMu: rendering can mutate upstream schema state.
-func (c *Catalog) validateQueryValue(name string, schema *base.Schema, value any) ([]Issue, error) {
+func (c *Catalog) validateParameterValue(location, name string, schema *base.Schema, value any) ([]Issue, error) {
 	v := schema_validation.NewSchemaValidatorWithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)), validatorconfig.WithSchemaCache(nil))
 	defer v.Release()
-	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, c.schemaVersion())
+	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, validationSchemaVersion)
 	if valid {
 		return nil, nil
 	}
@@ -179,16 +192,9 @@ func (c *Catalog) validateQueryValue(name string, schema *base.Schema, value any
 		return nil, ErrSchemaCompilation
 	}
 	for i := range issues {
-		issues[i].Kind, issues[i].Rule, issues[i].Parameter = "parameter", "query", name
+		issues[i].Kind, issues[i].Rule, issues[i].Parameter = "parameter", location, name
 	}
 	return issues, nil
-}
-
-func (c *Catalog) schemaVersion() float32 {
-	if strings.HasPrefix(c.model.Model.Version, "3.0.") {
-		return 3.0
-	}
-	return 3.1
 }
 
 func queryValidationView(item *v3.PathItem, request *http.Request, removed map[string]bool, values url.Values) (*v3.PathItem, *http.Request) {

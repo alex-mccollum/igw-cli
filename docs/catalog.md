@@ -684,6 +684,32 @@ invent a minimum binary size when the document declares none. Previews expose
 zero-length HTTP framing. Original vendor bytes, contract hashes, and historical
 qualification receipts remain unchanged.
 
+Parser 18 binds paths against the explicitly selected operation. It splits the
+escaped path before decoding segments, checks literal prefixes and suffixes,
+and validates each simple primitive through the complete exact-value schema
+compiler. Operation-level declarations override inherited parameters. Private
+validation views remove the checked path declarations so the pinned validator
+cannot strip a vendor server prefix, index mismatched segments, or reinterpret
+the values. Ambiguous bindings and unsupported serializations fail before
+dispatch; original paths and vendor documents remain unchanged. See the
+[OpenAPI path and parameter rules](https://spec.openapis.org/oas/v3.1.1.html#path-templating).
+
+The path regressions also exposed rounding in the upstream 3.0 schema conversion.
+After validating an original 3.0 document, the adapter now translates only its
+private schema positions using exact JSON numbers. Nullable types follow the
+[3.0 schema rules](https://spec.openapis.org/oas/v3.0.4.html#schema-object): enum
+and composition assertions still apply, and a local type is required for
+nullable to have an effect. Exclusive bounds retain their inclusive bound plus
+an exact equality exclusion, avoiding the 3.0 renderer's conversion of numeric
+exclusive bounds back into booleans. A shallow validator view selects the 3.1
+schema dialect for this prepared model, bypassing the lossy conversion while
+retaining OpenAPI vocabulary checks such as discriminator presence. The parser
+index keeps 3.0 reference semantics. Instance data, examples, exports,
+document/contract hashes, and the declared OpenAPI version remain unchanged.
+This shared fix applies to supported path, query, and body values; parameter text never implies
+null. The captured Ignition 8.3 references are 3.1 and retain their historical
+qualification identities.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

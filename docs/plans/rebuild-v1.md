@@ -1313,6 +1313,45 @@ then stopped at the unconfigured default Gateway's `doctor` with exit 2
 input boundary. No containers, host-service operations, host settings, or
 validation-limit changes were needed for this slice.
 
+The next input slice binds paths independently of vendor servers and validates
+their complete values. `bin/path-values-before.log` reproduced 36 failing
+subcases across exact values, selected-path matching, and parameter inheritance,
+including five panics. The guarded inventory
+`bin/path-parameter-inventory-parser17.json` confirms that declared path values
+in both default captures are simple strings or booleans; 8.3.0 also retains its
+three previously identified missing schemas. Parser 18 now binds the selected
+relative path, preserves escaped slashes and exact values, honors operation
+overrides, and removes checked declarations only from private validation views.
+
+Initial implementation checks exposed an additional 3.0 compiler conversion
+that rounded schema numbers (`bin/path-values-focused-complete.log`). The private
+3.0 model now adapts nullable/exclusive constraints in schema positions with exact
+numbers and bypasses that upstream conversion. Numeric exclusive bounds were
+then found to render back into booleans in a 3.0 model
+(`bin/schema30-exclusive-diagnostic.log`); inclusive bounds plus equality
+exclusion preserve the same assertion without that representation loss. The
+original document is validated before adaptation, and original bytes, exported
+contracts, source hashes, and historical receipts stay authoritative. Disabling
+OpenAPI mode was rejected after a regression proved that it lost discriminator
+checks (`bin/schema30-vocabulary-before.log`). The final adapter selects the
+prepared schema dialect only in a shallow validator view and retains OpenAPI
+vocabulary checks and the parser index's 3.0 reference behavior. CLI
+integration checks verify selected target/proxy paths, exact wire values,
+zero-write previews, and exit-2 refusals. The final catalog and CLI race checks
+passed in `bin/path-values-race.log`, including recursive 3.0 references,
+nullable parameter items, ambiguous path bindings, and preserved discriminator
+checks. The full unit suite passed in `bin/path-values-unit.log`, including
+captured references and historical evidence checks. Both binaries, command-doc
+consistency, and docs lint passed in `bin/path-values-build-docs.log`. Legacy
+smoke built successfully, then stopped at the unconfigured default Gateway's
+`doctor` with exit 2 (`bin/path-values-smoke.log`). No live acceptance is claimed.
+No containers or host-service operations ran, and memory/settings/guard limits
+remain unchanged. A read-only check reported 31 GiB visible to Linux and 26 GiB
+available; no validation required a limit increase.
+Path/header structured encodings, content parameters, body encoding work,
+current-source live acceptance, and the full workflow/cutover/release gates
+remain within the active goal.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

@@ -103,7 +103,7 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 			return refuse("required")
 		}
 	} else {
-		issues, err := c.validateQueryValue("filter", schema, properties)
+		issues, err := c.validateParameterValue("query", "filter", schema, properties)
 		if err != nil || len(issues) > 0 {
 			return item, request, issues, err
 		}

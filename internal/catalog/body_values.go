@@ -127,7 +127,7 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 		compilerRaw = []byte(`""`)
 	}
 	valid, failures := requests.ValidateRequestSchema(&requests.ValidateRequestSchemaInput{
-		Request: request, Schema: media.Schema.Schema(), Version: c.schemaVersion(),
+		Request: request, Schema: media.Schema.Schema(), Version: validationSchemaVersion,
 		Options:      []validatorconfig.Option{validatorconfig.WithSchemaCache(nil), validatorconfig.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))},
 		BodyRequired: required, DecodedValue: value, RawBody: compilerRaw, ValueDecoded: true,
 	})

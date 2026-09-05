@@ -66,6 +66,21 @@ and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
 
+For simple path parameters, pass the literal string, boolean, integer, or number
+with `--path-param name=value`; the CLI handles percent encoding. Encoded slashes
+remain inside the value, and percent escapes are decoded once for validation.
+Empty path values fail before dispatch. The same exact numeric spellings and
+limits described below for query values apply to path values. The complete
+selected schema applies, and an operation's declaration overrides an inherited
+declaration of the same parameter. Vendor `servers` never changes the selected
+target or the operation-relative path used for validation.
+
+Path arrays, objects, content-based parameters, and label/matrix styles currently
+fail schema-assisted validation as `unsupported_serialization`; their contracts
+remain inspectable with `api describe`. A path template with multiple expressions
+in one segment must have an unambiguous binding. `api raw` remains the explicit
+escape hatch for encodings that are not yet supported.
+
 `api describe` includes `bodyInputs` alongside the original vendor contract.
 Each entry reports the declared media type, required-body flag, schema presence,
 supported encoding, validation coverage, and streaming support. `selected_media`
