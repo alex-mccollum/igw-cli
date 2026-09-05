@@ -84,17 +84,10 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	var value any
 	switch encoding {
 	case "json":
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		decoder.UseNumber()
-		value, err = decodeUniqueJSON(decoder, 0)
-		if err != nil || !jsonvalue.ValidUnicode(raw) {
-			return refuse("invalid_json")
-		}
-		if _, err := decoder.Token(); err != io.EOF {
-			return refuse("invalid_json")
-		}
-		if !boundedJSONNumbers(value) {
-			return refuse("numeric_limit")
+		var rule string
+		value, rule = decodeExactJSON(raw)
+		if rule != "" {
+			return refuse(rule)
 		}
 	case "utf8":
 		charset := strings.ToLower(parameters["charset"])
@@ -139,6 +132,24 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 		return "", issues, nil
 	}
 	return ValidationSchema, nil, nil
+}
+
+// Preserve exact numbers, null, member uniqueness, and Unicode for every JSON
+// input location. Callers bound the encoded input before decoding.
+func decodeExactJSON(raw []byte) (any, string) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	value, err := decodeUniqueJSON(decoder, 0)
+	if err != nil || !jsonvalue.ValidUnicode(raw) {
+		return nil, "invalid_json"
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, "invalid_json"
+	}
+	if !boundedJSONNumbers(value) {
+		return nil, "numeric_limit"
+	}
+	return value, ""
 }
 
 // Prefer the most specific matching range, regardless of document order.

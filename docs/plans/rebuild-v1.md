@@ -1389,6 +1389,44 @@ header-schema and structured-parameter work, current-source Gateway acceptance,
 and the full workflow/cutover/release gates remain active. No containers or
 host-service operations ran, and the resource guard remains unchanged.
 
+Header schema validation follows the committed transport normalizer. The
+baseline `bin/header-values-before.log` reproduced skipped required empty
+fields, exact-value errors, repeated-array constraint gaps, skipped JSON/text
+content checks, and reserved-header/inheritance errors. The job completed
+normally before implementation. Parser 19 now binds effective case-insensitive
+fields, checks whole primitive arrays, and validates declared JSON/text content
+using exact values. Shared JSON decoding retains duplicate-key, Unicode,
+numeric-work, and document-completion bounds. JSON null explicitly reaches
+the schema compiler rather than the upstream nil shortcut.
+
+The managed token remains presence-only in this credential-free boundary;
+its marker is never asserted to be the actual token. Reserved OpenAPI parameter
+declarations are ignored as specified, while body media checks remain active.
+Generated HTTP fields without bound values and ambiguous empty simple-list
+members fail transparently. JSON content can represent complex/empty values
+when declared. Private request/model views preserve caller input, vendor bytes,
+hashes, and historical receipts. Current-parser expectations advance to 19.
+Both default capture inventories have zero header declarations; this slice
+claims synthetic schema/wire verification, not live Gateway header support.
+Catalog and CLI integration checks passed in
+`bin/header-values-{focused,integration}.log`. They cover exact/recursive JSON
+schemas, null, empty and repeated fields, case variants, Unicode, normalization,
+managed-token presence, generated-header refusals, and unsupported encodings.
+CLI tests verify exact wire fields, zero-write previews, exit-2 pre-dispatch
+refusals, and sensitive-value omission from captured output before decoding.
+Focused catalog/execution/CLI race checks passed in
+`bin/header-values-race.log`, including JSON bodies and multipart/binary/empty
+input regressions. No validation limit increase or host operation was needed.
+The full repository suite passed in `bin/header-values-unit.log`, including
+captured-catalog expectations and retained historical live-evidence checks.
+Both CLI builds, command-doc consistency, and documentation lint passed in
+`bin/header-values-build-docs.log`. Legacy smoke built successfully, then
+stopped at the unconfigured default Gateway's `doctor` with exit 2
+(`bin/header-values-smoke.log`). No containers or host-service operations ran;
+memory settings and resource guard limits remain unchanged. Structured
+parameter encodings, form/binary schema work, current-source Gateway acceptance,
+and the workflow/cutover/release gates remain within the active goal.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

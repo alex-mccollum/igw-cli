@@ -706,9 +706,35 @@ schema dialect for this prepared model, bypassing the lossy conversion while
 retaining OpenAPI vocabulary checks such as discriminator presence. The parser
 index keeps 3.0 reference semantics. Instance data, examples, exports,
 document/contract hashes, and the declared OpenAPI version remain unchanged.
-This shared fix applies to supported path, query, and body values; parameter text never implies
-null. The captured Ignition 8.3 references are 3.1 and retain their historical
-qualification identities.
+This shared fix applies to supported path, query, and body values; primitive
+parameter text never implies null. The captured Ignition 8.3 references are 3.1
+and retain their historical qualification identities.
+
+Parser 19 binds normalized header fields case-insensitively, honors operation
+overrides, and validates complete primitive values and simple primitive arrays.
+Repeated fields contribute to one array; empty fields remain present. The
+credential-free validation request never substitutes its managed-token marker
+for an actual credential's schema value: only required token presence is checked,
+and authentication remains the Gateway's responsibility. Generated HTTP fields
+whose values are not bound cannot silently pass a declared schema.
+
+Header parameters with JSON or UTF-8 text `content` use complete schemas;
+exact JSON decoding is shared with bodies. JSON null is evaluated explicitly
+because the upstream generic helper otherwise skips nil values. Reserved
+`Accept`, `Content-Type`, and `Authorization` parameter declarations are ignored
+under the [OpenAPI parameter rules](https://spec.openapis.org/oas/v3.1.1.html#parameter-object).
+Field normalization uses HTTP SP/HTAB whitespace, and simple array decoding
+splits commas without URI decoding or inferred header-specific quoted syntax.
+See [OpenAPI header serialization considerations](https://spec.openapis.org/oas/v3.1.1.html#appendix-d-serializing-headers-and-cookies)
+and [HTTP field values](https://www.rfc-editor.org/rfc/rfc9110.html#name-field-values).
+Empty simple-list members and unsupported structures fail explicitly; JSON
+content provides an unambiguous representation when the contract declares it.
+
+Neither retained default Gateway capture declares header parameters, including
+through references. Header-schema support therefore has synthetic catalog and
+CLI wire tests; it is not evidence of a header contract advertised by those
+Gateways. Original vendor bytes, identities, reference bundles, and historical
+live receipts retain their recorded provenance.
 
 ## Project and tag transfer evidence
 

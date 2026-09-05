@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/18"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/19"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -394,6 +394,8 @@ func (c *Catalog) gaps(op Operation) []string {
 // Request bodies must be independent readers: the validator may consume them.
 // Use outgoing client requests: nil Body omits input; a non-nil reader,
 // including http.NoBody, explicitly supplies a representation, possibly empty.
+// X-Ignition-API-Token is presence-only: pass a marker, never the credential.
+// The Gateway owns authentication; token value assertions are not evaluated.
 // Concurrent calls are supported; schema compilation within one catalog is
 // serialized because the upstream renderer mutates shared schema nodes.
 func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
@@ -443,6 +445,10 @@ func (c *Catalog) validateRequest(key string, request *http.Request) ([]Issue, s
 		return bindingIssues, "", err
 	}
 	item, request, bindingIssues, err = c.namedQueryValidationView(item, request)
+	if err != nil || len(bindingIssues) != 0 {
+		return bindingIssues, "", err
+	}
+	item, request, bindingIssues, err = c.headerValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, "", err
 	}

@@ -181,6 +181,21 @@ func parameterPrimitive(kind, text string) (any, string) {
 
 // Caller holds Catalog.validationMu: rendering can mutate upstream schema state.
 func (c *Catalog) validateParameterValue(location, name string, schema *base.Schema, value any) ([]Issue, error) {
+	if value == nil {
+		// The generic upstream helper skips nil instead of validating JSON
+		// null. Use the same compiler and schema dialect without that shortcut.
+		compiled, err := schema_validation.CompileSchemaForValidation(schema,
+			schema_validation.SchemaValidationPurposeGeneric,
+			validatorconfig.NewValidationOptions(validatorconfig.WithSchemaCache(nil), validatorconfig.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))),
+			validationSchemaVersion)
+		if err != nil || compiled == nil || compiled.CompiledSchema == nil {
+			return nil, ErrSchemaCompilation
+		}
+		if err := compiled.CompiledSchema.Validate(nil); err != nil {
+			return []Issue{{Kind: "parameter", Rule: location, Parameter: name}}, nil
+		}
+		return nil, nil
+	}
 	v := schema_validation.NewSchemaValidatorWithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)), validatorconfig.WithSchemaCache(nil))
 	defer v.Release()
 	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, validationSchemaVersion)
