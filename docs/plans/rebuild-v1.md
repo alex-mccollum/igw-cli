@@ -1226,6 +1226,43 @@ schemas and opaque transport must not be labeled as complete value validation.
 Multipart/form construction and the remaining path/header/structured parameter
 encodings should build on that explicit coverage boundary.
 
+The body-media inventory was regenerated from both exact default captures under
+the bounded runner (`bin/body-media-inventory-parser15.json`). All seven 8.3.9
+multipart media declarations omit schemas. Both versions also advertise plain
+text, unconstrained binary forms, wildcard datafiles, and invalid `binary
+stream` media names. The baseline regression reproduced 13 false-success cases
+(`bin/body-media-before.log`), covering omitted text assertions, unsupported
+decoders, undeclared bodies, missing required opaque input, and missing media
+types.
+
+Parser 16 now owns body presence/media selection and actual coverage reporting.
+It validates plain UTF-8 text with the complete selected schema and refuses
+unsupported decoders as `unsupported_input` before dispatch. Opaque and
+recognized unconstrained binary inputs report transport-only coverage;
+additional binary assertions cannot disappear. The same media selector serves
+streaming, including wildcard datafile routes. `api describe.bodyInputs`
+separates the vendor's schema declaration from available decoding/streaming,
+and generic results expose actual validation in metadata. Existing JSON/body
+checks continue through the shared core; an older filter test now supplies
+bodies only where its fixture declares them. Initial focused and CLI checks
+passed in `bin/body-media-{focused-fixed,integration,binary}.log`. Final captured
+contracts and 40 MiB binary streams passed in
+`bin/body-media-final-focused.log`. Schema-bearing media ranges now report
+`selected_media` before promising a decoder or streaming eligibility; exact
+JSON and raw binary selections are covered by the range regression. The final
+catalog/CLI race checks and full unit suite passed in
+`bin/body-media-{race-final,unit}.log`.
+No live acceptance is claimed for this parser. Multipart construction, binary
+constraints, explicit empty text, structured inputs, and the remaining full v1
+gates retain their original scope.
+
+Both CLI builds, command-doc consistency, and docs lint passed in
+`bin/body-media-build-docs.log`. Legacy smoke built successfully, then stopped
+at `doctor` with exit 2 because the default Gateway remains unconfigured
+(`bin/body-media-smoke.log`). Historical Gateway evidence and raw vendor
+documents remain unchanged. No containers, host control commands, host settings,
+or validation-limit changes were needed for this slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

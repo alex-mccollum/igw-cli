@@ -31,6 +31,7 @@ type Metadata struct {
 	Stale        bool               `json:"stale,omitempty"`
 	HTTPStatus   int                `json:"httpStatus,omitempty"`
 	Verification string             `json:"verification,omitempty"`
+	Validation   string             `json:"validation,omitempty"`
 	Warnings     []string           `json:"warnings,omitempty"`
 }
 

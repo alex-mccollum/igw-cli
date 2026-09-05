@@ -252,6 +252,11 @@ func human(out io.Writer, r result.Result) error {
 		_, err := fmt.Fprintf(out, "saved reference bundle to %s (%d files)\n", exported.Directory, exported.FileCount)
 		return err
 	}
+	if r.Meta.Validation == catalog.ValidationTransport {
+		if _, err := fmt.Fprintln(out, "Catalog body checks: media type and presence only."); err != nil {
+			return err
+		}
+	}
 	if types, ok := r.Data.([]resource.Type); ok {
 		for _, item := range types {
 			if _, err := fmt.Fprintf(out, "%s\t%s\n", item.ID, item.Summary); err != nil {

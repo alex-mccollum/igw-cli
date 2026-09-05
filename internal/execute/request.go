@@ -145,7 +145,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		validationBody := input.Body
 		if input.Upload != nil {
 			if !snapshot.Catalog.OpaqueUpload(op.Key, input.ContentType) {
-				return nil, result.Usage("streamed uploads require a declared media type without a body schema; use a bounded --body or explicit api raw")
+				return nil, result.Usage("streamed uploads require a declared opaque or unconstrained binary body; inspect api describe or use a bounded --body or explicit api raw")
 			}
 			// Opaque content has no value assertions. Represent only presence to
 			// validate the remaining contract without reading a large upload.
@@ -168,15 +168,18 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		if token != "" {
 			request.Header.Set("X-Ignition-API-Token", "managed")
 		}
-		issues, err := snapshot.Catalog.Validate(op.Key, request)
+		checked, err := snapshot.Catalog.ValidateRequest(op.Key, request)
 		if err != nil {
+			if errors.Is(err, catalog.ErrUnsupportedBodyEncoding) {
+				return nil, &result.Problem{Kind: "unsupported_input", Message: "the CLI cannot validate this body encoding; inspect api describe or use api raw explicitly", Code: 2}
+			}
 			if errors.Is(err, catalog.ErrSchemaCompilation) || errors.Is(err, catalog.ErrIncompleteContract) {
 				return nil, &result.Problem{Kind: "catalog_schema", Message: "the Gateway's schema cannot validate this operation; inspect api describe or use api raw explicitly", Code: 2}
 			}
 			return nil, result.Usage("could not validate request against the selected operation")
 		}
-		if len(issues) > 0 {
-			return nil, &result.Problem{Kind: "validation", Message: "request does not satisfy the operation contract; inspect api describe", Code: 2, Details: issues}
+		if len(checked.Issues) > 0 {
+			return nil, &result.Problem{Kind: "validation", Message: "request does not satisfy the operation contract; inspect api describe", Code: 2, Details: checked.Issues}
 		}
 		description, err := snapshot.Catalog.Describe(op.Key)
 		if err != nil {
@@ -185,10 +188,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		meta.Catalog = &snapshot.Metadata
 		meta.Stale = snapshot.Stale
 		meta.Warnings = append(append([]string(nil), snapshot.Warnings...), description.Gaps...)
-		validation = "declared_schema"
-		if input.Upload != nil {
-			validation = "declared_transport"
-		}
+		validation = checked.Coverage
 	} else {
 		if len(input.PathParams) != 0 {
 			return nil, result.Usage("path parameters require a catalog operation")
@@ -232,6 +232,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 			}
 		}
 	}
+	meta.Validation = validation
 	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: int64(len(input.Body)), Validation: validation}
 	if input.Upload != nil {
 		preview.BodyBytes, preview.BodySHA256 = input.Upload.Bytes(), input.Upload.SHA256()

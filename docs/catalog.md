@@ -631,6 +631,29 @@ fields. It rebuilds the model only when a conversion is needed. This is a
 parser representation fix, independent of the IA generator-correction policy;
 original schema inspection, document identity, and contract pins do not change.
 
+Parser 16 makes body-validation coverage explicit. The pinned upstream body
+validator otherwise reports success when a non-JSON decoder is absent, when
+some required opaque bodies are empty, and for undeclared bodies. The catalog
+now owns body presence and media selection for every encoding, provides exact
+UTF-8 `text/plain` schema validation, and refuses unsupported schema decoders
+before dispatch. It removes the body declaration only after those checks pass;
+remaining parameter validation cannot silently substitute a different body path.
+
+`ValidateRequest` returns the actual coverage used by the execution core.
+Generic previews and executions expose it in `meta.validation`, with the
+existing preview `data.validation` retained. `api describe.bodyInputs` reports
+schema presence separately from decoder, coverage, and streaming support.
+Unspecified schemas receive transport checks only. The captured empty
+octet-stream schema and legacy string/binary schema also permit streaming with
+transport-only coverage; any additional value assertion requires support
+before acceptance. This follows the distinction between
+[raw binary and JSON instances](https://spec.openapis.org/oas/v3.1.1.html#working-with-binary-data).
+Binary schema length/content constraints and multipart/form value encoding
+remain further work. The Gateway's invalid `binary stream` declarations remain
+unchanged and are reported as unsupported instead of receiving an invented MIME
+type. Wildcard datafile declarations now permit explicit concrete media types
+for streamed uploads, using the same selection rules as bounded requests.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

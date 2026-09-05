@@ -73,8 +73,11 @@ duplicate keys, malformed Unicode, excessive nesting, and excessive numeric
 work are refused before dispatch. Named query primitives and repeated exploded
 arrays also receive complete value validation without changing wire text.
 See `docs/commands.md` for the accepted input spellings and limits.
-Schema-assisted streaming requires a declared media type without a body schema
-and reports `declared_transport` validation. Multipart/form
+Schema-assisted streaming requires a declared opaque or unconstrained binary
+body and reports `declared_transport` validation. Plain text has exact UTF-8
+schema validation; unsupported body decoders are refused before dispatch.
+`api describe.bodyInputs` exposes these support boundaries, and generic request
+metadata reports the checks actually performed. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, broader tag format/policy verification,
 profile migration, remote update-schedule activation, and final qualification

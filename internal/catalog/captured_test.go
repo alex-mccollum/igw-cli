@@ -100,6 +100,30 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 			}
 			identicalImages[group] = c.ContractHash()
 			for _, tc := range []struct {
+				operation, media, encoding, coverage string
+			}{
+				{"POST /data/api/v1/encryption/encrypt", "text/plain", "utf8", ValidationSchema},
+				{"POST /data/api/v1/encryption/encrypt", "application/octet-stream", "binary", ValidationTransport},
+				{"POST /data/api/v1/activation/offline/activate", "application/octet-stream", "binary", ValidationTransport},
+			} {
+				description, err := c.Describe(tc.operation)
+				if err != nil {
+					t.Fatal(err)
+				}
+				found := false
+				for _, input := range description.BodyInputs {
+					if input.MediaType == tc.media {
+						found = input.Encoding == tc.encoding && input.Validation == tc.coverage && input.SchemaDeclared
+					}
+				}
+				if !found {
+					t.Fatalf("captured body coverage differs for %s: %+v", tc.operation, description.BodyInputs)
+				}
+			}
+			if !c.OpaqueUpload("PUT /data/api/v1/resources/datafile/com.inductiveautomation.opcua/device/{name}/{filename}", "application/octet-stream") {
+				t.Fatal("captured wildcard datafile body could not stream")
+			}
+			for _, tc := range []struct {
 				query string
 				valid bool
 			}{

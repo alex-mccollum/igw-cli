@@ -7,14 +7,16 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
-// OpaqueUpload reports a declared media type whose body has no schema. Such a
-// contract can validate media type, presence, and parameters without loading
-// the uploaded bytes. Schema-bearing uploads must use the bounded body path.
+// OpaqueUpload reports a declared body needing only transport checks: no schema
+// or a recognized unconstrained binary form. Value-constrained schemas require
+// a supported bounded decoder; a stream must not bypass those assertions.
 func (c *Catalog) OpaqueUpload(key, contentType string) bool {
 	op, err := c.Resolve(key)
 	if err != nil {
 		return false
 	}
+	c.validationMu.Lock()
+	defer c.validationMu.Unlock()
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
 	if item == nil {
 		return false
@@ -34,9 +36,13 @@ func (c *Catalog) OpaqueUpload(key, contentType string) bool {
 		return false
 	}
 	media, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
+	if err != nil || !strings.Contains(media, "/") || strings.Contains(media, "*") {
 		return false
 	}
-	entry := operation.RequestBody.Content.GetOrZero(strings.ToLower(media))
-	return entry != nil && entry.Schema == nil
+	entry, ambiguous := requestBodyMedia(operation.RequestBody, media)
+	if ambiguous || entry == nil {
+		return false
+	}
+	encoding := bodyEncoding(media, entry)
+	return encoding == "opaque" || encoding == "binary"
 }

@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/15"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/16"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -53,6 +53,7 @@ type Description struct {
 	Security    json.RawMessage `json:"security,omitempty"`
 	Gaps        []string        `json:"gaps,omitempty"`
 	Adjustments []Adjustment    `json:"adjustments,omitempty"`
+	BodyInputs  []BodyInput     `json:"bodyInputs,omitempty"`
 }
 
 type Issue struct {
@@ -61,6 +62,13 @@ type Issue struct {
 	Parameter string `json:"parameter,omitempty"`
 	Field     string `json:"field,omitempty"`
 	Schema    string `json:"schema,omitempty"`
+}
+
+// ValidationResult reports actual checks for the supplied request. Coverage is
+// empty on failure; a declared transport is not schema validation of its bytes.
+type ValidationResult struct {
+	Coverage string
+	Issues   []Issue
 }
 
 type Catalog struct {
@@ -335,7 +343,7 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 		return Description{}, err
 	}
 	description := Description{Operation: op, PathItem: pathItem, Components: bytes.Clone(c.root["components"]),
-		Security: bytes.Clone(c.root["security"]), Gaps: c.gaps(op)}
+		Security: bytes.Clone(c.root["security"]), Gaps: c.gaps(op), BodyInputs: c.bodyInputs(op)}
 	reported := make(map[string]bool)
 	for _, adjustment := range c.adjustments {
 		if adjustment.Operation == op.Key {
@@ -365,12 +373,12 @@ func (c *Catalog) gaps(op Operation) []string {
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
 	definition := item.GetOperations().GetOrZero(strings.ToLower(op.Method))
 	if op.Method != "GET" && op.Method != "HEAD" && definition.RequestBody == nil {
-		return []string{"No request body contract is declared; server validation is still required."}
+		return []string{"No request body contract is declared; use api raw explicitly to send a body."}
 	}
 	if body := definition.RequestBody; body != nil && body.Content != nil {
 		for _, media := range body.Content.FromOldest() {
 			if media.Schema == nil {
-				return []string{"A request media type has no schema; input validation is incomplete."}
+				return []string{"A request media type has no schema; only transport checks are available for that encoding."}
 			}
 		}
 	}
@@ -383,16 +391,26 @@ func (c *Catalog) gaps(op Operation) []string {
 // Concurrent calls are supported; schema compilation within one catalog is
 // serialized because the upstream renderer mutates shared schema nodes.
 func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
+	result, err := c.ValidateRequest(key, request)
+	return result.Issues, err
+}
+
+func (c *Catalog) ValidateRequest(key string, request *http.Request) (ValidationResult, error) {
+	issues, coverage, err := c.validateRequest(key, request)
+	return ValidationResult{Coverage: coverage, Issues: issues}, err
+}
+
+func (c *Catalog) validateRequest(key string, request *http.Request) ([]Issue, string, error) {
 	op, err := c.Resolve(key)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if request.Method != op.Method {
-		return nil, errors.New("request method differs from selected operation")
+		return nil, "", errors.New("request method differs from selected operation")
 	}
 	for _, adjustment := range c.adjustments {
 		if adjustment.Operation == op.Key && (adjustment.Rule == "script-cancel-undocumented-id" || adjustment.Rule == "sfc-undocumented-path") {
-			return nil, ErrIncompleteContract
+			return nil, "", ErrIncompleteContract
 		}
 	}
 	c.validationMu.Lock()
@@ -406,24 +424,31 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
 	item, request, bindingIssues, err := c.filterValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
-		return bindingIssues, err
+		return bindingIssues, "", err
 	}
 	item, request, bindingIssues, err = c.namedQueryValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
-		return bindingIssues, err
+		return bindingIssues, "", err
 	}
-	item, request, bindingIssues, err = c.jsonBodyValidationView(item, request)
+	coverage, bindingIssues, err := c.validateBody(item, request)
 	if err != nil || len(bindingIssues) != 0 {
-		return bindingIssues, err
+		return bindingIssues, "", err
 	}
-	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(request, item, op.Path)
+	// Body presence and encoding were checked above. Prevent the upstream
+	// decoder from either reinterpreting it or silently skipping validation.
+	item, operation := operationValidationView(item, request.Method)
+	operation.RequestBody = nil
+	req := *request
+	req.Body, req.GetBody, req.ContentLength = nil, nil, 0
+	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(&req, item, op.Path)
 	if valid {
-		return nil, nil
+		return nil, coverage, nil
 	}
 	if len(failures) == 0 {
-		return nil, ErrSchemaCompilation
+		return nil, "", ErrSchemaCompilation
 	}
-	return validationIssues(failures)
+	issues, err := validationIssues(failures)
+	return issues, "", err
 }
 
 func validationIssues(failures []*validatorerrors.ValidationError) ([]Issue, error) {

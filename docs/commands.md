@@ -66,6 +66,12 @@ and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
 
+`api describe` includes `bodyInputs` alongside the original vendor contract.
+Each entry reports the declared media type, required-body flag, schema presence,
+supported encoding, validation coverage, and streaming support. `selected_media`
+means that an actual content type is needed to resolve support for a media range.
+Malformed vendor media types remain visible as `unsupported`.
+
 For named query parameters, supply one value for a primitive, or repeat the
 same key for each item in an exploded form array. A comma inside an array item
 remains part of that item. For example, this previews two session IDs:
@@ -102,17 +108,35 @@ bounded to 32 MiB and uses the same numeric text/exponent limits as query values
 The most specific declared media type applies. A `+json` suffix selects JSON
 decoding but does not make that type interchangeable with `application/json`.
 This validation does not rewrite defaults or remove properties; Gateway-side
-validation and permission checks still apply. Non-JSON schema encodings,
-including multipart construction, remain unfinished.
+validation and permission checks still apply.
+
+`text/plain` bodies are validated as exact UTF-8 strings, including whitespace,
+enums, patterns, and character-length constraints. The optional charset can be
+`utf-8` or `us-ascii`; ASCII requires ASCII bytes. Other charset/encoding support
+must be implemented before schema-assisted requests accept it. Unsupported
+schema encodings return `unsupported_input` with exit 2 before dispatch. Bodies
+without a declared request-body contract, missing required bodies, and missing
+or invalid content types also fail before dispatch; `api raw` remains explicit.
+
+Generic request results report actual coverage in `meta.validation`; previews
+also retain `data.validation`. `declared_schema` means the supported declared
+schema checks passed. `declared_transport` means the body received media-type
+and presence checks, with no validation of its contents. Raw requests report
+`not_requested`. Multipart/form construction and additional schema encodings
+remain unfinished.
 
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so
 preview metadata and transmission use the same bytes within an invocation.
 `--max-upload-bytes` defaults to 1 GiB. The snapshot is removed on completion.
 `--body` and `--upload` are mutually exclusive. Schema-assisted streaming is
-available when the declared media type has no body schema; its validation
-coverage is `declared_transport`, not validation of archive or tag contents.
-Use bounded `--body` for a schema-bearing request, or `api raw` explicitly.
+available when the selected media type has no body schema or uses a recognized
+unconstrained binary schema: an empty schema for `application/octet-stream`, or
+`type: string` with `format: binary`. Media ranges use the same most-specific
+selection as bounded bodies. Its coverage is `declared_transport`; archive,
+tag, or other file contents still require server or workflow validation.
+Additional binary value constraints are refused until supported. Use bounded
+`--body` for a supported schema decoder, or `api raw` explicitly.
 
 ```bash
 bin/igw-next api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
