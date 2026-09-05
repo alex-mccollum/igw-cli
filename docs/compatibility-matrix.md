@@ -40,6 +40,23 @@ testdata. Reopening historical evidence never renews its live verification
 timestamp. References support offline inspection and export; live requests
 continue to use the selected Gateway's own catalog.
 
+## Additional list-filter qualification
+
+Separate list-filter qualification passed on both `core-opcua` cells on
+2026-09-05 using clean source `c8974b7` and the same test executable. Each run
+passed 24 CLI checks after its lifecycle probe: resource/project/log selection,
+exact special characters, combined filters, pagination, nonmatches, generic
+request parity, preview without dispatch, and invalid/duplicate-key refusal.
+The 8.3.9 and 8.3.0 suites took 79.10 and 74.13 seconds respectively. Every
+container was removed and independent container queries were empty.
+
+Original OpenAPI documents, receipts, process outcomes, and clean-source
+observations are retained in `internal/testgateway/testdata/query-filters/`.
+Both catalogs have the same contract identities as their core references above.
+This additional evidence records parser 13; it does not rewrite the parser or
+workflow policy of an earlier reference, qualify every filter field/operator,
+or complete general parameter/multipart support.
+
 ## Observed module profiles
 
 The core runs use the explicit `com.inductiveautomation.opcua` whitelist and

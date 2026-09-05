@@ -561,6 +561,15 @@ workflow with its capture's parser identity. New reference assembly still
 requires the current parser and refuses even internally consistent older
 receipts. Contract identities and pins do not change for this validation fix.
 
+The separate query-filter suite passed all 24 checks on both pinned core-profile
+images from clean `c8974b7`. Exact vendor documents and source/image/executable
+provenance are retained in `internal/testgateway/testdata/query-filters/`.
+Actual list results establish that filters selected the expected schedules,
+disabled projects, and loggers; invalid operators and repeated keys dispatched
+no operation. Each run also verified cleanup independently. The
+[qualification matrix](compatibility-matrix.md) distinguishes this added
+evidence from the original reference workflow receipts.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

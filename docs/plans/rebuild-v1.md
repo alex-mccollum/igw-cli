@@ -1109,6 +1109,39 @@ corrected clean executable remains required. No host failure or recovery ran.
 Both transport modes passed the actual-CLI request-observation regression under
 the race detector (`bin/query-filter-harness-fix.log`).
 
+Both corrected clean runs passed. From `c8974b7`, 8.3.9 completed its 24 query
+checks at 20:55:22 UTC in 79.10 seconds; 8.3.0 completed the same checks at
+20:57:28 UTC in 74.13 seconds. The shared executable SHA-256 is
+`30d85edb188e8e228afe2d98c562daca3103954e2cbd82952b77cfa7019ac7de`.
+Each image passed its lifecycle probe first. Actual resource/project/log
+selection, combined filters, exact special characters, pagination, nonmatches,
+generic request parity, preview without dispatch, and all six invalid/duplicate
+refusals passed. Receipt and process outcomes agree, cleanup succeeded, and
+independent container queries were empty. The source remained clean throughout
+and its owned worktree was removed without force.
+
+All original files from `bin/query-filter-qualification-20260905-fixed/` are
+retained byte for byte in `internal/testgateway/testdata/query-filters/`.
+The 8.3.9 raw/document hashes are
+`92ad365eed054e63f47e51ecb9d1d8bf89b608894b19a4210f8b98c03a5b720f` and
+`a517431f57008bae2db5352c0dcc30d9aa35ff00d977ffd72fb061cdf795545a`;
+8.3.0 records
+`9de9b6e43a8852d2f3ffd3db0f2e051aa5b6387c3ef40c89f66c42179674dcab` and
+`f88441d6d0840f28221001eb7141dfed147ea265a31e89cf1da98b124aca8d52`.
+Both contract identities match their previous core captures. The offline
+regression separates historical receipt integrity from current parser checks,
+covering executable/image/source identity, complete check outcomes, exact
+compressed/raw/document/contract hashes, complete module inventories, and
+observation/cleanup ordering. This completes the list-filter slice; remaining
+parameter serialization, multipart input, batch outcomes, restart verification,
+performance, migration/cutover, and release gates keep the v1 goal active.
+
+The retained-evidence/current-parser regression and command/docs checks passed
+under the bounded runner (`bin/query-filter-retained-final.log` and
+`bin/query-filter-evidence-docs.log`). The common source/build observations and
+both image directories match their original successful runs byte for byte.
+The only unrelated working-tree changes remain the user's 17 script modes.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
