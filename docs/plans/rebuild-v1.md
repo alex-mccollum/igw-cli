@@ -616,6 +616,31 @@ push was performed. The workflow produces 30-day review artifacts and does not
 replace durable Git/binary references. Setup, schedule limitations, manual
 fallback, provenance, and review instructions are in `docs/reference-updates.md`.
 
+The complete real coordinator run passed at 2026-09-05T17:06:55Z from clean
+commit `4734207735bae92b9d4a7b89ee08f668b9429288`. All 18 stages passed in 755.43
+seconds, including cold trimmed-path builds, fresh moving-tag resolution, pull,
+lifecycle, capture, three workflow suites, unchanged-source checks, and final
+bundle qualification. Source and toolchain provenance identify Go 1.27.1 on
+Linux amd64 with CGO enabled. All four acceptance receipts identify binary
+`02a8334ff4b6a0e3785ff735fc6f4993c4b555e0003fea045f146145b1e4b71f`.
+The lifecycle/resource/project-tag/operational suites passed 10/27/38/23 checks;
+resource, transfer, and operational runs took 133.51, 172.55, and 112.98 seconds.
+All cleanup checks passed, and an independent post-run Docker query found no
+qualification container. The isolated source worktree remained clean.
+
+Original coordinator and full reference evidence are retained in
+`internal/referencebuild/testdata/ignition-8.3.9-update/`; the local run and stage
+logs remain in `bin/reference-update-20260905/`. The observed 8.3.9 image,
+32-module inventory hash, and 687-operation contract match the prior reference.
+New raw SHA-256 is `2e9f5fc8cf03b4d84d7aebd450efcb43a8773c9df9f53e9dcfca460a40b2c152`;
+the document SHA-256 is `acddff10b785ab4a10487ab32169f5af7792a1b8e7bb2004fe1fd1fd42527b11`.
+The retained candidate passed current CLI checksum inspection and API discovery,
+and docs checks passed. The existing runtime reference was preserved. This
+proves the local coordinator end to end; remote schedule activation, the broader
+version/module matrix, remaining workflows, and v1 cutover/release gates remain
+unfinished. No push, tag, publication, host recovery, or memory-setting change
+was performed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

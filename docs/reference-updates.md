@@ -125,3 +125,18 @@ python3 -m unittest discover -s scripts -p 'test_update_reference.py'
 
 These tests verify orchestration, not real Gateway behavior. Real pipeline
 receipts provide the separate acceptance evidence.
+
+## Recorded real run
+
+The complete coordinator passed on 2026-09-05 from clean commit `4734207` using
+Go 1.27.1 on Linux amd64. It resolved and pulled the official `8.3` image, observed
+Gateway 8.3.9 with 32 modules, and passed all 18 stages in 755.43 seconds including
+cold builds. The lifecycle/resource/project-tag/operational receipts cover
+10/27/38/23 checks respectively, with cleanup verified and no remaining
+qualification container in an independent query.
+
+The original run receipt and complete candidate are retained in
+`internal/referencebuild/testdata/ignition-8.3.9-update/`. Their contract and module
+inventory hashes match the earlier reference; the changed document bytes retain
+their own checksums. This verifies the local end-to-end pipeline. The remote
+scheduled job remains a separate activation and execution check.
