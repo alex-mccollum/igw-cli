@@ -62,6 +62,7 @@ func TestLiveQueryFilters(t *testing.T) {
 		Passed           bool                         `json:"passed"`
 	}{Version: 1, Kind: "query-filter-workflows", Image: image, StartedAt: time.Now().UTC(), Checks: []transferCheck{}}
 	var session *testgateway.Session
+	completed := false
 	defer func() {
 		if session != nil {
 			if err := session.Close(); err != nil {
@@ -73,7 +74,9 @@ func TestLiveQueryFilters(t *testing.T) {
 			receipt.ModuleInventory, receipt.ModuleWhitelist = session.ModuleInventory, session.Modules
 		}
 		receipt.FinishedAt = time.Now().UTC()
-		receipt.Passed = !t.Failed() && receipt.Cleanup
+		// testing marks a panic failed only after this deferred writer runs.
+		// Reaching the end of every assertion is separate success evidence.
+		receipt.Passed = completed && !t.Failed() && receipt.Cleanup
 		b, err := json.MarshalIndent(receipt, "", "  ")
 		if err != nil {
 			t.Error(err)
@@ -312,4 +315,5 @@ func TestLiveQueryFilters(t *testing.T) {
 			t.Fatal("duplicate filter did not fail before dispatch")
 		}
 	}
+	completed = true
 }

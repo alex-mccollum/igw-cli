@@ -1095,6 +1095,20 @@ Gateway remains unconfigured (`bin/query-filter-smoke.log`). The new live
 harness compiled and its non-live helper tests passed; real filter acceptance
 on both pinned images is the next gate. No host settings or limits changed.
 
+The first clean filter run from `ffd9ece` passed the 8.3.9 lifecycle probe but
+failed in the test harness before catalog retrieval. Its request counter assumed
+a non-nil HTTP transport; the real session uses Go's default nil-transport
+convention. Cleanup succeeded and an independent query was empty. The original
+failed log/receipt and explicit unqualified assessment are preserved in
+`bin/query-filter-qualification-20260905/`. The original receipt incorrectly says
+`passed: true`: deferred writing ran before the test runner marked the panic
+failed. That flag is not acceptance evidence; the process exited 2 and no checks
+completed. The harness now supports default/custom transports and requires
+reaching the final assertion before recording success. A live run from the
+corrected clean executable remains required. No host failure or recovery ran.
+Both transport modes passed the actual-CLI request-observation regression under
+the race detector (`bin/query-filter-harness-fix.log`).
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

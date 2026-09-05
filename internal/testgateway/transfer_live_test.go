@@ -53,7 +53,11 @@ func (t transferTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.URL.Path != "/openapi.json" {
 		t.operations.Add(1)
 	}
-	return t.base.RoundTrip(r)
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(r)
 }
 
 func TestLiveProjectTagContract(t *testing.T) {
