@@ -15,7 +15,8 @@ import (
 // parameters and violate the filter's property-name pattern. Supplied or
 // ambiguous filter inputs fail closed until their serialization is qualified.
 func listValidationView(item *v3.PathItem, request *http.Request, path string) (*v3.PathItem, *Issue) {
-	if item == nil || item.Get == nil || request.Method != "GET" || !strings.HasPrefix(path, "/data/api/v1/resources/list/") || len(item.Parameters) != 0 {
+	qualifiedList := strings.HasPrefix(path, "/data/api/v1/resources/list/") || path == "/data/api/v1/projects/list"
+	if item == nil || item.Get == nil || request.Method != "GET" || !qualifiedList || len(item.Parameters) != 0 {
 		return item, nil
 	}
 	var filter *v3.Parameter
