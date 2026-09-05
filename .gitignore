@@ -3,3 +3,4 @@ dist/
 igw
 *.test
 *.out
+__pycache__/

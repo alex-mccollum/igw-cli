@@ -218,7 +218,9 @@ Gateway fallback. The binary therefore retains a usable offline source even
 when the upstream registry or a Gateway is unavailable. Independently exported
 directories retain all provenance; distribution still requires a trusted
 repository or release channel. Canonical examples are in `docs/commands.md`.
-Scheduled qualification and additional version/module profiles remain pending.
+The update coordinator and scheduled workflow are described in
+`docs/reference-updates.md`. Remote schedule activation and additional
+version/module profiles require separate verification.
 
 ### Resolve and capture an image
 
@@ -270,8 +272,9 @@ Live resolution on 2026-09-05 found the `8.3` channel at the same index digest a
 the qualified 8.3.9 fixture below; its `linux/amd64` manifest digest is
 `sha256:1e6778e8b787baf0b46d9018ac1b77ba58b5c618ea0f3ae543a465fb657d4295`.
 The minimum `8.3.0` tag also resolved successfully. These are dated observations;
-fresh resolution is required to detect upstream changes. Scheduled capture and
-reviewable reference-bundle promotion remain pending.
+fresh resolution is required to detect upstream changes. The update coordinator
+uses one resolved digest throughout its serial qualification run; reviewed bundle
+promotion remains a separate action.
 
 `cmd/igw-capture` creates a fresh, uniquely labeled container from a pre-pulled
 official image digest, publishes HTTP only on loopback, disables quickstart and

@@ -594,6 +594,28 @@ fresh disposable-Gateway workflow qualification above is separate evidence.
 Scheduled qualification, additional version/module profiles, and the remaining
 workflow/cutover/release gates still keep the full v1 goal active.
 
+The reference updater now has a serialized contributor coordinator and a
+weekly/manual Actions workflow. It verifies admission/engine controls, records
+source and Go toolchain identity, builds one test binary with trimmed paths,
+resolves the moving tag once, and uses that immutable image for lifecycle,
+capture, and all three workflow runs. The existing Go qualifier assembles the
+candidate only after every receipt passes. Per-stage logs and a versioned run
+receipt survive failures; no host recovery, stage retry, promotion, or publication
+occurs. A clean-source option checks both commit and worktree before building
+and before final qualification. Ambient live-test opt-ins are cleared and all
+temporary build/test data remain under the private run directory.
+
+Coordinator unit tests pass all stage-failure boundaries, serialized execution,
+pinned image/binary reuse, unsafe engine/container admission, changed sources,
+no-clobber output, and owned-process cancellation. Actionlint 1.7.12 validated
+the CI and new workflow; docs checks passed. These are orchestration checks,
+not live Gateway qualification of the coordinator. A clean-checkout real run is
+next. The remote workflow remains disabled until a dedicated constrained runner
+is provisioned and `IGW_REFERENCE_RUNNER_ENABLED=true`; no remote activation or
+push was performed. The workflow produces 30-day review artifacts and does not
+replace durable Git/binary references. Setup, schedule limitations, manual
+fallback, provenance, and review instructions are in `docs/reference-updates.md`.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
