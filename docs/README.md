@@ -5,6 +5,7 @@
 - `docs/examples.md`: practical command flows and wrapper examples.
 - `docs/troubleshooting.md`: common failures and remediation commands.
 - `docs/architecture.md`: architecture and contract notes.
+- `docs/development-safety.md`: bounded local validation and WSL/Docker incident safeguards.
 - `docs/plans/rebuild-v1.md`: accepted v1 rebuild goal, roadmap, and verification evidence.
 - `docs/catalog.md`: Gateway catalog authority, snapshot storage, and freshness policy.
 - `docs/rebuild-preview.md`: development CLI entrypoint, implemented contracts, and remaining work.

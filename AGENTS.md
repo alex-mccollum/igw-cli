@@ -11,6 +11,27 @@ Project-local operating notes for `igw-cli`.
 ## Canonical Commands
 - `go test ./...`
 - `go build ./cmd/igw`
+- On a shared Linux/WSL workstation, run these and other build/test scripts
+  through `bash scripts/bounded-run.sh -- <command>`; see
+  `docs/development-safety.md`. Run one validation job at a time.
+
+## Workstation Safety
+- Never automatically start, stop, restart, terminate, unregister, or repair WSL
+  distributions or Docker Desktop. An unavailable engine is a blocker for live
+  container checks, not permission to recover the host.
+- Do not alter host memory settings, Windows services, registry, or Docker/WSL
+  configuration as part of repository validation.
+- Stop heavy work after a host/engine failure. Preserve the failed result and
+  inspect logs read-only; do not retry the same load or raise limits automatically.
+- Local Go builds, tests (including race tests), and captured-schema parsing must
+  use the bounded runner. If its hard limits cannot be verified, stop that check
+  or use an isolated CI runner. Do not fall back to an unbounded invocation.
+- Do not overlap builds, tests, image pulls, or Gateway captures. The bounded
+  runner limits Linux child processes; Docker workloads require separate limits.
+- Live Gateway capture remains paused after the 2026-09-05 incident. Before
+  resuming, verify capture admission/cleanup and explicit container memory, swap,
+  CPU, and PID limits without restarting the host. Cleanup may target only the
+  disposable container whose exact ID and ownership label were verified.
 
 ## Delivery Rules
 - Keep changes small and commit in logical slices.
