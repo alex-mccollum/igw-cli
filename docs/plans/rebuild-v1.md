@@ -905,6 +905,45 @@ Gateway URL and token remain unconfigured
 (`bin/qualification-capability-smoke.log`). No new live acceptance is claimed
 for this implementation slice; no container or host-setting changes were needed.
 
+The fresh clean minimum pipeline from `ef55762` subsequently passed all 18
+stages under contract policy 2 and workflow qualification policy 2. It ran from
+18:44:21 to 18:53:49 UTC on 2026-09-05 in 568.08 seconds using Go 1.27.1. The
+lifecycle/resource/project-tag/operational receipts contain 10/27/27/23 checks.
+All project workflows ran; the three absent-tag checks each observed zero
+operation requests, `capability`/2, and no output artifact. Backup, logs, and
+diagnostics passed in another fresh Gateway. Every container was removed,
+independent Docker inspection found none remaining, and the clean source
+worktree was removed after verification. No host recovery or limit change ran.
+
+The original run receipt and complete candidate are retained in
+`internal/referencebuild/testdata/ignition-8.3.0-policy2/`. The capture has 672
+operations, 648 reviewed adjustments, and the same 32-module inventory/current
+contract identity as the previous minimum captures. Its raw hash is
+`b8ea0090102ad0018f8fde8f5e1120f0e090b59d54a5f74182a528cf0ef435db`
+and document hash is
+`899fb46e172399bb2e99cc753ace48ddea3401a5a499cd1e509a86be7e48999a`.
+Five workflow scopes are qualified; tag round trips remain explicitly
+unavailable. The 8.3.9 comparison requires review and is not a claim of full API
+backward compatibility. The new retained-evidence regression verifies original
+catalog/image identities and all acceptance receipts offline without renewing
+timestamps. No runtime bundled selector or default changed in this slice.
+
+The focused retained-evidence test and compiled-CLI offline capability discovery
+passed under the bounded runner. Discovery reports all three tag capabilities
+as unavailable and preserves the manifest's explicit unavailable scope. All 11
+retained files match the original run byte for byte. Command-doc consistency and
+docs lint passed. Logs are in `bin/minimum-policy2-retained.log`,
+`bin/minimum-policy2-discovery.json`, and `bin/minimum-policy2-docs.log`.
+
+Next matrix work: qualify 8.3.9 under the current policy and propagate a named
+minimal OPC UA profile consistently through capture and every workflow suite.
+IA's current documentation recommends the full `com.inductiveautomation.opcua`
+identifier for the whitelist. Actual module inventory, including disabled or
+quarantined states, must determine whether a requested profile was realized;
+the requested setting alone is insufficient evidence. The complete v1 goal,
+remote scheduler activation, and remaining implementation/release gates stay
+active.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

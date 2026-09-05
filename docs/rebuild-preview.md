@@ -72,7 +72,7 @@ Schema-assisted streaming requires a declared media type without a body schema
 and reports `declared_transport` validation. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, broader tag format/policy verification,
-profile migration, scheduled reference updates, and the complete container
+profile migration, remote update-schedule activation, and the complete container
 qualification matrix remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at
@@ -95,5 +95,8 @@ offline machine. Reference results use `meta.reference` and never claim live
 target freshness. `parserVersion` identifies the recorded qualification;
 `inspectionParserVersion` appears only after API discovery reparses the document
 using the current parser. References are explicit and are never substituted for
-a Gateway during request execution. The scheduled updater and additional
-version/module profiles remain unfinished.
+a Gateway during request execution. The local reference updater has passed
+default-module acceptance on 8.3.0 and 8.3.9; the minimum reference explicitly
+records missing tag APIs. Remote schedule activation, a fresh 8.3.9 run under
+the current qualification policy, and additional module profiles remain
+unfinished. See `docs/reference-updates.md` for retained evidence.

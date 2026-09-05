@@ -128,8 +128,8 @@ never replace an old manifest with newly generated evidence. Shipping bytes and
 promoting a new default are separate reviewed release actions.
 
 The current coordinator qualifies the image's default first-party module
-profile. Minimum-version and additional module-profile qualification remain
-required for the full v1 compatibility matrix; selecting a tag alone does not
+profile. Additional module-profile qualification remains required for the
+full v1 compatibility matrix; selecting a tag alone does not
 prove that release is supported. Read the progress evidence in
 `docs/plans/rebuild-v1.md` before making compatibility or schedule-activation
 claims.
@@ -172,6 +172,20 @@ defect: unresolved keyboard references preserve the entire document, including
 changing examples and unordered schema arrays. Contract policy 2 now uses the
 reviewed keyboard reference scopes; both minimum captures produce the same
 current hash while their original policy-1 hashes remain verifiable. This
-parser inspection does not renew live workflow qualification. The new capability
-qualification policy still requires a complete clean live run for the minimum
-cell before a new reference can be retained.
+parser inspection does not renew live workflow qualification.
+
+A subsequent clean run from `ef55762` passed all 18 stages for 8.3.0 under
+contract policy 2 and workflow qualification policy 2. It ran from 18:44:21 to
+18:53:49 UTC on 2026-09-05 in 568.08 seconds, using Go 1.27.1 and the same pinned
+image. The 672-operation capture and all 10/27/27/23 lifecycle/resource/transfer/
+operational checks passed. Tag import, preview, and export each refused with
+`capability`/2 and zero observed operation requests; all project checks ran.
+The manifest records five successful scopes and unavailable tag round trips.
+Every container was removed, and an independent query found none remaining.
+
+The original run and qualified candidate are retained in
+`internal/referencebuild/testdata/ignition-8.3.0-policy2/`. This establishes the
+minimum default-module workflow cell, without changing the embedded default or
+claiming full version/module compatibility. A fresh 8.3.9 policy-2 run and the
+smaller module profiles remain required. Remote schedule activation is still
+unverified.

@@ -462,7 +462,12 @@ and SFC defects above, and the coordinator stopped before workflow tests. The
 exact document, original failed receipt, lifecycle evidence, and separate
 current-parser qualification are retained as a parser fixture. It now parses
 with 672 operations and 648 adjustments. This is reproducible parser evidence;
-it is not yet a qualified offline reference or live workflow acceptance.
+that original attempt is not a qualified offline reference or live workflow
+acceptance. The subsequent clean policy-2 run passed the five covered
+default-module workflow scopes on 8.3.0 and retained a complete qualified candidate
+under `internal/referencebuild/testdata/ignition-8.3.0-policy2/`. Missing tag
+transfer APIs are recorded separately, with verified refusal before dispatch.
+See [reference update evidence](reference-updates.md#recorded-real-run).
 
 ## Authenticated API acceptance
 

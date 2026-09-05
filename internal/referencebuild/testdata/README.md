@@ -25,3 +25,27 @@ Keep these files unchanged. Payload checksums and qualification scopes are in
 and toolchain provenance. The remote scheduled workflow has not been activated
 or executed by this local run. See `docs/reference-updates.md` for the separate
 runner and review requirements.
+
+## Minimum version with capability-aware qualification
+
+`ignition-8.3.0-policy2` retains the complete clean run from source
+`ef5576291635090e3d95948d5fd2ebe949c82393`, using Go 1.27.1 on Linux amd64.
+All 18 stages passed from 18:44:21 to 18:53:49 UTC on 2026-09-05 (568.08
+seconds). The lifecycle/resource/project-tag/operational receipts contain
+10/27/27/23 checks and identify test executable
+`2ecddadc24565882d9902cf7916bdcb747b96c5c64cf5ad23e87ecde41e4160b`.
+Every container was removed; an independent post-run query found none remaining.
+
+The 672-operation catalog has 32 active first-party modules. Contract policy 2
+produces the same identity as the two earlier minimum captures. Qualification
+policy 2 requires all project checks and three observed zero-request refusals
+for the absent tag APIs. The reference lists five successful scopes and records
+`tags/memory-json` under `unavailableScopes`; it does not claim tag round trips.
+All 23 backup/log/diagnostics checks passed in a separate fresh Gateway.
+
+The original bundle and run receipt remain unchanged. The retained-data test
+verifies original catalog, image manifests, and all four acceptance receipts
+offline. It does not renew live evidence or add a runtime bundled selector.
+The comparison with the default 8.3.9 baseline reports 15 absent operations and
+other document changes, with `compatibility: requires_review`; qualification
+covers the recorded workflows, not arbitrary cross-version API compatibility.
