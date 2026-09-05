@@ -74,6 +74,15 @@ func mutating(method string) bool {
 }
 
 func (e Engine) Prepare(ctx context.Context, target catalog.Target, token string, input Request) (*Prepared, error) {
+	return e.prepare(ctx, target, token, input, nil)
+}
+
+// A supplied snapshot belongs to a workflow scope. The ordinary one-request
+// entrypoint still acquires and closes its own catalog.
+func (e Engine) prepare(ctx context.Context, target catalog.Target, token string, input Request, snapshot *catalog.Snapshot) (*Prepared, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if input.MaxBodyBytes < 0 {
 		return nil, result.Usage("--max-body-bytes must be nonnegative")
 	}
@@ -93,17 +102,21 @@ func (e Engine) Prepare(ctx context.Context, target catalog.Target, token string
 		if method != "" || path != "" {
 			return nil, result.Usage("select an operation or a raw method/path, not both")
 		}
+		owned := snapshot == nil
 		policy := catalog.Policy{Offline: input.Offline, AllowStale: input.AllowStale, Pin: input.Pin}
-		snapshot, err := e.Catalog.Acquire(ctx, target, token, policy)
-		if err != nil {
-			return nil, catalogProblem(err)
+		if owned {
+			var err error
+			snapshot, err = e.Catalog.Acquire(ctx, target, token, policy)
+			if err != nil {
+				return nil, catalogProblem(err)
+			}
+			defer func() { snapshot.Close() }()
 		}
 		op, err := snapshot.Catalog.Resolve(input.Operation)
 		if err != nil {
-			snapshot.Close()
 			return nil, result.Usage(err.Error())
 		}
-		if mutating(op.Method) && !input.DryRun {
+		if owned && mutating(op.Method) && !input.DryRun {
 			// Re-resolve by immutable method/path identity after fresh verification;
 			// an alias changing meaning cannot silently select a different route.
 			snapshot.Close()
@@ -114,11 +127,9 @@ func (e Engine) Prepare(ctx context.Context, target catalog.Target, token string
 			}
 			op, err = snapshot.Catalog.Resolve(op.Key)
 			if err != nil {
-				snapshot.Close()
 				return nil, result.Usage("selected operation disappeared during contract refresh")
 			}
 		}
-		defer snapshot.Close()
 		method = op.Method
 		path, err = fillPath(op.Path, input.PathParams)
 		if err != nil {
@@ -224,6 +235,9 @@ func (e Engine) Prepare(ctx context.Context, target catalog.Target, token string
 }
 
 func catalogProblem(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
 	var coded interface{ ExitCode() int }
 	var usage *igwerr.UsageError
 	var status *igwerr.StatusError

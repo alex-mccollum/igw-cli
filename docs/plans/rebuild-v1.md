@@ -308,6 +308,15 @@ uncertain outcomes and avoid replay, including the observed HTTP 500 conflict
 case. Dedicated resource commands, project/tag workflows, the minimum-version
 matrix, migration/cutover, and the other full v1 gates remain unfinished.
 
+Workflow invocation foundation: `execute.Scope` now owns one catalog, target,
+credential, and cancellation context across serial steps. Write scopes refresh
+before state reads and reuse that validated snapshot for preparation, mutation,
+and readback. Steps cannot change target/policies, issue raw requests, or upgrade
+a read scope to write access. Closing cancels an in-flight request and releases
+the catalog. Specific unit/race checks cover catalog fetch counts across repeated
+workflows, request validation, denied escalation, and cancellation; existing
+generic-request CLI tests continue to pass.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
