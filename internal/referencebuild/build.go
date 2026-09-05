@@ -24,6 +24,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
+	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
 type Inputs struct {
@@ -83,11 +84,6 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 	if err := validateLifecycle(payloads["lifecycle.json"], capture, binaryHash); err != nil {
 		return reference.Manifest{}, err
 	}
-	for _, kind := range []string{"resource-workflows", "project-tag-workflows", "operational-workflows"} {
-		if err := validateWorkflow(payloads[kind+".json"], kind, capture, binaryHash); err != nil {
-			return reference.Manifest{}, fmt.Errorf("%s: %w", kind, err)
-		}
-	}
 	raw, err := reference.ReadFile(ctx, filepath.Join(in.CaptureDir, "openapi.json"), catalog.MaxDocumentBytes)
 	if err != nil {
 		return reference.Manifest{}, err
@@ -99,6 +95,19 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 	defer after.Close()
 	if after.RawHash() != capture.RawSHA256 || after.DocumentHash() != capture.DocumentSHA256 || after.ContractHash() != capture.ContractSHA256 || after.OperationCount() != capture.Operations {
 		return reference.Manifest{}, errors.New("capture identities do not match the original vendor document")
+	}
+	capabilities, err := workflow.AssessTags(after)
+	if err != nil {
+		return reference.Manifest{}, err
+	}
+	qualification, err := reference.NewQualification(binaryHash, capabilities)
+	if err != nil {
+		return reference.Manifest{}, err
+	}
+	for _, kind := range []string{"resource-workflows", "project-tag-workflows", "operational-workflows"} {
+		if err := validateWorkflow(payloads[kind+".json"], kind, capture, binaryHash, capabilities); err != nil {
+			return reference.Manifest{}, fmt.Errorf("%s: %w", kind, err)
+		}
 	}
 	baseline, err := readBaseline(ctx, in.Baseline)
 	if err != nil {
@@ -135,7 +144,7 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		Image:                 reference.Image{Reference: capture.Image, ConfigurationDigest: capture.ImageID, Platform: capture.Platform, GatewayVersion: capture.GatewayVersion},
 		ModuleInventorySHA256: capture.ModuleInventory.SHA256,
 		Catalog:               after.Identity(), ParserVersion: catalog.ParserVersion,
-		Qualification: reference.Qualification{Policy: reference.QualificationPolicy, TestBinarySHA256: binaryHash, Scopes: reference.QualificationScopes()},
+		Qualification: qualification,
 		Comparison:    comparison,
 	}
 	for _, module := range capture.ModuleInventory.Modules {

@@ -9,7 +9,7 @@ import (
 )
 
 const Version = "igw/reference/v1"
-const QualificationPolicy = "igw-reference-workflows/1"
+const QualificationPolicy = "igw-reference-workflows/2"
 const MaxManifestBytes = 4 << 20
 
 func QualificationScopes() []string {
@@ -31,9 +31,11 @@ type Module struct {
 }
 
 type Qualification struct {
-	Policy           string   `json:"policy"`
-	TestBinarySHA256 string   `json:"testBinarySha256"`
-	Scopes           []string `json:"scopes"`
+	Policy            string                         `json:"policy"`
+	TestBinarySHA256  string                         `json:"testBinarySha256"`
+	Scopes            []string                       `json:"scopes"`
+	UnavailableScopes []string                       `json:"unavailableScopes,omitempty"`
+	Capabilities      []catalog.CapabilityAssessment `json:"capabilities,omitempty"`
 }
 
 type File struct {

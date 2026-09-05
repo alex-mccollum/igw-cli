@@ -272,6 +272,16 @@ invocation snapshot before executing. A missing export route prevents a verified
 JSON import before any write. This is a catalog prerequisite check, not renewed
 workflow qualification or a claim about Gateway permissions and instance data.
 
+New references use qualification policy `igw-reference-workflows/2`. It keeps
+all tag checks when both transfer routes are advertised, or requires tested
+refusal with zero observed operation requests when both are absent. In the
+latter case `qualification.unavailableScopes` records `tags/memory-json` and
+that scope is excluded from successful workflow coverage. The manifest includes
+the catalog capability evidence; opening the reference checks it against the
+original document. Partial tag API surfaces require additional coverage before
+qualification. Historical policy-1 bundles keep their original evidence and
+remain readable. See `docs/reference-updates.md` for the pipeline contract.
+
 References never populate a target cache and the flag is unavailable on request
 commands, including previews. Invalid or unavailable references fail without
 Gateway fallback. The binary therefore retains a usable offline source even
@@ -349,8 +359,9 @@ Reference qualification currently supports `linux/amd64`. Preflight inspects
 the local image's OS, architecture, and SHA-256 configuration ID; creation
 specifies that platform and verifies the container's image ID before startup.
 New capture receipts use version 3 and record `platform`, `imageId`, and the
-owned-container `cleanup` result. New workflow receipts use version 2 with the
-same image provenance. Existing historical receipts remain unchanged. Bundle
+owned-container `cleanup` result. Resource and operational receipts use version 2;
+transfer receipts use version 3 with capability and request-count evidence.
+All retain the same image provenance. Historical receipts remain unchanged. Bundle
 qualification must match the observed image ID to the selected registry
 manifest's config digest; a resolved index alone does not establish the image
 configuration that actually ran.

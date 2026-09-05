@@ -868,6 +868,43 @@ smoke stopped at `doctor` with exit 2 because the default Gateway remains
 unconfigured (`bin/capability-smoke.log`). These local checks ran serially with
 the existing memory limits; no container or host-setting change was needed.
 
+Qualification policy `igw-reference-workflows/2` now separates actual workflow
+coverage from missing API capability. Shared tag prerequisites live in
+`internal/workflow`, below execution and reference reading, so CLI discovery,
+typed workflows, and qualification use the same definitions without circular
+dependencies. The policy handles the two observed shapes: both tag transfer
+routes advertised, or both absent. Partial tag API surfaces explicitly require
+additional coverage before qualification.
+
+Transfer receipts use version 3 with capability assessments, error kinds, exit
+codes, and observed operation-request counts. Every project check runs in both
+shapes. Advertised tag APIs require all 38 historical transfer checks plus
+capability discovery. Absent APIs require the project checks, capability
+discovery, and three explicit tag import/preview/export refusals. The HTTP
+transport counts actual requests independently of result metadata; refusal
+requires `capability`/2, zero operation requests, and no download artifact.
+Resource and operational receipts remain version 2.
+
+Assembly derives capabilities from the verified captured document and compares
+them with the transfer receipt before accepting the exact required check set.
+The manifest lists unavailable `tags/memory-json` separately in
+`qualification.unavailableScopes`, excluding it from successful workflow scopes.
+Opening a new-policy reference compares those claims with the original catalog.
+Historical policy-1 bundles retain their original receipts and remain readable;
+no old receipt was rewritten or promoted. A fresh clean minimum-version pipeline
+remains necessary to establish live acceptance under the new policy.
+
+The full unit suite, focused reference/qualifier/request-observer/tag/CLI race
+checks, development and contributor builds, and command/docs checks passed
+under serialized bounded validation. The first unit run exposed a missing
+synthetic token in the new request-observer fixture; correcting that fixture
+passed both its focused regression and the complete rerun. Logs are retained in
+`bin/qualification-capability-{unit-final,race,build-docs}.log`. Legacy smoke
+built successfully and stopped at `doctor` with exit 2 because the default
+Gateway URL and token remain unconfigured
+(`bin/qualification-capability-smoke.log`). No new live acceptance is claimed
+for this implementation slice; no container or host-setting changes were needed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

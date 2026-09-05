@@ -12,7 +12,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/tag"
 )
 
-func qualifyTransferWorkflows(t *testing.T, run func(string, ...string) transferResult, dir, sourceName, source string) {
+func qualifyTransferWorkflows(t *testing.T, run func(string, ...string) transferResult, dir, sourceName, source string, tagsAvailable bool) {
 	t.Helper()
 	ok := func(step string, args ...string) transferResult {
 		t.Helper()
@@ -70,51 +70,78 @@ func qualifyTransferWorkflows(t *testing.T, run func(string, ...string) transfer
 	}
 	verified("workflow-project-replace", "project", "import", copyName, "--in", typedSource, "--overwrite", "--if-project-sha256", evidence.BeforeSHA256, "--yes")
 
-	const inputJSON = `{"tags":[{"name":"igwWorkflow","tagType":"Folder","tags":[{"name":"Counter","tagType":"AtomicTag","valueSource":"memory","dataType":"Int4","value":43}]}]}`
-	input := filepath.Join(dir, "workflow-tags.json")
-	writeInput := func(value string) {
-		t.Helper()
-		if err := os.WriteFile(input, []byte(strings.Replace(inputJSON, "43", value, 1)), 0600); err != nil {
-			t.Fatal(err)
+	if tagsAvailable {
+		const inputJSON = `{"tags":[{"name":"igwWorkflow","tagType":"Folder","tags":[{"name":"Counter","tagType":"AtomicTag","valueSource":"memory","dataType":"Int4","value":43}]}]}`
+		input := filepath.Join(dir, "workflow-tags.json")
+		writeInput := func(value string) {
+			t.Helper()
+			if err := os.WriteFile(input, []byte(strings.Replace(inputJSON, "43", value, 1)), 0600); err != nil {
+				t.Fatal(err)
+			}
 		}
-	}
-	writeInput("43")
-	preview = ok("workflow-tag-preview", "tag", "import", "--in", input, "--dry-run")
-	if preview.Outcome != "preview" {
-		t.Fatal("tag preview unavailable")
-	}
-	absent = run("workflow-tag-preview-absence", "api", "request", "GET /data/api/v1/tags/export", "--query", "provider=default", "--query", "type=json", "--query", "path=igwWorkflow")
-	if absent.OK && hasCounterValue(absent.Data, "43") {
-		t.Fatal("tag preview imported Counter")
-	}
-	verified("workflow-tag-import", "tag", "import", "--in", input, "--yes")
-	checkTags := func(step, want string) {
-		t.Helper()
-		path := filepath.Join(dir, step+".json")
-		got := ok(step, "tag", "export", "--provider", "default", "--path", "igwWorkflow", "--out", path)
-		if got.Artifact == nil {
-			t.Fatal("tag artifact missing")
+		writeInput("43")
+		preview = ok("workflow-tag-preview", "tag", "import", "--in", input, "--dry-run")
+		if preview.Outcome != "preview" {
+			t.Fatal("tag preview unavailable")
 		}
-		raw, err := os.ReadFile(path)
-		if err != nil || !hasCounterValue(raw, want) {
-			t.Fatalf("%s: unexpected Counter value", step)
+		absent = run("workflow-tag-preview-absence", "api", "request", "GET /data/api/v1/tags/export", "--query", "provider=default", "--query", "type=json", "--query", "path=igwWorkflow")
+		if absent.OK && hasCounterValue(absent.Data, "43") {
+			t.Fatal("tag preview imported Counter")
 		}
+		verified("workflow-tag-import", "tag", "import", "--in", input, "--yes")
+		checkTags := func(step, want string) {
+			t.Helper()
+			path := filepath.Join(dir, step+".json")
+			got := ok(step, "tag", "export", "--provider", "default", "--path", "igwWorkflow", "--out", path)
+			if got.Artifact == nil {
+				t.Fatal("tag artifact missing")
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil || !hasCounterValue(raw, want) {
+				t.Fatalf("%s: unexpected Counter value", step)
+			}
+		}
+		checkTags("workflow-tag-export", "43")
+		writeInput("44")
+		preview = ok("workflow-tag-overwrite-preview", "tag", "import", "--in", input, "--collision-policy", "Overwrite", "--dry-run")
+		if preview.Outcome != "preview" {
+			t.Fatal("tag overwrite preview unavailable")
+		}
+		checkTags("workflow-tag-preview-unchanged", "43")
+		verified("workflow-tag-overwrite", "tag", "import", "--in", input, "--collision-policy", "Overwrite", "--yes")
+		checkTags("workflow-tag-overwrite-export", "44")
+		writeInput("45")
+		failed := run("workflow-tag-abort", "tag", "import", "--in", input, "--yes")
+		var tagEvidence tag.Evidence
+		if failed.OK || failed.Error == nil || failed.Error.Code != 7 || json.Unmarshal(failed.Data, &tagEvidence) != nil || tagEvidence.Report == nil || tagEvidence.Report.FailureCount == 0 {
+			t.Fatal("HTTP 200 tag failures reported as success")
+		}
+		checkTags("workflow-tag-abort-unchanged", "44")
 	}
-	checkTags("workflow-tag-export", "43")
-	writeInput("44")
-	preview = ok("workflow-tag-overwrite-preview", "tag", "import", "--in", input, "--collision-policy", "Overwrite", "--dry-run")
-	if preview.Outcome != "preview" {
-		t.Fatal("tag overwrite preview unavailable")
-	}
-	checkTags("workflow-tag-preview-unchanged", "43")
-	verified("workflow-tag-overwrite", "tag", "import", "--in", input, "--collision-policy", "Overwrite", "--yes")
-	checkTags("workflow-tag-overwrite-export", "44")
-	writeInput("45")
-	failed := run("workflow-tag-abort", "tag", "import", "--in", input, "--yes")
-	var tagEvidence tag.Evidence
-	if failed.OK || failed.Error == nil || failed.Error.Code != 7 || json.Unmarshal(failed.Data, &tagEvidence) != nil || tagEvidence.Report == nil || tagEvidence.Report.FailureCount == 0 {
-		t.Fatal("HTTP 200 tag failures reported as success")
-	}
-	checkTags("workflow-tag-abort-unchanged", "44")
 	ok("workflow-project-delete", "api", "request", "DELETE /data/api/v1/projects/{name}", "--path-param", "name="+copyName, "--query", "confirm=true", "--yes")
+}
+
+func qualifyUnavailableTags(t *testing.T, run func(string, ...string) transferResult, dir string) {
+	t.Helper()
+	input := filepath.Join(dir, "unavailable-tags.json")
+	if err := os.WriteFile(input, []byte(`{"tags":[{"name":"igwUnavailable","tagType":"AtomicTag","valueSource":"memory","dataType":"Int4","value":1}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(dir, "unavailable-export.json")
+	for _, step := range []struct {
+		name string
+		args []string
+	}{
+		{"workflow-tag-import-unavailable", []string{"tag", "import", "--in", input, "--yes"}},
+		{"workflow-tag-preview-unavailable", []string{"tag", "import", "--in", input, "--dry-run"}},
+		{"workflow-tag-export-unavailable", []string{"tag", "export", "--out", output}},
+	} {
+		got := run(step.name, step.args...)
+		if got.OK || got.Outcome != "failed" || got.Error == nil || got.Error.Kind != "capability" || got.Error.Code != 2 || got.Meta.Catalog == nil || got.Meta.HTTPStatus != 0 {
+			t.Fatalf("%s did not report an unavailable catalog prerequisite", step.name)
+		}
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatal("unavailable tag export created an artifact")
+	}
 }

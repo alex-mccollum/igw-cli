@@ -12,7 +12,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/result"
-	"github.com/alex-mccollum/igw-cli/internal/tag"
+	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
 func (i *invocation) apiCommands() *cobra.Command {
@@ -61,13 +61,9 @@ func (i *invocation) apiCommands() *cobra.Command {
 				return err
 			}
 			defer c.Close()
-			assessments := make([]catalog.CapabilityAssessment, 0)
-			for _, requirement := range tag.Capabilities() {
-				assessment, err := c.Assess(requirement)
-				if err != nil {
-					return result.Usage(err.Error())
-				}
-				assessments = append(assessments, assessment)
+			assessments, err := workflow.AssessTags(c)
+			if err != nil {
+				return result.Usage(err.Error())
 			}
 			i.output = result.Success(assessments)
 			i.output.Meta = metadata

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -37,10 +36,13 @@ func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
 		return Manifest{}, err
 	}
 	var m Manifest
-	if jsonvalue.Validate(b) != nil || json.Unmarshal(b, &m) != nil || m.Version != Version || !namePattern.MatchString(m.Name) || m.CreatedAt.IsZero() || m.ParserVersion == "" || !catalog.SupportedContractPolicy(m.Catalog.ContractPolicy) || !hashPattern.MatchString(m.Catalog.RawSHA256) || !hashPattern.MatchString(m.Catalog.DocumentSHA256) || !hashPattern.MatchString(m.Catalog.ContractSHA256) || !hashPattern.MatchString(m.ModuleInventorySHA256) || m.Qualification.Policy != QualificationPolicy || !hashPattern.MatchString(m.Qualification.TestBinarySHA256) {
+	if jsonvalue.Validate(b) != nil || json.Unmarshal(b, &m) != nil || m.Version != Version || !namePattern.MatchString(m.Name) || m.CreatedAt.IsZero() || m.ParserVersion == "" || !catalog.SupportedContractPolicy(m.Catalog.ContractPolicy) || !hashPattern.MatchString(m.Catalog.RawSHA256) || !hashPattern.MatchString(m.Catalog.DocumentSHA256) || !hashPattern.MatchString(m.Catalog.ContractSHA256) || !hashPattern.MatchString(m.ModuleInventorySHA256) {
 		return Manifest{}, errors.New("invalid or unsupported reference manifest")
 	}
-	if !imagePattern.MatchString(m.Image.Reference) || !imageIDPattern.MatchString(m.Image.ConfigurationDigest) || m.Image.Platform != "linux/amd64" || m.Image.GatewayVersion == "" || !reflect.DeepEqual(m.Qualification.Scopes, QualificationScopes()) || m.Comparison.AfterIdentity != m.Catalog || m.Comparison.BeforeIdentity.ContractPolicy != m.Catalog.ContractPolicy || m.Comparison.ContractEqual != (m.Comparison.BeforeIdentity.ContractSHA256 == m.Catalog.ContractSHA256) || m.Comparison.DocumentEqual != (m.Comparison.BeforeIdentity.DocumentSHA256 == m.Catalog.DocumentSHA256) {
+	if err := m.Qualification.validate(); err != nil {
+		return Manifest{}, err
+	}
+	if !imagePattern.MatchString(m.Image.Reference) || !imageIDPattern.MatchString(m.Image.ConfigurationDigest) || m.Image.Platform != "linux/amd64" || m.Image.GatewayVersion == "" || m.Comparison.AfterIdentity != m.Catalog || m.Comparison.BeforeIdentity.ContractPolicy != m.Catalog.ContractPolicy || m.Comparison.ContractEqual != (m.Comparison.BeforeIdentity.ContractSHA256 == m.Catalog.ContractSHA256) || m.Comparison.DocumentEqual != (m.Comparison.BeforeIdentity.DocumentSHA256 == m.Catalog.DocumentSHA256) {
 		return Manifest{}, errors.New("inconsistent reference provenance or qualification scope")
 	}
 	compatibility := "requires_review"
@@ -118,6 +120,10 @@ func (bundle Bundle) OpenCatalog(ctx context.Context) (Manifest, *catalog.Catalo
 	if err != nil || original != m.Catalog {
 		c.Close()
 		return Manifest{}, nil, errors.New("reference catalog identity does not match its manifest")
+	}
+	if err := m.Qualification.validateCatalog(c); err != nil {
+		c.Close()
+		return Manifest{}, nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		c.Close()

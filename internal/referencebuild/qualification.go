@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
 
@@ -21,11 +22,10 @@ var workflowChecks = map[string]map[string][]string{
 		"failed":    {"anonymous-denied", "bare-key-denied", "absence-after-preview", "stale-signature", "verify-deleted", "resource-preview-absence", "resource-duplicate-create", "resource-stale-update", "resource-verified-deleted"},
 	},
 	"project-tag-workflows": {
-		"completed": {"catalog", "project-export", "project-get", "project-reexport", "tag-export", "tag-reexport", "workflow-project-list", "workflow-project-get", "workflow-project-export", "workflow-project-inspect", "workflow-project-import", "workflow-project-replace", "workflow-tag-preview-absence", "workflow-tag-import", "workflow-tag-export", "workflow-tag-preview-unchanged", "workflow-tag-overwrite", "workflow-tag-overwrite-export", "workflow-tag-abort-unchanged"},
-		"accepted":  {"project-create", "project-import", "tag-import", "tag-overwrite", "tag-abort-conflict", "workflow-project-change", "workflow-project-delete", "project-delete-igw-transfer-source", "project-delete-igw-transfer-copy"},
-		"preview":   {"project-preview", "workflow-project-preview", "workflow-project-replace-preview", "workflow-tag-preview", "workflow-tag-overwrite-preview"},
+		"completed": {"catalog", "tag-capabilities", "project-export", "project-get", "project-reexport", "workflow-project-list", "workflow-project-get", "workflow-project-export", "workflow-project-inspect", "workflow-project-import", "workflow-project-replace"},
+		"accepted":  {"project-create", "project-import", "workflow-project-change", "workflow-project-delete", "project-delete-igw-transfer-source", "project-delete-igw-transfer-copy"},
+		"preview":   {"project-preview", "workflow-project-preview", "workflow-project-replace-preview"},
 		"failed":    {"project-preview-absence", "project-existing-refused", "workflow-project-preview-absence", "workflow-project-stale-digest"},
-		"partial":   {"workflow-tag-abort"},
 	},
 	"operational-workflows": {
 		"completed": {"catalog", "gateway-info", "pending-restarts", "logs-list", "backup-export", "logs-download", "bundle-initial-status", "bundle-preview-unchanged", "bundle-status", "bundle-download", "bundle-after-download", "bundle-repeat-status", "workflow-logs-list", "workflow-backup-export", "workflow-logs-download", "workflow-bundle-status", "workflow-bundle-preview-unchanged", "workflow-bundle-collect", "workflow-bundle-download"},
@@ -34,31 +34,74 @@ var workflowChecks = map[string]map[string][]string{
 	},
 }
 
-func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, binaryHash string) error {
+var tagWorkflowChecks = map[string][]string{
+	"completed": {"tag-export", "tag-reexport", "workflow-tag-preview-absence", "workflow-tag-import", "workflow-tag-export", "workflow-tag-preview-unchanged", "workflow-tag-overwrite", "workflow-tag-overwrite-export", "workflow-tag-abort-unchanged"},
+	"accepted":  {"tag-import", "tag-overwrite", "tag-abort-conflict"},
+	"preview":   {"workflow-tag-preview", "workflow-tag-overwrite-preview"},
+	"partial":   {"workflow-tag-abort"},
+}
+
+var unavailableTagChecks = []string{"workflow-tag-import-unavailable", "workflow-tag-preview-unavailable", "workflow-tag-export-unavailable"}
+
+func requiredWorkflowChecks(kind string, tags bool) map[string][]string {
+	out := make(map[string][]string)
+	for outcome, names := range workflowChecks[kind] {
+		out[outcome] = append([]string(nil), names...)
+	}
+	if kind == "project-tag-workflows" {
+		if tags {
+			for outcome, names := range tagWorkflowChecks {
+				out[outcome] = append(out[outcome], names...)
+			}
+		} else {
+			out["failed"] = append(out["failed"], unavailableTagChecks...)
+		}
+	}
+	return out
+}
+
+func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, binaryHash string, capabilities []catalog.CapabilityAssessment) error {
 	if _, ok := workflowChecks[kind]; !ok {
 		return errors.New("unsupported workflow qualification policy")
 	}
 	var r struct {
-		Version        int                          `json:"version"`
-		Kind           string                       `json:"kind"`
-		Image          string                       `json:"image"`
-		ImageID        string                       `json:"imageId"`
-		Platform       string                       `json:"platform"`
-		GatewayVersion string                       `json:"gatewayVersion"`
-		BinarySHA256   string                       `json:"testBinarySha256"`
-		StartedAt      time.Time                    `json:"startedAt"`
-		FinishedAt     time.Time                    `json:"finishedAt"`
-		Inventory      *testgateway.ModuleInventory `json:"moduleInventory"`
-		Catalog        *catalog.Metadata            `json:"catalog"`
+		Version        int                            `json:"version"`
+		Kind           string                         `json:"kind"`
+		Image          string                         `json:"image"`
+		ImageID        string                         `json:"imageId"`
+		Platform       string                         `json:"platform"`
+		GatewayVersion string                         `json:"gatewayVersion"`
+		BinarySHA256   string                         `json:"testBinarySha256"`
+		StartedAt      time.Time                      `json:"startedAt"`
+		FinishedAt     time.Time                      `json:"finishedAt"`
+		Inventory      *testgateway.ModuleInventory   `json:"moduleInventory"`
+		Catalog        *catalog.Metadata              `json:"catalog"`
+		Capabilities   []catalog.CapabilityAssessment `json:"capabilities"`
 		Checks         []struct {
-			Name    string `json:"name"`
-			Outcome string `json:"outcome"`
+			Name              string `json:"name"`
+			Outcome           string `json:"outcome"`
+			HTTPStatus        int    `json:"httpStatus"`
+			OperationRequests *int   `json:"operationRequests"`
+			ErrorKind         string `json:"errorKind"`
+			ExitCode          int    `json:"exitCode"`
 		} `json:"checks"`
 		Cleanup bool `json:"cleanup"`
 		Passed  bool `json:"passed"`
 	}
-	if json.Unmarshal(raw, &r) != nil || r.Version != 2 || r.Kind != kind || !r.Passed || !r.Cleanup || r.Image != capture.Image || r.ImageID != capture.ImageID || r.Platform != capture.Platform || r.GatewayVersion != capture.GatewayVersion || r.BinarySHA256 != binaryHash || r.StartedAt.IsZero() || !r.FinishedAt.After(r.StartedAt) || r.FinishedAt.Sub(r.StartedAt) > 8*time.Minute {
+	version := 2
+	if kind == "project-tag-workflows" {
+		version = 3
+	}
+	if json.Unmarshal(raw, &r) != nil || r.Version != version || r.Kind != kind || !r.Passed || !r.Cleanup || r.Image != capture.Image || r.ImageID != capture.ImageID || r.Platform != capture.Platform || r.GatewayVersion != capture.GatewayVersion || r.BinarySHA256 != binaryHash || r.StartedAt.IsZero() || !r.FinishedAt.After(r.StartedAt) || r.FinishedAt.Sub(r.StartedAt) > 8*time.Minute {
 		return errors.New("workflow receipt does not qualify this image and test binary")
+	}
+	tags := false
+	if kind == "project-tag-workflows" {
+		var err error
+		tags, err = reference.TagRoundTripAvailable(capabilities)
+		if err != nil || !reference.SameCapabilities(r.Capabilities, capabilities) {
+			return errors.New("workflow capability evidence does not match the captured catalog")
+		}
 	}
 	if err := validateInventory(r.Inventory); err != nil {
 		return err
@@ -79,9 +122,31 @@ func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, bin
 		if check.Name == "" || seen[check.Name] != "" || check.Outcome == "" {
 			return errors.New("workflow receipt contains invalid or duplicate checks")
 		}
+		if kind == "project-tag-workflows" {
+			if check.OperationRequests == nil || *check.OperationRequests < 0 {
+				return errors.New("transfer check is missing observed operation request counts")
+			}
+			if !tags {
+				for _, name := range unavailableTagChecks {
+					if check.Name == name && (check.HTTPStatus != 0 || *check.OperationRequests != 0 || check.ErrorKind != "capability" || check.ExitCode != 2) {
+						return errors.New("unavailable tag workflow did not refuse before operation dispatch")
+					}
+				}
+			}
+		}
 		seen[check.Name] = check.Outcome
 	}
-	for outcome, names := range workflowChecks[kind] {
+	required := requiredWorkflowChecks(kind, tags)
+	if kind == "project-tag-workflows" {
+		count := 0
+		for _, names := range required {
+			count += len(names)
+		}
+		if len(seen) != count {
+			return errors.New("transfer checks contain unqualified or inconsistent workflow scopes")
+		}
+	}
+	for outcome, names := range required {
 		for _, name := range names {
 			if seen[name] != outcome {
 				return fmt.Errorf("required workflow check missing or changed: %s", name)

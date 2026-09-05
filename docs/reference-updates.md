@@ -50,6 +50,23 @@ qualification and bundle readback produce `status: "qualified"`. A changed
 contract still requires compatibility review. Workflow qualification covers
 the recorded scopes, not every operation in the API document.
 
+Qualification policy `igw-reference-workflows/2` records tag capability evidence
+from the captured catalog. With both tag routes advertised, all existing tag
+round-trip, preview, overwrite, and partial-failure checks remain mandatory.
+When both routes are absent, the transfer suite still runs every project check
+and verifies that tag import, preview, and export fail with `capability`/2 before
+any operation request. Transfer receipts use version 3 and include actual
+operation-request counts, error kinds, exit codes, and capabilities. Resource
+and operational receipts retain version 2.
+
+The manifest's `qualification.scopes` lists exercised workflows; absent tag
+support is recorded separately as `unavailableScopes: ["tags/memory-json"]`.
+An unavailable workflow is never counted as a passing round trip. The assembler
+cross-checks capability evidence against the original captured document and
+requires the exact applicable check set. Partially advertised tag APIs require
+additional qualification coverage and fail this policy explicitly. Historical
+policy-1 bundles remain readable with their original scope and receipts.
+
 Every nonzero stage result stops the pipeline. There is no retry, image fallback,
 automatic module substitution, host recovery, or budget increase. An outer
 watchdog bounds guard startup as well as the workload. Cancellation targets only
@@ -155,5 +172,6 @@ defect: unresolved keyboard references preserve the entire document, including
 changing examples and unordered schema arrays. Contract policy 2 now uses the
 reviewed keyboard reference scopes; both minimum captures produce the same
 current hash while their original policy-1 hashes remain verifiable. This
-parser inspection does not renew live workflow qualification. Capability-aware
-qualification and a complete clean run remain required for the minimum cell.
+parser inspection does not renew live workflow qualification. The new capability
+qualification policy still requires a complete clean live run for the minimum
+cell before a new reference can be retained.

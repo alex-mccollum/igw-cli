@@ -11,6 +11,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/result"
+	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
 type requiringRunner struct {
@@ -78,7 +79,7 @@ func TestCapturedTagCapabilities(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			for _, requirement := range Capabilities() {
+			for _, requirement := range workflow.TagRequirements() {
 				got, err := c.Assess(requirement)
 				if err != nil || (got.Status == "advertised") != (version == "8.3.9") {
 					t.Fatalf("incorrect captured tag capability: %+v %v", got, err)

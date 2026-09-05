@@ -16,13 +16,19 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/imageref"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
+	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
-const syntheticDocument = `{"openapi":"3.1.0","info":{"title":"Synthetic reference fixture","version":"1.0.0"},"paths":{"/health":{"get":{"responses":{"200":{"description":"OK"}}}}}}`
+const syntheticDocument = `{"openapi":"3.1.0","info":{"title":"Synthetic reference fixture","version":"1.0.0"},"paths":{"/health":{"get":{"responses":{"200":{"description":"OK"}}}},"/data/api/v1/tags/import":{"post":{"responses":{"200":{"description":"OK"}}}},"/data/api/v1/tags/export":{"get":{"responses":{"200":{"description":"OK"}}}}}}`
 
 // Synthetic receipts exercise cross-file validation; only the opt-in Gateway
 // runs provide runtime qualification evidence.
 func fixtureInputs(t *testing.T) Inputs {
+	t.Helper()
+	return fixtureInputsForDocument(t, syntheticDocument)
+}
+
+func fixtureInputsForDocument(t *testing.T, document string) Inputs {
 	t.Helper()
 	dir := t.TempDir()
 	in := Inputs{ResolutionDir: filepath.Join(dir, "resolution"), CaptureDir: filepath.Join(dir, "capture"), Lifecycle: filepath.Join(dir, "lifecycle.json"), Resources: filepath.Join(dir, "resources.json"), Transfers: filepath.Join(dir, "transfers.json"), Operations: filepath.Join(dir, "operations.json"), TestBinary: filepath.Join(dir, "test-binary"), Baseline: filepath.Join(dir, "baseline.json"), Out: filepath.Join(dir, "bundle")}
@@ -47,10 +53,10 @@ func fixtureInputs(t *testing.T) Inputs {
 	if err := os.Mkdir(in.CaptureDir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(in.CaptureDir, "openapi.json"), []byte(syntheticDocument), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(in.CaptureDir, "openapi.json"), []byte(document), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(in.Baseline, []byte(strings.Replace(syntheticDocument, "OK", "Earlier description", 1)), 0600); err != nil {
+	if err := os.WriteFile(in.Baseline, []byte(strings.Replace(document, "OK", "Earlier description", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(in.TestBinary, []byte("synthetic test binary"), 0600); err != nil {
@@ -61,24 +67,42 @@ func fixtureInputs(t *testing.T) Inputs {
 	modules := []testgateway.Module{{ID: "com.inductiveautomation.opcua", Version: "10.3.9", Collection: "healthy", State: "ACTIVE", OnStartup: "enabled", ShouldUpgrade: &flag}}
 	moduleBytes, _ := json.Marshal(modules)
 	inventory := &testgateway.ModuleInventory{Version: 1, ObservedAt: now.Add(-30 * time.Second), SHA256: digest(append([]byte("igw-module-inventory/1\n"), moduleBytes...)), Modules: modules}
-	c, err := catalog.Parse([]byte(syntheticDocument))
+	c, err := catalog.Parse([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	capture := testgateway.Evidence{Version: 3, Image: r.Image, ImageID: configDigest, Platform: r.Platform, GatewayVersion: "8.3.9 (b2026082511)", ModuleInventory: inventory, Source: "/openapi.json", CapturedAt: now.Add(-20 * time.Second), RawSHA256: c.RawHash(), DocumentSHA256: c.DocumentHash(), ContractSHA256: c.ContractHash(), ContractPolicy: catalog.ContractPolicy, ParserVersion: catalog.ParserVersion, Operations: 1, Validated: true, Cleanup: true}
+	capture := testgateway.Evidence{Version: 3, Image: r.Image, ImageID: configDigest, Platform: r.Platform, GatewayVersion: "8.3.9 (b2026082511)", ModuleInventory: inventory, Source: "/openapi.json", CapturedAt: now.Add(-20 * time.Second), RawSHA256: c.RawHash(), DocumentSHA256: c.DocumentHash(), ContractSHA256: c.ContractHash(), ContractPolicy: catalog.ContractPolicy, ParserVersion: catalog.ParserVersion, Operations: c.OperationCount(), Validated: true, Cleanup: true}
 	write(filepath.Join(in.CaptureDir, "capture.json"), capture)
 	life := map[string]any{"version": 1, "kind": "capture-lifecycle", "image": r.Image, "imageId": configDigest, "platform": r.Platform, "testBinarySha256": binaryHash, "startedAt": now.Add(-2 * time.Minute), "finishedAt": now.Add(-110 * time.Second), "lifetimeSeconds": 5, "elapsedSeconds": 6, "exitCode": 124, "cleanup": true, "passed": true, "checks": []string{"image-platform", "container-image-identity", "configured-limits", "kernel-limits", "loopback-only", "exclusive-admission", "lifetime-termination", "no-oom", "owned-cleanup", "absence-after-cleanup"}}
 	write(in.Lifecycle, life)
+	capabilities, err := workflow.AssessTags(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags, err := reference.TagRoundTripAvailable(capabilities)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for kind, path := range map[string]string{"resource-workflows": in.Resources, "project-tag-workflows": in.Transfers, "operational-workflows": in.Operations} {
-		checks := []map[string]string{}
-		for outcome, names := range workflowChecks[kind] {
+		checks := []map[string]any{}
+		for outcome, names := range requiredWorkflowChecks(kind, tags) {
 			for _, name := range names {
-				checks = append(checks, map[string]string{"name": name, "outcome": outcome})
+				check := map[string]any{"name": name, "outcome": outcome, "operationRequests": 1}
+				for _, refused := range unavailableTagChecks {
+					if name == refused {
+						check["operationRequests"], check["errorKind"], check["exitCode"] = 0, "capability", 2
+					}
+				}
+				checks = append(checks, check)
 			}
 		}
 		meta := catalog.Metadata{Version: catalog.SnapshotVersion, Target: catalog.Target{URL: "http://127.0.0.1:12345"}, Source: "http://127.0.0.1:12345/openapi.json", SourceKind: "gateway", FetchedAt: now.Add(-25 * time.Second), VerifiedAt: now.Add(-24 * time.Second), RawSHA256: c.RawHash(), DocumentSHA256: c.DocumentHash(), ContractSHA256: c.ContractHash(), ContractPolicy: catalog.ContractPolicy, ParserVersion: catalog.ParserVersion}
-		write(path, map[string]any{"version": 2, "kind": kind, "image": r.Image, "imageId": configDigest, "platform": r.Platform, "gatewayVersion": capture.GatewayVersion, "testBinarySha256": binaryHash, "startedAt": now.Add(-time.Minute), "finishedAt": now.Add(-10 * time.Second), "moduleInventory": inventory, "catalog": meta, "checks": checks, "cleanup": true, "passed": true})
+		receipt := map[string]any{"version": 2, "kind": kind, "image": r.Image, "imageId": configDigest, "platform": r.Platform, "gatewayVersion": capture.GatewayVersion, "testBinarySha256": binaryHash, "startedAt": now.Add(-time.Minute), "finishedAt": now.Add(-10 * time.Second), "moduleInventory": inventory, "catalog": meta, "checks": checks, "cleanup": true, "passed": true}
+		if kind == "project-tag-workflows" {
+			receipt["version"], receipt["capabilities"] = 3, capabilities
+		}
+		write(path, receipt)
 	}
 	return in
 }
