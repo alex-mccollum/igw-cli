@@ -16,6 +16,7 @@ resource scopes for each stage and must not be nested in another bounded job.
 ```sh
 python3 scripts/update-reference.py --tag 8.3 --out bin/new-reference-run
 python3 scripts/update-reference.py --tag 8.3.9 --out bin/new-patch-run --skip-pull
+python3 scripts/update-reference.py --tag 8.3.0 --module-profile core-opcua --out bin/new-core-run
 ```
 
 Use `--docker PATH` when the Docker executable has a different location. The
@@ -27,6 +28,14 @@ and before final qualification. A separate clean worktree allows this check
 without disturbing edits in another checkout. All output directories are new;
 failed and previous runs are preserved. Run logs, intermediate metadata, and
 temporary build/test files stay beneath the private output directory.
+
+`--module-profile` selects `image-defaults` (the default) or `core-opcua`.
+The latter enables `com.inductiveautomation.opcua` and requires all other
+installed first-party modules to be inactive and disabled. The same selection
+reaches the lifecycle probe, capture, and every workflow Gateway. Ambient
+`IGW_TEST_MODULE_PROFILE` values cannot change the coordinator's selection.
+Workflow tests validate the stable inventory before provisioning API credentials
+or exercising mutations.
 
 The pipeline performs these steps serially:
 
@@ -66,6 +75,16 @@ cross-checks capability evidence against the original captured document and
 requires the exact applicable check set. Partially advertised tag APIs require
 additional qualification coverage and fail this policy explicitly. Historical
 policy-1 bundles remain readable with their original scope and receipts.
+
+New manifests separately record module policy `igw-module-profile/1`, its
+profile name, and explicit enabled-module identifiers in `moduleProfile`.
+The complete inventory is retained, including disabled modules. Qualification
+rejects missing selected modules, unexpected active modules, faults, quarantine,
+pending upgrades, or different whitelist values across capture and any receipt.
+Reference readers compare manifest module metadata with the original captured
+inventory and its checksum. Historical manifests without this field retain
+their all-active image-defaults interpretation and must match their capture;
+omitting a field or filtering inactive modules cannot relabel a core reference.
 
 Every nonzero stage result stops the pipeline. There is no retry, image fallback,
 automatic module substitution, host recovery, or budget increase. An outer
@@ -127,8 +146,8 @@ release channel. Update the baseline intentionally. Preserve prior bundles;
 never replace an old manifest with newly generated evidence. Shipping bytes and
 promoting a new default are separate reviewed release actions.
 
-The current coordinator qualifies the image's default first-party module
-profile. Additional module-profile qualification remains required for the
+The coordinator supports both reviewed module profiles. Fresh complete
+core-profile workflow qualification remains required for the
 full v1 compatibility matrix; selecting a tag alone does not
 prove that release is supported. Read the progress evidence in
 `docs/plans/rebuild-v1.md` before making compatibility or schedule-activation

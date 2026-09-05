@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
@@ -65,19 +66,20 @@ func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, bin
 		return errors.New("unsupported workflow qualification policy")
 	}
 	var r struct {
-		Version        int                            `json:"version"`
-		Kind           string                         `json:"kind"`
-		Image          string                         `json:"image"`
-		ImageID        string                         `json:"imageId"`
-		Platform       string                         `json:"platform"`
-		GatewayVersion string                         `json:"gatewayVersion"`
-		BinarySHA256   string                         `json:"testBinarySha256"`
-		StartedAt      time.Time                      `json:"startedAt"`
-		FinishedAt     time.Time                      `json:"finishedAt"`
-		Inventory      *testgateway.ModuleInventory   `json:"moduleInventory"`
-		Catalog        *catalog.Metadata              `json:"catalog"`
-		Capabilities   []catalog.CapabilityAssessment `json:"capabilities"`
-		Checks         []struct {
+		Version         int                            `json:"version"`
+		Kind            string                         `json:"kind"`
+		Image           string                         `json:"image"`
+		ImageID         string                         `json:"imageId"`
+		Platform        string                         `json:"platform"`
+		GatewayVersion  string                         `json:"gatewayVersion"`
+		BinarySHA256    string                         `json:"testBinarySha256"`
+		StartedAt       time.Time                      `json:"startedAt"`
+		FinishedAt      time.Time                      `json:"finishedAt"`
+		Inventory       *testgateway.ModuleInventory   `json:"moduleInventory"`
+		ModuleWhitelist []string                       `json:"moduleWhitelist"`
+		Catalog         *catalog.Metadata              `json:"catalog"`
+		Capabilities    []catalog.CapabilityAssessment `json:"capabilities"`
+		Checks          []struct {
 			Name              string `json:"name"`
 			Outcome           string `json:"outcome"`
 			HTTPStatus        int    `json:"httpStatus"`
@@ -103,7 +105,10 @@ func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, bin
 			return errors.New("workflow capability evidence does not match the captured catalog")
 		}
 	}
-	if err := validateInventory(r.Inventory); err != nil {
+	if !slices.Equal(r.ModuleWhitelist, capture.ModuleWhitelist) {
+		return errors.New("workflow module selection differs from the capture")
+	}
+	if err := validateInventory(r.Inventory, r.ModuleWhitelist); err != nil {
 		return err
 	}
 	if r.Inventory.SHA256 != capture.ModuleInventory.SHA256 || r.Inventory.ObservedAt.Before(r.StartedAt) || r.Inventory.ObservedAt.After(r.FinishedAt) {
@@ -163,6 +168,7 @@ func validateLifecycle(raw []byte, capture testgateway.Evidence, binaryHash stri
 		Image           string    `json:"image"`
 		ImageID         string    `json:"imageId"`
 		Platform        string    `json:"platform"`
+		ModuleWhitelist []string  `json:"moduleWhitelist"`
 		BinarySHA256    string    `json:"testBinarySha256"`
 		StartedAt       time.Time `json:"startedAt"`
 		FinishedAt      time.Time `json:"finishedAt"`
@@ -175,6 +181,9 @@ func validateLifecycle(raw []byte, capture testgateway.Evidence, binaryHash stri
 	}
 	if json.Unmarshal(raw, &r) != nil || r.Version != 1 || r.Kind != "capture-lifecycle" || !r.Passed || !r.Cleanup || r.Image != capture.Image || r.ImageID != capture.ImageID || r.Platform != capture.Platform || r.BinarySHA256 != binaryHash || r.StartedAt.IsZero() || !r.FinishedAt.After(r.StartedAt) || r.FinishedAt.Sub(r.StartedAt) > 90*time.Second || r.LifetimeSeconds != 5 || r.ElapsedSeconds < 4 || r.ElapsedSeconds > 25 || (r.ExitCode != 124 && r.ExitCode != 137) {
 		return errors.New("lifecycle receipt does not qualify this image and test binary")
+	}
+	if !slices.Equal(r.ModuleWhitelist, capture.ModuleWhitelist) {
+		return errors.New("lifecycle module selection differs from the capture")
 	}
 	seen := map[string]bool{}
 	for _, name := range r.Checks {

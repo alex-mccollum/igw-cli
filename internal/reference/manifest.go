@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 )
 
 const Version = "igw/reference/v1"
@@ -45,17 +46,18 @@ type File struct {
 }
 
 type Manifest struct {
-	Version               string             `json:"version"`
-	Name                  string             `json:"name"`
-	CreatedAt             time.Time          `json:"createdAt"`
-	Image                 Image              `json:"image"`
-	ModuleInventorySHA256 string             `json:"moduleInventorySha256"`
-	Modules               []Module           `json:"modules"`
-	Catalog               catalog.Identity   `json:"catalog"`
-	ParserVersion         string             `json:"parserVersion"`
-	Qualification         Qualification      `json:"qualification"`
-	Comparison            catalog.Comparison `json:"comparison"`
-	Files                 []File             `json:"files"`
+	Version               string                   `json:"version"`
+	Name                  string                   `json:"name"`
+	CreatedAt             time.Time                `json:"createdAt"`
+	Image                 Image                    `json:"image"`
+	ModuleInventorySHA256 string                   `json:"moduleInventorySha256"`
+	ModuleProfile         *moduleprofile.Selection `json:"moduleProfile,omitempty"`
+	Modules               []Module                 `json:"modules"`
+	Catalog               catalog.Identity         `json:"catalog"`
+	ParserVersion         string                   `json:"parserVersion"`
+	Qualification         Qualification            `json:"qualification"`
+	Comparison            catalog.Comparison       `json:"comparison"`
+	Files                 []File                   `json:"files"`
 }
 
 // RequiredFiles is deliberately fixed in this format version. No input can

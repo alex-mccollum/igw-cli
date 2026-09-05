@@ -33,7 +33,11 @@ func TestLiveCaptureLifetime(t *testing.T) {
 	started := time.Now().UTC()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	cfg := Config{Image: image, Docker: os.Getenv("IGW_CAPTURE_TEST_DOCKER"), Lifetime: 5 * time.Second}
+	cfg, err := ProfileConfig(image, os.Getenv("IGW_CAPTURE_TEST_DOCKER"), os.Getenv("IGW_TEST_MODULE_PROFILE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Lifetime = 5 * time.Second
 	s, err := Start(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -111,6 +115,7 @@ func TestLiveCaptureLifetime(t *testing.T) {
 			Image            string    `json:"image"`
 			ImageID          string    `json:"imageId"`
 			Platform         string    `json:"platform"`
+			ModuleWhitelist  []string  `json:"moduleWhitelist,omitempty"`
 			TestBinarySHA256 string    `json:"testBinarySha256"`
 			StartedAt        time.Time `json:"startedAt"`
 			FinishedAt       time.Time `json:"finishedAt"`
@@ -120,7 +125,7 @@ func TestLiveCaptureLifetime(t *testing.T) {
 			Checks           []string  `json:"checks"`
 			Cleanup          bool      `json:"cleanup"`
 			Passed           bool      `json:"passed"`
-		}{1, "capture-lifecycle", image, s.ImageID, s.Platform, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), 5, elapsed.Seconds(), exitCode,
+		}{1, "capture-lifecycle", image, s.ImageID, s.Platform, s.Modules, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), 5, elapsed.Seconds(), exitCode,
 			[]string{"image-platform", "container-image-identity", "configured-limits", "kernel-limits", "loopback-only", "exclusive-admission", "lifetime-termination", "no-oom", "owned-cleanup", "absence-after-cleanup"}, true, true}
 		if err := json.NewEncoder(evidenceFile).Encode(receipt); err != nil {
 			t.Fatal(err)

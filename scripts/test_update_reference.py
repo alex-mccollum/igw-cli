@@ -58,6 +58,8 @@ class CoordinatorTests(unittest.TestCase):
         self.timed_out = None
         self.interrupted = None
         self.previous = None
+        self.profile = "image-defaults"
+        self.manifest_profile = None
 
     def fake_popen(self, args, **kwargs):
         if self.previous:
@@ -68,6 +70,8 @@ class CoordinatorTests(unittest.TestCase):
         self.assertTrue(kwargs["start_new_session"])
         self.assertEqual(kwargs["cwd"], self.root)
         self.assertNotIn("IGW_OPERATIONS_ARTIFACTS", kwargs["env"])
+        if name not in ("lifecycle", "resources", "transfers", "operations"):
+            self.assertNotIn("IGW_TEST_MODULE_PROFILE", kwargs["env"])
         self.assertEqual(kwargs["env"]["TMPDIR"], str(self.out / "temporary"))
         self.seen.append((name, args[3:], kwargs["env"]))
         output = ""
@@ -92,6 +96,7 @@ class CoordinatorTests(unittest.TestCase):
                 "name": "fixture-reference", "catalog": {"contractSha256": "c" * 64},
                 "comparison": {"contractEqual": True},
                 "qualification": {"testBinarySha256": "d" * 64},
+                "moduleProfile": {"policy": "igw-module-profile/1", "name": self.manifest_profile or self.profile},
             }))
         kwargs["stdout"].write(output.encode())
         self.previous = FakeProcess(7 if name == self.failure else 0,
@@ -102,9 +107,10 @@ class CoordinatorTests(unittest.TestCase):
         with patch.object(UPDATE.subprocess, "Popen", self.fake_popen), patch.dict(os.environ, {
             "IGW_OPERATIONS_ARTIFACTS": "must-not-inherit",
             "IGW_ACCEPTANCE_TEST_IMAGE": "must-not-inherit",
+            "IGW_TEST_MODULE_PROFILE": "must-not-inherit",
         }):
             return UPDATE.Update(self.root, self.out, "8.3", "/docker path/docker.exe",
-                                 self.root / "baseline.gz", pull, clean).run()
+                                 self.root / "baseline.gz", pull, clean, self.profile).run()
 
     def receipt(self):
         return json.loads((self.out / "run.json").read_text())
@@ -122,6 +128,7 @@ class CoordinatorTests(unittest.TestCase):
             if name in ("lifecycle", "resources", "transfers", "operations"):
                 test_paths.append(args[0])
                 self.assertEqual(env["IGW_CAPTURE_TEST_DOCKER"], "/docker path/docker.exe")
+                self.assertEqual(env["IGW_TEST_MODULE_PROFILE"], "image-defaults")
                 self.assertEqual(env.get("IGW_ACCEPTANCE_TEST_IMAGE", env.get("IGW_CAPTURE_TEST_IMAGE")), IMAGE)
             elif name != "admission":
                 self.assertNotIn("IGW_ACCEPTANCE_TEST_IMAGE", env)
@@ -130,6 +137,25 @@ class CoordinatorTests(unittest.TestCase):
             if name == "qualify":
                 self.assertEqual(args[args.index("--test-binary") + 1], str(self.out / "tools/testgateway.test"))
         self.assertEqual(len(set(test_paths)), 1)
+
+    def test_core_selection_reaches_every_gateway_and_receipt(self):
+        self.profile = "core-opcua"
+        receipt = self.run_update()
+        self.assertEqual(receipt["moduleProfile"], self.profile)
+        self.assertEqual(receipt["moduleProfileEvidence"]["name"], self.profile)
+        for name, args, env in self.seen:
+            if name in ("lifecycle", "resources", "transfers", "operations"):
+                self.assertEqual(env["IGW_TEST_MODULE_PROFILE"], self.profile)
+            if name == "capture":
+                self.assertEqual(args[args.index("--module-profile") + 1], self.profile)
+
+    def test_qualified_profile_cannot_be_substituted(self):
+        self.profile = "core-opcua"
+        self.manifest_profile = "image-defaults"
+        with self.assertRaises(UPDATE.StageFailure):
+            self.run_update()
+        self.assertEqual(self.receipt()["status"], "failed")
+        self.assertNotIn("moduleProfileEvidence", self.receipt())
 
     def test_every_stage_failure_stops_and_preserves_evidence(self):
         for index, name in enumerate(STEPS):

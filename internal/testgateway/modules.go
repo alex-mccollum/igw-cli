@@ -15,26 +15,13 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
+	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 )
 
 // Module records observed deployment state, not an assertion of module health.
 // Ignition's "healthy" collection can include unloaded or faulted modules.
-type Module struct {
-	ID            string `json:"id"`
-	Name          string `json:"name,omitempty"`
-	Version       string `json:"version"`
-	Collection    string `json:"collection"`
-	State         string `json:"state,omitempty"`
-	OnStartup     string `json:"onStartup,omitempty"`
-	ShouldUpgrade *bool  `json:"shouldUpgrade,omitempty"`
-}
-
-type ModuleInventory struct {
-	Version    int       `json:"version"`
-	ObservedAt time.Time `json:"observedAt"`
-	SHA256     string    `json:"sha256"`
-	Modules    []Module  `json:"modules"`
-}
+type Module = moduleprofile.Module
+type ModuleInventory = moduleprofile.Inventory
 
 const modulePageSize = 100
 const maxModules = 2000

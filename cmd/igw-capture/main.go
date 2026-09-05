@@ -34,7 +34,7 @@ func main() {
 		os.Exit(code)
 	}
 	var cfg testgateway.Config
-	var out, modules string
+	var out, modules, profile string
 	var timeout time.Duration
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(), "Usage: igw-capture --image DIGEST --out DIR [capture options]\n       igw-capture resolve --tag 8.3 --out DIR\n       igw-capture qualify --help\n\nCapture options:")
@@ -43,6 +43,7 @@ func main() {
 	flag.StringVar(&cfg.Docker, "docker", "docker", "Docker executable")
 	flag.StringVar(&cfg.Image, "image", "", "Pre-pulled official image pinned by digest")
 	flag.StringVar(&modules, "modules", "", "Comma-separated first-party module whitelist; empty uses image defaults")
+	flag.StringVar(&profile, "module-profile", "", "Reviewed profile: image-defaults or core-opcua; cannot combine with --modules")
 	flag.StringVar(&out, "out", "", "New directory for original document and capture evidence")
 	flag.DurationVar(&timeout, "timeout", 5*time.Minute, "Startup and HTTP capture deadline")
 	flag.Parse()
@@ -52,6 +53,14 @@ func main() {
 	}
 	if modules != "" {
 		cfg.Modules = strings.Split(modules, ",")
+	}
+	if profile != "" {
+		var err error
+		cfg, err = testgateway.ProfileConfig(cfg.Image, cfg.Docker, profile)
+		if err != nil || modules != "" {
+			fmt.Fprintln(os.Stderr, "module profile must be image-defaults or core-opcua and cannot combine with --modules")
+			os.Exit(2)
+		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

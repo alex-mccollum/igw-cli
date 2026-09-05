@@ -22,6 +22,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/imageref"
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
+	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 	"github.com/alex-mccollum/igw-cli/internal/workflow"
@@ -79,6 +80,10 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		return reference.Manifest{}, errors.New("invalid capture receipt")
 	}
 	if err := validateCapture(capture, image.Resolution, imageID); err != nil {
+		return reference.Manifest{}, err
+	}
+	profile, err := moduleprofile.FromWhitelist(capture.ModuleWhitelist)
+	if err != nil {
 		return reference.Manifest{}, err
 	}
 	if err := validateLifecycle(payloads["lifecycle.json"], capture, binaryHash); err != nil {
@@ -143,6 +148,7 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		Name:                  "ignition-" + strings.Fields(capture.GatewayVersion)[0] + "-" + capture.ModuleInventory.SHA256[:12] + "-" + capture.ContractSHA256[:12],
 		Image:                 reference.Image{Reference: capture.Image, ConfigurationDigest: capture.ImageID, Platform: capture.Platform, GatewayVersion: capture.GatewayVersion},
 		ModuleInventorySHA256: capture.ModuleInventory.SHA256,
+		ModuleProfile:         &profile,
 		Catalog:               after.Identity(), ParserVersion: catalog.ParserVersion,
 		Qualification: qualification,
 		Comparison:    comparison,
@@ -260,7 +266,7 @@ func validateCapture(c testgateway.Evidence, r imageref.Resolution, imageID stri
 	if r.Tag != "8.3" && strings.Fields(c.GatewayVersion)[0] != r.Tag {
 		return errors.New("observed Gateway version does not match the resolved patch tag")
 	}
-	if err := validateInventory(c.ModuleInventory); err != nil {
+	if err := validateInventory(c.ModuleInventory, c.ModuleWhitelist); err != nil {
 		return err
 	}
 	if c.ModuleInventory.ObservedAt.After(c.CapturedAt) {
@@ -269,23 +275,10 @@ func validateCapture(c testgateway.Evidence, r imageref.Resolution, imageID stri
 	return nil
 }
 
-func validateInventory(inventory *testgateway.ModuleInventory) error {
-	if inventory == nil || inventory.Version != 1 || inventory.ObservedAt.IsZero() || len(inventory.Modules) == 0 || len(inventory.Modules) > 2000 {
-		return errors.New("a complete observed module inventory is required")
-	}
-	last := ""
-	for _, m := range inventory.Modules {
-		if !strings.HasPrefix(m.ID, "com.inductiveautomation.") || m.ID <= last || len(m.ID) > 256 || strings.TrimSpace(m.Version) == "" || len(m.Version) > 256 || len(m.Name) > 512 || m.Collection != "healthy" || m.State != "ACTIVE" || m.OnStartup != "enabled" || m.ShouldUpgrade == nil || *m.ShouldUpgrade {
-			return errors.New("reference qualification requires unique sorted ACTIVE first-party modules, enabled on startup without pending upgrades")
-		}
-		last = m.ID
-	}
-	b, err := json.Marshal(inventory.Modules)
+func validateInventory(inventory *testgateway.ModuleInventory, whitelist []string) error {
+	profile, err := moduleprofile.FromWhitelist(whitelist)
 	if err != nil {
 		return err
 	}
-	if digest(append([]byte("igw-module-inventory/1\n"), b...)) != inventory.SHA256 {
-		return errors.New("module inventory checksum does not match its observations")
-	}
-	return nil
+	return profile.ValidateInventory(inventory)
 }

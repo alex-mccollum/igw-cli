@@ -16,6 +16,7 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
+	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 )
 
 var hashPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -42,6 +43,11 @@ func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
 	if err := m.Qualification.validate(); err != nil {
 		return Manifest{}, err
 	}
+	if m.ModuleProfile != nil {
+		if err := m.ModuleProfile.Validate(); err != nil {
+			return Manifest{}, err
+		}
+	}
 	if !imagePattern.MatchString(m.Image.Reference) || !imageIDPattern.MatchString(m.Image.ConfigurationDigest) || m.Image.Platform != "linux/amd64" || m.Image.GatewayVersion == "" || m.Comparison.AfterIdentity != m.Catalog || m.Comparison.BeforeIdentity.ContractPolicy != m.Catalog.ContractPolicy || m.Comparison.ContractEqual != (m.Comparison.BeforeIdentity.ContractSHA256 == m.Catalog.ContractSHA256) || m.Comparison.DocumentEqual != (m.Comparison.BeforeIdentity.DocumentSHA256 == m.Catalog.DocumentSHA256) {
 		return Manifest{}, errors.New("inconsistent reference provenance or qualification scope")
 	}
@@ -54,7 +60,7 @@ func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
 	}
 	last := ""
 	for _, module := range m.Modules {
-		if !strings.HasPrefix(module.ID, "com.inductiveautomation.") || module.ID <= last || len(module.ID) > 256 || module.Version == "" || len(module.Version) > 256 || module.State != "ACTIVE" || module.Collection != "healthy" {
+		if !strings.HasPrefix(module.ID, "com.inductiveautomation.") || module.ID <= last || len(module.ID) > 256 || module.Version == "" || len(module.Version) > 256 || (m.ModuleProfile == nil && module.State != "ACTIVE") || module.Collection != "healthy" {
 			return Manifest{}, errors.New("invalid qualified reference module profile")
 		}
 		last = module.ID
@@ -79,8 +85,45 @@ func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
 		if int64(len(b)) != file.Bytes || hex.EncodeToString(sum[:]) != file.SHA256 {
 			return Manifest{}, fmt.Errorf("reference payload checksum mismatch: %s", file.Path)
 		}
+		if file.Path == "capture.json" {
+			if err := m.validateCapturedProfile(b); err != nil {
+				return Manifest{}, err
+			}
+		}
 	}
 	return m, nil
+}
+
+func (m Manifest) validateCapturedProfile(raw []byte) error {
+	var c struct {
+		Whitelist []string                 `json:"moduleWhitelist"`
+		Inventory *moduleprofile.Inventory `json:"moduleInventory"`
+	}
+	if jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &c) != nil {
+		return errors.New("invalid captured module profile")
+	}
+	profile, err := moduleprofile.FromWhitelist(c.Whitelist)
+	// Historical manifests have no profile field and require image defaults.
+	// Removing the new field cannot turn a filtered core capture into one.
+	want := "image-defaults"
+	if m.ModuleProfile != nil {
+		want = m.ModuleProfile.Name
+	}
+	if err != nil || profile.Name != want {
+		return errors.New("reference profile differs from the captured selection")
+	}
+	if err := profile.ValidateInventory(c.Inventory); err != nil {
+		return err
+	}
+	if c.Inventory.SHA256 != m.ModuleInventorySHA256 || len(c.Inventory.Modules) != len(m.Modules) {
+		return errors.New("reference module inventory differs from the capture")
+	}
+	for i, module := range c.Inventory.Modules {
+		if m.Modules[i] != (Module{ID: module.ID, Version: module.Version, State: module.State, Collection: module.Collection}) {
+			return errors.New("reference module metadata differs from its captured observation")
+		}
+	}
+	return nil
 }
 
 // OpenCatalog verifies a complete reference, then parses its exact vendor JSON

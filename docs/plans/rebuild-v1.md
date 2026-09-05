@@ -975,6 +975,48 @@ and `bin/defaults-policy2-docs.log`. No full v1 completion or remote schedule
 activation is claimed; module-profile propagation and both smaller-profile
 cells are the next qualification slice.
 
+Fresh OPC UA captures on both pinned images passed serialized containment,
+parser validation, and cleanup. The 8.3.9 capture at 19:07:54 UTC contains 454
+operations; 8.3.0 at 19:09:05 contains 446. Each retains all 32 installed modules,
+with OPC UA active/enabled and 31 excluded modules inactive/disabled in the
+healthy collection. Original receipts and losslessly compressed documents are
+retained in `internal/moduleprofile/testdata/`. These captures establish the
+observed profile shape, not live workflow qualification for it.
+
+The shared `internal/moduleprofile` contract now owns selection, complete module
+inventory types, and versioned validation. `image-defaults` preserves all-active
+requirements; `core-opcua` requires the selected module active and every excluded
+module explicitly inactive/disabled. Faults, quarantine, pending upgrades,
+missing selected modules, and inconsistent inventory checksums are rejected.
+The same selection flows through the coordinator, contributor capture, lifecycle
+probe, and all acceptance suites. Suites check the observed profile before
+provisioning API credentials or sending test mutations. Every receipt records
+its whitelist, which must match the capture during assembly.
+
+New manifests include module policy `igw-module-profile/1` separately from the
+unchanged workflow qualification policy. Reference reading binds manifest module
+metadata to the complete original captured inventory. Historical references keep
+their all-active default interpretation and original bytes; removing the new
+field or filtering inactive metadata cannot relabel a core capture as defaults.
+No new core workflow qualification or scheduled matrix execution is claimed
+until clean complete runs establish those separate results.
+
+The full unit suite and focused module-profile/reference/qualifier/Gateway-test/
+CLI race checks passed under serialized bounded validation. Regressions verify
+both real inactive-module captures, missing or unexpected active modules,
+fault/quarantine/upgrade refusal, whitelist consistency across every receipt,
+manifest relabeling and filtering, historical bundle readability, and coordinator
+selection propagation with ambient-value isolation. Python coordinator tests
+passed, and both retained capture receipts/documents match the original bytes.
+Logs are in `bin/module-profile-{focused,regression,unit,race}.log`.
+
+Development/contributor builds and command/docs checks passed. Compiled
+contributor checks rejected unknown and conflicting profile flags with exit 2
+before creating output or invoking Docker. Legacy smoke built successfully and
+stopped at `doctor` with exit 2 because the default Gateway remains unconfigured.
+Logs are in `bin/module-profile-{build-docs,cli-flags,smoke}.log`. No host settings
+or validation limits changed. A clean complete core-profile run is next.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

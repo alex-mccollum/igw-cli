@@ -383,6 +383,15 @@ unloaded or faulted modules, so its name alone does not establish readiness.
 Missing, malformed, moving, or incomplete inventory fails capture. Workflow
 receipts retain the inventory observed during their own Gateway startup.
 
+Module policy `igw-module-profile/1` qualifies either all-active image defaults
+or an explicit OPC UA profile. The latter retains every installed module:
+OPC UA must be `ACTIVE`/`enabled`, and every excluded module must be
+`INACTIVE`/`disabled`. Neither profile permits quarantine, faults, pending
+upgrades, or missing selected modules. Captured whitelists must match lifecycle
+and workflow receipts. New reference manifests expose `moduleProfile`, and
+reading a bundle checks its module claims against the complete original
+capture. Historical manifests still require all-active defaults.
+
 After `StatusPing` reports RUNNING, the tool authenticates to the disposable
 Gateway's built-in IdP and waits for three identical OpenAPI responses. This
 private browser-login adapter is confined to test infrastructure; the released
@@ -420,8 +429,11 @@ bash scripts/bounded-run.sh -- bin/igw-capture \
 
 The output directory must be new and its parent must exist. Use `--docker` to
 select a different executable (`IGW_CAPTURE_TEST_DOCKER` for the probe), or
-`--modules com.inductiveautomation.opcua` for
-an explicit minimal module whitelist. An empty whitelist uses image defaults.
+`--module-profile core-opcua` for the reviewed minimal profile. The lower-level
+`--modules com.inductiveautomation.opcua` also captures an explicit whitelist;
+it cannot be combined with `--module-profile`. An empty whitelist uses image
+defaults. Live-test binaries use `IGW_TEST_MODULE_PROFILE=core-opcua` for this
+selection; the coordinator applies it consistently and records every whitelist.
 The tool requires a running Linux Docker engine with cgroup v2 limit support
 and a bounded validation scope. Containers have a 2 GiB memory limit, no swap,
 two CPUs, 256 tasks, and no restart policy. The image's original entrypoint is

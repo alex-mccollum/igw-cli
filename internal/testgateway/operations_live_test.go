@@ -53,7 +53,11 @@ func testLiveOperations(t *testing.T, workflows bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
 	defer cancel()
 	started := time.Now().UTC()
-	s, err := testgateway.Start(ctx, testgateway.Config{Image: image, Docker: os.Getenv("IGW_CAPTURE_TEST_DOCKER")})
+	cfg, err := testgateway.ProfileConfig(image, os.Getenv("IGW_CAPTURE_TEST_DOCKER"), os.Getenv("IGW_TEST_MODULE_PROFILE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := testgateway.Start(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,6 +67,9 @@ func testLiveOperations(t *testing.T, workflows bool) {
 		}
 	}()
 	if _, err := s.WaitOpenAPI(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ValidateModuleProfile(); err != nil {
 		t.Fatal(err)
 	}
 	token, err := s.ProvisionAPIToken(ctx)
@@ -225,6 +232,7 @@ func testLiveOperations(t *testing.T, workflows bool) {
 			ImageID         string                       `json:"imageId"`
 			Platform        string                       `json:"platform"`
 			ModuleInventory *testgateway.ModuleInventory `json:"moduleInventory"`
+			ModuleWhitelist []string                     `json:"moduleWhitelist,omitempty"`
 			GatewayVersion  string                       `json:"gatewayVersion"`
 			BinarySHA256    string                       `json:"testBinarySha256"`
 			StartedAt       time.Time                    `json:"startedAt"`
@@ -234,7 +242,7 @@ func testLiveOperations(t *testing.T, workflows bool) {
 			Artifacts       []operationalArtifact        `json:"artifacts"`
 			Cleanup         bool                         `json:"cleanup"`
 			Passed          bool                         `json:"passed"`
-		}{2, "operations-contract", image, s.ImageID, s.Platform, s.ModuleInventory, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
+		}{2, "operations-contract", image, s.ImageID, s.Platform, s.ModuleInventory, s.Modules, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
 		if workflows {
 			receipt.Kind = "operational-workflows"
 		}

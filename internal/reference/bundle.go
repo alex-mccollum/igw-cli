@@ -11,6 +11,7 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 )
 
 // Only reviewed bundle payloads are included; the contributor README is not.
@@ -33,26 +34,27 @@ type Bundle struct {
 // when a command has reparsed the document in this invocation. InspectionCatalog
 // reports current policy identity separately from the immutable recorded one.
 type Summary struct {
-	Selector                string            `json:"selector"`
-	SourceKind              string            `json:"sourceKind"`
-	Origin                  string            `json:"origin"`
-	Version                 string            `json:"version"`
-	Name                    string            `json:"name"`
-	CreatedAt               time.Time         `json:"createdAt"`
-	Image                   Image             `json:"image"`
-	ModuleInventorySHA256   string            `json:"moduleInventorySha256"`
-	ModuleCount             int               `json:"moduleCount"`
-	Catalog                 catalog.Identity  `json:"catalog"`
-	ParserVersion           string            `json:"parserVersion"`
-	InspectionParserVersion string            `json:"inspectionParserVersion,omitempty"`
-	InspectionCatalog       *catalog.Identity `json:"inspectionCatalog,omitempty"`
-	Qualification           Qualification     `json:"qualification"`
+	Selector                string                   `json:"selector"`
+	SourceKind              string                   `json:"sourceKind"`
+	Origin                  string                   `json:"origin"`
+	Version                 string                   `json:"version"`
+	Name                    string                   `json:"name"`
+	CreatedAt               time.Time                `json:"createdAt"`
+	Image                   Image                    `json:"image"`
+	ModuleInventorySHA256   string                   `json:"moduleInventorySha256"`
+	ModuleProfile           *moduleprofile.Selection `json:"moduleProfile,omitempty"`
+	ModuleCount             int                      `json:"moduleCount"`
+	Catalog                 catalog.Identity         `json:"catalog"`
+	ParserVersion           string                   `json:"parserVersion"`
+	InspectionParserVersion string                   `json:"inspectionParserVersion,omitempty"`
+	InspectionCatalog       *catalog.Identity        `json:"inspectionCatalog,omitempty"`
+	Qualification           Qualification            `json:"qualification"`
 }
 
 func (b Bundle) Summary(m Manifest) Summary {
 	return Summary{Selector: b.selector, SourceKind: "reference", Origin: b.origin,
 		Version: m.Version, Name: m.Name, CreatedAt: m.CreatedAt, Image: m.Image,
-		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleCount: len(m.Modules),
+		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleProfile: m.ModuleProfile, ModuleCount: len(m.Modules),
 		Catalog: m.Catalog, ParserVersion: m.ParserVersion, Qualification: m.Qualification}
 }
 

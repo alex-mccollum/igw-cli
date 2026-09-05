@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build one reviewable default-module reference; never publish or recover hosts."""
+"""Build one reviewable module-profile reference; never publish or recover hosts."""
 
 import argparse
 from datetime import datetime, timezone
@@ -49,14 +49,17 @@ class StageFailure(Exception):
 
 
 class Update:
-    def __init__(self, root, out, tag, docker, baseline, pull, require_clean=False):
+    def __init__(self, root, out, tag, docker, baseline, pull, require_clean=False, module_profile="image-defaults"):
+        if module_profile not in ("image-defaults", "core-opcua"):
+            raise ValueError("unsupported module profile")
         self.root, self.out = root, out
         self.tag, self.docker, self.baseline, self.pull = tag, docker, baseline, pull
         self.require_clean = require_clean
+        self.module_profile = module_profile
         self.guard = root / "scripts/bounded-run.sh"
         self.receipt = {
             "version": "igw/reference-update/v1", "startedAt": now(),
-            "status": "running", "tag": tag, "moduleProfile": "image-defaults",
+            "status": "running", "tag": tag, "moduleProfile": module_profile,
             "pull": pull, "requireClean": require_clean, "steps": [],
         }
 
@@ -160,12 +163,14 @@ class Update:
             if self.pull:
                 self.step("pull", [self.docker, "pull", "--platform", "linux/amd64", image])
 
-            common = {"IGW_CAPTURE_TEST_DOCKER": self.docker}
+            common = {"IGW_CAPTURE_TEST_DOCKER": self.docker,
+                      "IGW_TEST_MODULE_PROFILE": self.module_profile}
             self.step("lifecycle", [tests, "-test.run", "^TestLiveCaptureLifetime$", "-test.v"], {
                 **common, "IGW_CAPTURE_TEST_IMAGE": image,
                 "IGW_LIFECYCLE_EVIDENCE": str(self.out / "lifecycle.json"),
             })
-            self.step("capture", [capture, "--image", image, "--docker", self.docker, "--out", self.out / "capture"])
+            self.step("capture", [capture, "--image", image, "--docker", self.docker,
+                                  "--module-profile", self.module_profile, "--out", self.out / "capture"])
             for name, test, variable, receipt in (
                 ("resources", "TestLiveAPIResourceContract", "IGW_ACCEPTANCE_EVIDENCE", "resource-workflows.json"),
                 ("transfers", "TestLiveProjectTagWorkflows", "IGW_TRANSFER_EVIDENCE", "project-tag-workflows.json"),
@@ -189,8 +194,11 @@ class Update:
                                   "--out", self.out / "reference"])
             # The Go qualifier verifies all evidence and reads back its bundle.
             manifest = read_json(self.out / "reference/reference.json")
+            if manifest.get("moduleProfile", {}).get("name") != self.module_profile:
+                raise StageFailure("qualified reference differs from the requested module profile")
             self.receipt.update(status="qualified", reference=manifest["name"],
                                 catalog=manifest["catalog"], comparison=manifest["comparison"],
+                                moduleProfileEvidence=manifest["moduleProfile"],
                                 testBinarySha256=manifest["qualification"]["testBinarySha256"])
         except BaseException as error:
             self.receipt["status"] = "failed"
@@ -210,6 +218,7 @@ def main(argv=None):
     parser.add_argument("--baseline", default=DEFAULT_BASELINE, type=Path, help="Previous qualified JSON or JSON.gz")
     parser.add_argument("--skip-pull", action="store_true", help="Require the resolved image to be present locally")
     parser.add_argument("--require-clean", action="store_true", help="Require the source commit and clean checkout to stay unchanged")
+    parser.add_argument("--module-profile", default="image-defaults", choices=("image-defaults", "core-opcua"), help="Reviewed module selection applied to every Gateway")
     args = parser.parse_args(argv)
     if not re.fullmatch(r"8\.3(?:\.(?:0|[1-9][0-9]{0,4}))?", args.tag):
         parser.error("tag must be 8.3 or 8.3.patch")
@@ -231,7 +240,7 @@ def main(argv=None):
         with (runtime / "igw-reference-update.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             Update(ROOT, args.out.absolute(), args.tag, args.docker,
-                   args.baseline.absolute(), not args.skip_pull, args.require_clean).run()
+                   args.baseline.absolute(), not args.skip_pull, args.require_clean, args.module_profile).run()
     except (OSError, ValueError, KeyError, StageFailure, subprocess.TimeoutExpired) as error:
         print("reference-update: " + str(error), file=sys.stderr)
         return 1
