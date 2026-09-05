@@ -450,6 +450,29 @@ rebuilt but stopped at doctor with exit 2 because the default Gateway URL/token
 remain unset. No WSL or Docker Desktop lifecycle/configuration changes were
 made, and user-owned script-mode edits remain untouched.
 
+The contributor tool now resolves official `8.3` channel/patch tags through
+Docker Hub's registry API without invoking Docker. It preserves exact index
+and selected `linux/amd64` manifest bytes, verifies registry and descriptor
+digests/size/media types, and emits a dated immutable image receipt. Fixed HTTPS
+endpoints, no redirects, private pull-scoped credentials, response/deadline
+bounds, and new-only output directories constrain this first update stage.
+Tests cover OCI/Docker indexes, ambiguous/foreign platform descriptors, corrupt
+or truncated manifests, rate limiting, token/transport redaction, cancellation,
+and preservation of previous candidates.
+
+Live resolutions at 2026-09-05T15:46:27Z and 15:46:33Z are retained locally in
+`bin/resolve-8.3-20260905/` and `bin/resolve-8.3.0-20260905/`. The `8.3` channel
+still points to the qualified 8.3.9 index
+`sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2`.
+The minimum tag resolves to
+`sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb`.
+These receipts prove registry resolution only. Platform/runtime verification,
+scheduled qualification, current-parser workflow receipts, candidate review
+packaging, and distributable offline references remain required.
+The full unit suite, focused resolver/contributor race tests, all three builds,
+command-doc consistency, and docs lint passed for this slice. The read-only
+registry checks started no container and changed no host settings.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

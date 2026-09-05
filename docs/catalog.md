@@ -136,6 +136,50 @@ certifies Gateway runtime behavior or backward compatibility.
 
 ## Contributor capture
 
+Resolve the official `8.3` channel or an explicit `8.3.<patch>` release before
+pulling an update candidate:
+
+```sh
+bash scripts/bounded-run.sh -- go build -o bin/igw-capture ./cmd/igw-capture
+bash scripts/bounded-run.sh -- bin/igw-capture resolve \
+  --tag 8.3 --out bin/new-release-resolution
+```
+
+This read-only operation contacts Docker Hub's fixed HTTPS authentication and
+registry endpoints. It does not invoke Docker, pull layers, start containers,
+or require Gateway credentials. Resolution requests an anonymous pull-scoped
+token, rejects redirects and duplicate JSON keys, limits each manifest to
+4 MiB, and enforces a deadline (30 seconds by default, at most one minute).
+Registry errors omit response bodies and credentials. Rate limiting or failed
+resolution returns an error without replacing any existing candidate.
+
+The new private output directory contains `resolution.json`, `index.json`, and
+`manifest.json`. The two manifest files preserve exact registry bytes, checked
+against `Docker-Content-Digest`; the selected manifest must also match its
+index descriptor's digest, media type, and size. The receipt records the tag,
+resolution time, immutable index image reference, selected platform manifest
+digest, and `linux/amd64` platform. Exactly one matching platform descriptor is
+required. Direct single-platform manifests, ambiguous platform entries, other
+release families, and nightly tags require explicit implementation/qualification
+before they can enter this update path. See the registry's
+[manifest API](https://distribution.github.io/distribution/spec/api/) and
+[token authentication](https://distribution.github.io/distribution/spec/auth/token/).
+
+Resolution is candidate provenance, not OpenAPI or runtime qualification. It
+does not prove that the image runs or that its advertised platform matches its
+contents. The capture runner must verify the actual platform, pass the lifecycle
+probe, and capture the observed Gateway version before accepting new evidence.
+Use the returned immutable `image` throughout one qualification run; do not
+resolve the moving tag separately for each test. Publish the resolution receipt
+alongside capture and workflow receipts so an update can be audited later.
+
+Live resolution on 2026-09-05 found the `8.3` channel at the same index digest as
+the qualified 8.3.9 fixture below; its `linux/amd64` manifest digest is
+`sha256:1e6778e8b787baf0b46d9018ac1b77ba58b5c618ea0f3ae543a465fb657d4295`.
+The minimum `8.3.0` tag also resolved successfully. These are dated observations;
+fresh resolution is required to detect upstream changes. Scheduled capture and
+reviewable reference-bundle promotion remain pending.
+
 `cmd/igw-capture` creates a fresh, uniquely labeled container from a pre-pulled
 official image digest, publishes HTTP only on loopback, disables quickstart and
 Gateway Network, and removes its own container and anonymous volumes before

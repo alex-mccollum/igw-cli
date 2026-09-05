@@ -17,6 +17,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "resolve" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runResolve(ctx, os.Args[2:], os.Stdout, os.Stderr)
+		stop()
+		os.Exit(code)
+	}
 	var cfg testgateway.Config
 	var out, modules string
 	var timeout time.Duration
