@@ -8,6 +8,8 @@ All notable user-facing changes to `igw` are documented here.
 - Add the development `cmd/igw-next` entrypoint with a typed execution core, versioned JSON results, full Gateway catalogs, true request previews, and offline schema inspection. Workflow migration and real-Gateway qualification are still in progress.
 
 ### Fixed
+- Reject legacy `--dry-run`/`dryRun` forwarding without making a request. Genuine previews are implemented in the v1 development entrypoint.
+- Make the legacy `doctor` command read-only. The removed `--check-write` option now fails with a usage error instead of triggering an unconfirmed project scan.
 - Reject request URLs outside the configured Gateway origin and stop cross-origin redirects before forwarding the API token.
 - Stream `--json --out` downloads to atomic files with SHA-256 metadata. Require `--overwrite` for existing destinations and preserve them on failed transfers.
 - Fail with exit code `7` when a successful HTTP response exceeds `--max-body-bytes`, instead of reporting a truncated transfer as successful.

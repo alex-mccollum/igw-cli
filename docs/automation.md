@@ -17,9 +17,8 @@ For host-application adapter guidance, see `docs/host-integration.md`.
 
 1. Configure or select runtime context.
 2. Run read-only health checks.
-3. Optionally run write-permission checks.
-4. Execute API calls.
-5. Write artifacts to files when needed.
+3. Execute API calls with explicit confirmation for mutations.
+4. Write artifacts to files when needed.
 
 ## Host-App Bootstrap Contract
 
@@ -51,7 +50,6 @@ Connectivity and auth:
 
 ```bash
 igw doctor --json
-igw doctor --check-write --json
 ```
 
 API execution:
@@ -116,7 +114,7 @@ igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts 
 
 ## Notes
 
-- `doctor` is read-only by default; add `--check-write` for write checks.
+- `doctor` is read-only. It does not run scans to test write permissions.
 - `call` defaults `--method` to `GET` when `--path` is provided.
 - `call --stream` can reduce memory overhead for large payload workflows.
 - `call --batch` can reduce process startup/flag parsing overhead for many independent requests.

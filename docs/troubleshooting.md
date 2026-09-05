@@ -4,7 +4,6 @@
 
 ```bash
 igw doctor
-igw doctor --check-write
 igw doctor --json
 ```
 

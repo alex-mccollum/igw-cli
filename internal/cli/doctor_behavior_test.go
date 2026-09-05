@@ -45,12 +45,12 @@ func TestDoctorSuccess(t *testing.T) {
 	if !strings.Contains(got, "ok\tgateway_info\tstatus 200") {
 		t.Fatalf("missing gateway_info success check: %q", got)
 	}
-	if !strings.Contains(got, "ok\tscan_projects\tskipped (use --check-write)") {
-		t.Fatalf("missing default skipped write check: %q", got)
+	if strings.Contains(got, "scan_projects") {
+		t.Fatalf("doctor advertised a mutating check: %q", got)
 	}
 }
 
-func TestDoctorCheckWriteEnabled(t *testing.T) {
+func TestDoctorRejectsRemovedWriteCheck(t *testing.T) {
 	t.Parallel()
 
 	var sawWriteCheck bool
@@ -76,12 +76,12 @@ func TestDoctorCheckWriteEnabled(t *testing.T) {
 		"--gateway-url", srv.URL,
 		"--api-key", "secret",
 		"--check-write",
-	}); err != nil {
-		t.Fatalf("doctor with write check failed: %v", err)
+	}); igwerr.ExitCode(err) != 2 {
+		t.Fatalf("expected removed write check to fail with usage error: %v", err)
 	}
 
-	if !sawWriteCheck {
-		t.Fatalf("expected write check call to scan/projects")
+	if sawWriteCheck {
+		t.Fatalf("doctor sent a mutating request")
 	}
 }
 

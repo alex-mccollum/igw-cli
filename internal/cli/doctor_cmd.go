@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
@@ -25,13 +24,16 @@ func (c *CLI) runDoctor(args []string) error {
 	var checkWrite bool
 
 	bindWrapperCommonWithDefaults(fs, &common, 5*time.Second, false)
-	fs.BoolVar(&checkWrite, "check-write", false, "Include mutating write-permission check (scan projects)")
+	fs.BoolVar(&checkWrite, "check-write", false, "Removed: doctor is read-only")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
 	}
 	if fs.NArg() > 0 {
 		return &igwerr.UsageError{Msg: "unexpected positional arguments"}
+	}
+	if checkWrite {
+		return &igwerr.UsageError{Msg: "doctor is read-only; use an explicit maintenance command such as scan projects --yes"}
 	}
 
 	selectOpts, selectErr := newJSONSelectOptions(common.jsonOutput, common.compactJSON, common.rawOutput, common.selectors)
@@ -63,6 +65,9 @@ func (c *CLI) runDoctor(args []string) error {
 	}
 	if common.timeout <= 0 {
 		return &igwerr.UsageError{Msg: "--timeout must be positive"}
+	}
+	if _, err := gateway.JoinURL(resolved.GatewayURL, ""); err != nil {
+		return &igwerr.UsageError{Msg: err.Error()}
 	}
 
 	checks := make([]doctorCheck, 0, 4)
@@ -128,111 +133,24 @@ func (c *CLI) runDoctor(args []string) error {
 		HTTP:    c.runtimeHTTPClient(),
 	}
 
-	type doctorCallResult struct {
-		resp      *gateway.CallResponse
-		err       error
-		elapsedMs int64
-	}
-
-	var (
-		gatewayInfo doctorCallResult
-		scanWrite   doctorCallResult
-		wg          sync.WaitGroup
-	)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		resp, callErr := client.Call(context.Background(), gateway.CallRequest{
-			Method:       http.MethodGet,
-			Path:         "/data/api/v1/gateway-info",
-			Timeout:      common.timeout,
-			EnableTiming: common.timing || common.jsonStats,
-		})
-		gatewayInfo = doctorCallResult{resp: resp, err: callErr, elapsedMs: time.Since(start).Milliseconds()}
-	}()
-
-	if checkWrite {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			start := time.Now()
-			resp, callErr := client.Call(context.Background(), gateway.CallRequest{
-				Method:       http.MethodPost,
-				Path:         "/data/api/v1/scan/projects",
-				Timeout:      common.timeout,
-				EnableTiming: common.timing || common.jsonStats,
-			})
-			scanWrite = doctorCallResult{resp: resp, err: callErr, elapsedMs: time.Since(start).Milliseconds()}
-		}()
-	}
-
-	wg.Wait()
-	if common.timing || common.jsonStats {
-		stats["gatewayInfoMs"] = gatewayInfo.elapsedMs
-		if gatewayInfo.resp != nil && gatewayInfo.resp.Timing != nil {
-			stats["gatewayInfoHTTP"] = gatewayInfo.resp.Timing
-		}
-		if checkWrite {
-			stats["scanProjectsMs"] = scanWrite.elapsedMs
-			if scanWrite.resp != nil && scanWrite.resp.Timing != nil {
-				stats["scanProjectsHTTP"] = scanWrite.resp.Timing
-			}
-		}
-	}
-
-	if gatewayInfo.err != nil {
-		checks = append(checks, doctorCheck{
-			Name:    "gateway_info",
-			OK:      false,
-			Message: gatewayInfo.err.Error(),
-			Hint:    doctorHintForError(gatewayInfo.err),
-		})
-		if checkWrite {
-			checks = append(checks, doctorCheck{
-				Name:    "scan_projects",
-				OK:      false,
-				Message: "skipped (gateway_info failed)",
-			})
-		} else {
-			checks = append(checks, doctorCheck{
-				Name:    "scan_projects",
-				OK:      true,
-				Message: "skipped (use --check-write)",
-			})
-		}
-		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, gatewayInfo.err)
-	}
-	checks = append(checks, doctorCheck{
-		Name:    "gateway_info",
-		OK:      true,
-		Message: fmt.Sprintf("status %d", gatewayInfo.resp.StatusCode),
+	start := time.Now()
+	resp, callErr := client.Call(context.Background(), gateway.CallRequest{
+		Method:       http.MethodGet,
+		Path:         "/data/api/v1/gateway-info",
+		Timeout:      common.timeout,
+		EnableTiming: common.timing || common.jsonStats,
 	})
-
-	if checkWrite {
-		if scanWrite.err != nil {
-			checks = append(checks, doctorCheck{
-				Name:    "scan_projects",
-				OK:      false,
-				Message: scanWrite.err.Error(),
-				Hint:    doctorHintForError(scanWrite.err),
-			})
-			return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, scanWrite.err)
+	if common.timing || common.jsonStats {
+		stats["gatewayInfoMs"] = time.Since(start).Milliseconds()
+		if resp != nil && resp.Timing != nil {
+			stats["gatewayInfoHTTP"] = resp.Timing
 		}
-		checks = append(checks, doctorCheck{
-			Name:    "scan_projects",
-			OK:      true,
-			Message: fmt.Sprintf("status %d", scanWrite.resp.StatusCode),
-		})
-	} else {
-		checks = append(checks, doctorCheck{
-			Name:    "scan_projects",
-			OK:      true,
-			Message: "skipped (use --check-write)",
-		})
 	}
-
+	if callErr != nil {
+		checks = append(checks, doctorCheck{Name: "gateway_info", OK: false, Message: callErr.Error(), Hint: doctorHintForError(callErr)})
+		return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, callErr)
+	}
+	checks = append(checks, doctorCheck{Name: "gateway_info", OK: true, Message: fmt.Sprintf("status %d", resp.StatusCode)})
 	return c.printDoctorResult(common.jsonOutput, selectOpts, resolved.GatewayURL, checks, stats, nil)
 }
 

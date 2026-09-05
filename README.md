@@ -84,7 +84,6 @@ igw config set --auto-gateway
 For scripts and agent workflows, use JSON output plus exit codes as the primary contract.
 
 - `igw doctor --json` for read-only environment checks.
-- `igw doctor --check-write --json` to include write-permission validation.
 - `igw call --path /data/api/v1/gateway-info --json` for machine-readable API responses.
 - Use repeatable `--select` with `--json` to extract a subset object (for example: `igw doctor --json --select ok --select checks.0.name`).
 - Add `--raw` when you want one plain-value result (for example: `igw call --path /data/api/v1/gateway-info --json --select response.status --raw`).
@@ -96,7 +95,7 @@ For the full automation workflow and patterns, see `docs/automation.md`.
 - `igw api list|show|search|tags|stats|sync|refresh`: query local OpenAPI docs and refresh cached spec.
 - `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
 - `igw config set|show|profile`: local config + profile management.
-- `igw doctor`: connectivity + auth checks (URL, TCP, read access; optional write access with `--check-write`).
+- `igw doctor`: read-only connectivity and auth checks (URL, TCP, read access).
 - `igw gateway info`: convenience read wrapper.
 - `igw scan projects|config`: convenience write wrappers.
 - `igw logs ...`: list/download logs and manage logger levels.
@@ -153,7 +152,6 @@ Run health/auth checks:
 
 ```bash
 igw doctor
-igw doctor --check-write
 igw wait gateway --wait-timeout 2m
 ```
 

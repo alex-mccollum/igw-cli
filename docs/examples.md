@@ -6,7 +6,6 @@ All commands below are examples. Replace placeholders for your environment.
 
 ```bash
 igw doctor
-igw doctor --check-write
 igw doctor --json --select ok --raw
 ```
 

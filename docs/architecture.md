@@ -31,7 +31,7 @@ A thin CLI wrapper around the Ignition Gateway HTTP API.
 - Config supports WSL host auto-detection via `config set --auto-gateway`.
 - Profiles supported for multi-gateway workflows (`config profile add|use|list`, runtime `--profile`).
 - Mutating calls require explicit `--yes`.
-- `doctor` is read-only by default; `--check-write` enables write permission checks.
+- `doctor` is read-only; maintenance operations require their own explicit command and `--yes`.
 - `call` supports optional retries for idempotent methods and `--out` file output.
 - `completion bash` outputs profile-aware shell completion.
 - Wrapper commands delegate to `call` so they share auth/config/timeout/JSON/exit behavior.

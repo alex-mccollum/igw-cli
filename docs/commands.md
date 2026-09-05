@@ -123,7 +123,6 @@ Mutation safety + automation:
 
 ```bash
 igw call --method POST --path /data/api/v1/scan/projects --yes
-igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
 igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
 igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
 igw call --method GET --path /data/api/v1/gateway-info --json --out gateway-info.json --overwrite
@@ -143,6 +142,11 @@ gateway info. With `--json --out`, the response includes `artifact.path`,
 kept out of the JSON body. Exceeding `--max-body-bytes` fails with exit code `7`
 and does not publish a partial file. A stream sent directly to stdout may
 already contain bytes when a transfer fails; check the exit code.
+
+The legacy `call --dry-run` forwarding behavior has been removed: adding a
+query parameter did not guarantee a safe preview. It now fails without sending
+a request, including through batch/RPC execution. Use the development
+entrypoint's genuine `api request --dry-run` or `api raw --dry-run` preview.
 
 Config:
 
@@ -173,7 +177,6 @@ Doctor:
 
 ```bash
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --check-write
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select checks.0.name --raw
 igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select ok --select checks.0.name --compact
 ```

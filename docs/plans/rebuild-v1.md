@@ -178,6 +178,12 @@ verify no mutation during preview/validation, fresh writes, proxy/path encoding,
 JSON precision, downloads, and non-retried uncertain mutations. Scope and
 remaining implementation limits are recorded in docs/rebuild-preview.md.
 
+Legacy safety follow-up: doctor no longer dispatches write checks, and legacy
+dryRun query forwarding is rejected across call/batch/RPC execution. This
+prevents the older entrypoint from presenting mutations as diagnostics or
+previews while the new entrypoint is being qualified. Real previews are
+available through the development CLI.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

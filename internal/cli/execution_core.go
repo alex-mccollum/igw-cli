@@ -38,6 +38,9 @@ type callExecutionInput struct {
 }
 
 func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway.CallResponse, string, string, error) {
+	if input.DryRun {
+		return nil, "", "", &igwerr.UsageError{Msg: "legacy dry-run forwarding has been removed; use the v1 development request preview (no proposed request was sent)"}
+	}
 	method := strings.ToUpper(strings.TrimSpace(input.Method))
 	path := strings.TrimSpace(input.Path)
 	op := strings.TrimSpace(input.OperationID)
@@ -78,11 +81,6 @@ func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway
 		}
 	}
 
-	query := input.Query
-	if input.DryRun {
-		query = append(append([]string(nil), input.Query...), "dryRun=true")
-	}
-
 	contentType := strings.TrimSpace(input.ContentType)
 	if len(input.Body) > 0 && contentType == "" {
 		contentType = "application/json"
@@ -96,7 +94,7 @@ func executeCallCore(client *gateway.Client, input callExecutionInput) (*gateway
 	resp, err := client.Call(callCtx, gateway.CallRequest{
 		Method:       method,
 		Path:         path,
-		Query:        query,
+		Query:        input.Query,
 		Headers:      input.Headers,
 		Body:         input.Body,
 		ContentType:  contentType,

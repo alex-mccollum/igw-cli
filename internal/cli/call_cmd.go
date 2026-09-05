@@ -56,7 +56,7 @@ func (c *CLI) runCall(args []string) error {
 	fs.Var(&headers, "header", "Request header key:value (repeatable)")
 	fs.StringVar(&body, "body", "", "Request body, @file, or - for stdin")
 	fs.StringVar(&contentType, "content-type", "", "Content-Type header value")
-	fs.BoolVar(&dryRun, "dry-run", false, "Append dryRun=true query parameter")
+	fs.BoolVar(&dryRun, "dry-run", false, "Removed: use the v1 development request preview")
 	fs.BoolVar(&yes, "yes", false, "Confirm mutating requests (POST/PUT/PATCH/DELETE)")
 	fs.BoolVar(&stream, "stream", false, "Stream response body directly (non-JSON mode)")
 	fs.Int64Var(&maxBodyBytes, "max-body-bytes", 0, "Maximum response bytes to read/stream (0 = unlimited)")
@@ -79,6 +79,9 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	batchRequested := strings.TrimSpace(batchInput) != ""
+	if batchRequested && dryRun {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "legacy dry-run forwarding has been removed; no batch requests were sent"})
+	}
 	if overwrite && strings.TrimSpace(outPath) == "" {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--overwrite requires --out"})
 	}
