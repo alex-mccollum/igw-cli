@@ -764,6 +764,33 @@ bounded runner. Logs are in `bin/minimum-module-{unit,race}.log` and
 `bin/minimum-default-captured-test.log`. Legacy smoke's default Gateway remains
 unconfigured; real minimum-version workflow acceptance is still pending.
 
+The second clean minimum pipeline (`40a8502`, parser 11) passed the ten-check
+lifecycle probe, captured all 672 operations with 648 reviewed adjustments, and
+passed all 27 resource workflow checks. It ran from 17:48:14 to 17:54:09 UTC on
+2026-09-05. The transfer suite passed its initial project API round trip, then
+failed before sending tag import: the 8.3.0 catalog contains neither tag import
+nor tag export. No operational suite or final qualifier ran. Original receipts,
+registry evidence, exact compressed OpenAPI bytes, and transfer stdout are
+retained in `internal/referencebuild/testdata/ignition-8.3.0-incomplete/`.
+All disposable containers were removed and an independent Docker query found
+none remaining. No host recovery or automatic retry occurred.
+
+The second raw hash is
+`b61c848935cf8717587c089be4566dde3a695f27a79be4271fcd23d90d0386e3`;
+its policy-1 contract hash differs from the preceding capture despite identical
+image and module inventory. Comparing the original documents found only 56
+`oneOf` reorderings, four `enum` reorderings, and two example timestamps. The
+projection freezes the entire document when the old keyboard references do not
+resolve at the root. The next identity policy must use the reviewed reference
+scope and retain explicit verification of historical hashes and bundles. It
+must not silently reinterpret policy 1 or hash inferred parameter constraints.
+
+Workflow availability must come from the actual catalog. Minimum qualification
+must test clear refusal for missing APIs and record supported scopes, without
+counting absent tag round trips as passing. The separately qualified 8.3.9 tag
+workflows remain required. This evidence narrows the next two implementation
+slices; the full compatibility matrix and v1 delivery goal remain unfinished.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

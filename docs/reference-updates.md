@@ -140,3 +140,18 @@ The original run receipt and complete candidate are retained in
 inventory hashes match the earlier reference; the changed document bytes retain
 their own checksums. This verifies the local end-to-end pipeline. The remote
 scheduled job remains a separate activation and execution check.
+
+The 8.3.0 attempt from clean commit `40a8502` passed containment, current-parser
+capture, and all 27 resource checks, then stopped in the transfer suite. Its
+project API round trip passed, but the captured Gateway advertises neither tag
+import nor tag export. No operational suite or reference assembly ran. Original
+receipts and transfer output are retained in
+`internal/referencebuild/testdata/ignition-8.3.0-incomplete/`; this is incomplete
+qualification evidence, not an offline reference. Every disposable container
+was removed, with no host recovery or automatic retry.
+
+Two captures of that same image/module profile also exposed a policy-1 identity
+defect: unresolved keyboard references preserve the entire document, including
+changing examples and unordered schema arrays. Capability-aware qualification
+and an explicitly versioned identity correction with historical verification
+are required before this minimum-version cell can qualify.
