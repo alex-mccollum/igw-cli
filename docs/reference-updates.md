@@ -103,6 +103,14 @@ implementations by commit, disables persisted checkout credentials, and serializ
 runs without canceling one in progress. It does not execute pull-request code,
 commit updates, push, tag, publish, or change the CLI's bundled default.
 
+Each scheduled or manually dispatched tag is qualified with both module
+profiles. The matrix uses `max-parallel: 1` and `fail-fast: true`: jobs run
+serially and a failure cancels queued profile jobs. Output directories and
+artifact names include the profile, so evidence cannot overwrite another cell.
+The outer workflow still keeps `cancel-in-progress: false` to avoid interrupting
+an active qualification when a later run is queued. These controls follow
+[GitHub's matrix documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations).
+
 Activation requires a provisioned runner with labels `self-hosted`, `linux`,
 `X64`, and `igw-reference`, plus repository variable
 `IGW_REFERENCE_RUNNER_ENABLED=true`. Use a dedicated host with an up-to-date
