@@ -219,21 +219,22 @@ func testLiveOperations(t *testing.T, workflows bool) {
 			t.Fatal("cannot hash executable")
 		}
 		receipt := struct {
-			Version        int                      `json:"version"`
-			Kind           string                   `json:"kind"`
-			Image          string                   `json:"image"`
-			ImageID        string                   `json:"imageId"`
-			Platform       string                   `json:"platform"`
-			GatewayVersion string                   `json:"gatewayVersion"`
-			BinarySHA256   string                   `json:"testBinarySha256"`
-			StartedAt      time.Time                `json:"startedAt"`
-			FinishedAt     time.Time                `json:"finishedAt"`
-			Catalog        *catalog.Metadata        `json:"catalog"`
-			Checks         []operationalObservation `json:"checks"`
-			Artifacts      []operationalArtifact    `json:"artifacts"`
-			Cleanup        bool                     `json:"cleanup"`
-			Passed         bool                     `json:"passed"`
-		}{2, "operations-contract", image, s.ImageID, s.Platform, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
+			Version         int                          `json:"version"`
+			Kind            string                       `json:"kind"`
+			Image           string                       `json:"image"`
+			ImageID         string                       `json:"imageId"`
+			Platform        string                       `json:"platform"`
+			ModuleInventory *testgateway.ModuleInventory `json:"moduleInventory"`
+			GatewayVersion  string                       `json:"gatewayVersion"`
+			BinarySHA256    string                       `json:"testBinarySha256"`
+			StartedAt       time.Time                    `json:"startedAt"`
+			FinishedAt      time.Time                    `json:"finishedAt"`
+			Catalog         *catalog.Metadata            `json:"catalog"`
+			Checks          []operationalObservation     `json:"checks"`
+			Artifacts       []operationalArtifact        `json:"artifacts"`
+			Cleanup         bool                         `json:"cleanup"`
+			Passed          bool                         `json:"passed"`
+		}{2, "operations-contract", image, s.ImageID, s.Platform, s.ModuleInventory, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
 		if workflows {
 			receipt.Kind = "operational-workflows"
 		}

@@ -204,12 +204,37 @@ qualification must match the observed image ID to the selected registry
 manifest's config digest; a resolved index alone does not establish the image
 configuration that actually ran.
 
+Captures now also observe both `/data/api/v1/modules/healthy` and
+`/data/api/v1/modules/quarantined`, with bounded pagination, stable ordering,
+explicit total/offset checks, and unique module IDs across both collections.
+The `moduleInventory` records IDs, names, module versions, reported states,
+startup actions, upgrade flags, and the source collection. It omits exception
+details and other diagnostic content. A versioned SHA-256 covers the sorted
+module records; the observation timestamp is separate. The requested whitelist
+and observed inventory are distinct evidence. Module versions must not be
+inferred from the Gateway version.
+
+Three consecutive observations must agree on both module inventory and exact
+OpenAPI bytes. This detects startup changes across the observation window; it
+is not a server-atomic snapshot. The vendor's `healthy` collection can contain
+unloaded or faulted modules, so its name alone does not establish readiness.
+Missing, malformed, moving, or incomplete inventory fails capture. Workflow
+receipts retain the inventory observed during their own Gateway startup.
+
 After `StatusPing` reports RUNNING, the tool authenticates to the disposable
 Gateway's built-in IdP and waits for three identical OpenAPI responses. This
 private browser-login adapter is confined to test infrastructure; the released
 CLI continues to use API tokens. The 8.3.9 run confirmed that `/openapi.json`
 requires authentication and that `/data/api/v1/gateway-info` reports the actual
 runtime version.
+
+The 2026-09-05 inventory capture recorded 32 first-party modules, all reporting
+`ACTIVE` and `onStartup: enabled`, with no quarantined modules or pending
+upgrades. Their versions vary independently: Perspective reported 3.3.9 and
+Vision 12.3.9 on Gateway 8.3.9. The complete receipt is
+`internal/testgateway/testdata/ignition-8.3.9-module-inventory.json`. It retains
+the same 687-operation contract; these module observations apply to that image
+and capture, not every 8.3 installation.
 
 Run the short lifecycle probe before qualifying a new image. It verifies the
 engine's configured and kernel-applied limits, rejects a second capture, waits

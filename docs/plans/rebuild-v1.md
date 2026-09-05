@@ -508,6 +508,26 @@ different document hashes and six changed operation documents, no added or
 removed routes, and equal contracts under `igw-contract/1`. The local result is
 `bin/image-reference-comparison.json`; this is not backward-compatibility proof.
 
+Module capture now observes both documented healthy and quarantined collections,
+with bounded pagination, count/offset checks, unique IDs, and three matching
+inventory/document observations. New capture and workflow receipts retain the
+actual module IDs, versions, states, startup actions, and pending-upgrade flags.
+The timestamp is separate from the versioned inventory hash. Collection names
+are not interpreted as health assertions; exception details are omitted.
+
+The real 8.3.9 capture passed at 2026-09-05T16:04:53Z, retaining 687 operations
+and the qualified contract hash. It observed 32 first-party modules, all ACTIVE,
+enabled on startup, and without pending upgrades or quarantined entries.
+Module versions have independent major numbers (for example, Perspective 3.3.9
+and Vision 12.3.9). The receipt is
+`internal/testgateway/testdata/ignition-8.3.9-module-inventory.json`; exact vendor
+bytes remain in `bin/capture-8.3.9-modules-20260905/`. Raw SHA-256 is
+`2c40e5569b9cdd8acfb2a738f83c45192c3dc83b3a34b6fdfd1445a9e3705375`, and inventory
+SHA-256 is `8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd`.
+Owned-container cleanup and independent absence verification passed. Full unit
+checks, focused contributor/resolver race checks, all builds, and docs checks
+passed. Legacy smoke still stops at unset default Gateway configuration.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

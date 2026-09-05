@@ -243,21 +243,22 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 			t.Fatal("cannot hash test executable")
 		}
 		receipt := struct {
-			Version          int               `json:"version"`
-			Kind             string            `json:"kind"`
-			Image            string            `json:"image"`
-			ImageID          string            `json:"imageId"`
-			Platform         string            `json:"platform"`
-			GatewayVersion   string            `json:"gatewayVersion"`
-			TestBinarySHA256 string            `json:"testBinarySha256"`
-			StartedAt        time.Time         `json:"startedAt"`
-			FinishedAt       time.Time         `json:"finishedAt"`
-			Catalog          *catalog.Metadata `json:"catalog"`
-			Checks           []transferCheck   `json:"checks"`
-			ProjectFiles     []string          `json:"projectFiles"`
-			Cleanup          bool              `json:"cleanup"`
-			Passed           bool              `json:"passed"`
-		}{2, "project-tag-contract", image, s.ImageID, s.Platform, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, sortedKeys(sourceFiles), true, true}
+			Version          int                          `json:"version"`
+			Kind             string                       `json:"kind"`
+			Image            string                       `json:"image"`
+			ImageID          string                       `json:"imageId"`
+			Platform         string                       `json:"platform"`
+			ModuleInventory  *testgateway.ModuleInventory `json:"moduleInventory"`
+			GatewayVersion   string                       `json:"gatewayVersion"`
+			TestBinarySHA256 string                       `json:"testBinarySha256"`
+			StartedAt        time.Time                    `json:"startedAt"`
+			FinishedAt       time.Time                    `json:"finishedAt"`
+			Catalog          *catalog.Metadata            `json:"catalog"`
+			Checks           []transferCheck              `json:"checks"`
+			ProjectFiles     []string                     `json:"projectFiles"`
+			Cleanup          bool                         `json:"cleanup"`
+			Passed           bool                         `json:"passed"`
+		}{2, "project-tag-contract", image, s.ImageID, s.Platform, s.ModuleInventory, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, sortedKeys(sourceFiles), true, true}
 		if workflows {
 			receipt.Kind = "project-tag-workflows"
 		}

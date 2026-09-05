@@ -42,21 +42,22 @@ type Config struct {
 }
 
 type Session struct {
-	ID             string
-	Name           string
-	URL            string
-	Image          string
-	ImageID        string
-	Platform       string
-	Modules        []string
-	GatewayVersion string
-	run            commandRunner
-	password       string
-	owner          string
-	created        bool
-	closed         bool
-	closeMu        sync.Mutex
-	lifetime       time.Duration
+	ID              string
+	Name            string
+	URL             string
+	Image           string
+	ImageID         string
+	Platform        string
+	Modules         []string
+	GatewayVersion  string
+	ModuleInventory *ModuleInventory
+	run             commandRunner
+	password        string
+	owner           string
+	created         bool
+	closed          bool
+	closeMu         sync.Mutex
+	lifetime        time.Duration
 }
 
 // Start requires an already-pulled digest. Credentials enter the stopped

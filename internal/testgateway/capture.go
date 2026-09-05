@@ -24,6 +24,7 @@ type Evidence struct {
 	Platform        string                 `json:"platform,omitempty"`
 	GatewayVersion  string                 `json:"gatewayVersion,omitempty"`
 	ModuleWhitelist []string               `json:"moduleWhitelist,omitempty"`
+	ModuleInventory *ModuleInventory       `json:"moduleInventory,omitempty"`
 	Source          string                 `json:"source"`
 	CapturedAt      time.Time              `json:"capturedAt"`
 	RawSHA256       string                 `json:"rawSha256"`
@@ -45,6 +46,7 @@ func (s *Session) WaitOpenAPI(ctx context.Context) ([]byte, error) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	var previous []byte
+	var previousModules string
 	stable := 0
 	loggedIn := false
 	last := "Gateway has not responded"
@@ -78,16 +80,22 @@ func (s *Session) WaitOpenAPI(ctx context.Context) ([]byte, error) {
 					Paths   map[string]json.RawMessage `json:"paths"`
 				}
 				if json.Unmarshal(raw, &root) == nil && root.OpenAPI != "" && len(root.Paths) > 0 {
-					if bytes.Equal(raw, previous) {
+					inventory, err := s.readModuleInventory(ctx, client)
+					if err != nil {
+						return nil, err
+					}
+					if bytes.Equal(raw, previous) && inventory.SHA256 == previousModules {
 						stable++
 					} else {
 						stable = 1
 						previous = raw
+						previousModules = inventory.SHA256
 					}
 					if stable >= 3 {
+						s.ModuleInventory = inventory
 						return raw, nil
 					}
-					last = "waiting for stable module routes"
+					last = "waiting for stable module inventory and routes"
 				} else {
 					last = "OpenAPI endpoint did not return a document"
 					stable = 0
@@ -139,7 +147,7 @@ func readURL(ctx context.Context, client *http.Client, url string, limit int64) 
 // a qualified catalog until the incompatibility has been reviewed and repaired.
 func (s *Session) Save(dir string, raw []byte) (Evidence, error) {
 	sum := sha256.Sum256(raw)
-	evidence := Evidence{Version: 3, Image: s.Image, ImageID: s.ImageID, Platform: s.Platform, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
+	evidence := Evidence{Version: 3, Image: s.Image, ImageID: s.ImageID, Platform: s.Platform, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, ModuleInventory: s.ModuleInventory, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
 	s.closeMu.Lock()
 	evidence.Cleanup = s.created && s.closed
 	s.closeMu.Unlock()
