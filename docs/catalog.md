@@ -90,15 +90,30 @@ The vendor document needs a narrowly scoped adapter before OAS validation:
   shape and every variant is free of references, anchors, nested identifiers,
   and dialect changes. All pairs must qualify before an operation is adapted.
 
-Policy `ignition-openapi/2` matches the observed generator identity and those
-exact structural shapes. Each snapshot binds the policy to its original raw
-SHA-256. It does not grant trust based on the document's title or license URL;
+Policy `ignition-openapi/3` matches the observed generator identity and those
+exact structural shapes, recognizing both the current IA license URL and the
+8.3.0 Gateway-relative `/res/sys/license.html` EULA. Each snapshot binds the
+policy to its original raw SHA-256. It does not grant trust based on the
+document's title or license URL;
 the resulting model must still pass OAS validation and reference checks.
 Descriptions and exports retain the vendor definitions. `spec inspect` exposes
 every adjustment with its operation and JSON pointer; snapshot metadata reports
 counts by rule. Any additional defect remains an error. This adapter implements
 the [OAS parameter and response rules](https://spec.openapis.org/oas/v3.1.0.html)
 and the [JSON Schema rules for resource identifiers](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.1).
+
+The retained 8.3.0 document has two additional reviewed parameter defects. For
+the exact entity-section and SCIM routes, 16 path parameters are marked
+optional. The private model requires values for the explicitly selected path
+template and retains all supplied value constraints. It does not infer a
+different path with the SCIM version omitted; `api describe` exposes the
+original optional annotation and the adjustment. Script cancellation omits
+the ID parameter's schema entirely. Discovery retains this gap, while both
+`api request` and its preview fail with exit 2 and `catalog_schema` before
+sending the operation. `api raw` remains available with explicit `--yes` for
+the DELETE request. These adjustments match only the reviewed route, method,
+and parameter shapes; unknown defects remain errors. The corresponding fields
+are already corrected in the retained 8.3.9 document.
 
 Recursive arrays, such as required security-level children, accept finite trees
 and are checked against actual input values. The parser receives a formatted
@@ -374,12 +389,16 @@ has already been removed at that stage. A failed parser check retains the raw
 document with an unvalidated receipt. A receipt without a qualified model must
 not be bundled as a qualified reference.
 
-Ignition 8.3.0 was also captured with the OPC UA whitelist. That document needs
-additional review for optional path parameters and a missing cancellation-ID
-schema; it is not yet a qualified fixture. The complete version/module matrix,
-observed module inventory, authenticated workflow tests, scheduled update
-automation, and additional independently distributed reference profiles remain tracked in
-the [execution plan](plans/rebuild-v1.md).
+Ignition 8.3.0 was also captured with the OPC UA whitelist. Its optional path
+parameters and missing cancellation-ID schema have reviewed adapters, but the
+full model still fails on unresolved `#/$defs/key` and `#/$defs/keyVariant`
+references in keyboard-layout schemas. The CLI continues to reject that
+document. The historical capture is not a qualified reference: model resolution,
+current containment, module inventory, and authenticated workflow evidence are
+still required for that image. The complete version/module matrix and additional reference profiles
+remain tracked in the [execution plan](plans/rebuild-v1.md). The serialized
+[reference updater](reference-updates.md) has passed local 8.3.9 acceptance;
+remote scheduling still requires a provisioned runner and explicit activation.
 
 ## Authenticated API acceptance
 

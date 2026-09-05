@@ -25,9 +25,10 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/8"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/9"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
+var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
 
 type Operation struct {
 	Key         string          `json:"key"`
@@ -314,8 +315,13 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 	for _, adjustment := range c.adjustments {
 		if adjustment.Operation == op.Key {
 			description.Adjustments = append(description.Adjustments, adjustment)
-			if adjustment.Rule == "empty-responses" {
+			switch adjustment.Rule {
+			case "empty-responses":
 				description.Gaps = append(description.Gaps, "The Gateway declares no response contract for this operation.")
+			case "selected-path-required":
+				description.Gaps = append(description.Gaps, "Supply every placeholder in the selected path; the vendor's optional path form requires a separate explicit request.")
+			case "script-cancel-undocumented-id":
+				description.Gaps = append(description.Gaps, "The Gateway omits the id parameter's schema; schema-assisted requests and previews are unavailable for this operation.")
 			}
 		}
 	}
@@ -348,6 +354,11 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	}
 	if request.Method != op.Method {
 		return nil, errors.New("request method differs from selected operation")
+	}
+	for _, adjustment := range c.adjustments {
+		if adjustment.Operation == op.Key && adjustment.Rule == "script-cancel-undocumented-id" {
+			return nil, ErrIncompleteContract
+		}
 	}
 	c.once.Do(func() {
 		// The default eagerly compiles every request/response schema. A CLI

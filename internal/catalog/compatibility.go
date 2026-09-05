@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const compatibilityPolicy = "ignition-openapi/2"
+const compatibilityPolicy = "ignition-openapi/3"
 
 // Compatibility describes the model adapter, not a claim that original vendor
 // bytes satisfy the OAS schema. Receipts bind this policy to the raw SHA-256.
@@ -23,13 +23,17 @@ type Adjustment struct {
 }
 
 // normalizeIgnition handles reviewed structural defects captured from IA's
-// 8.3 API generator. It never rewrites request assertions or invents a
-// response status/schema. Original bytes and descriptions are kept separately.
+// 8.3 API generator. Supplied value constraints remain intact. Path presence
+// follows the selected template; undocumented parameter values cannot be
+// validated. Original bytes and descriptions are kept separately.
 func normalizeIgnition(value any) []Adjustment {
 	root, _ := value.(map[string]any)
 	info, _ := root["info"].(map[string]any)
 	license, _ := info["license"].(map[string]any)
-	if root["openapi"] != "3.1.0" || info["title"] != "Ignition HTTP API" || license["url"] != "https://inductiveautomation.com/ignition/license" {
+	// 8.3.0 points to the Gateway's own EULA; later captures use IA's site.
+	knownLicense := license["url"] == "https://inductiveautomation.com/ignition/license" ||
+		(license["url"] == "/res/sys/license.html" && license["name"] == "Inductive Automation EULA")
+	if root["openapi"] != "3.1.0" || info["title"] != "Ignition HTTP API" || !knownLicense {
 		return nil
 	}
 	paths, _ := root["paths"].(map[string]any)
@@ -51,6 +55,7 @@ func normalizeIgnition(value any) []Adjustment {
 					adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + "/parameters/" + strconv.Itoa(index) + "/allowReserved", Rule: "path-allow-reserved-false"})
 				}
 			}
+			adjustments = append(adjustments, normalizeLegacyParameters(op, key, pointer)...)
 			if responses, ok := op["responses"].(map[string]any); ok && len(responses) == 0 {
 				responses["default"] = map[string]any{"description": "Response undocumented by the Gateway; placeholder for parser compatibility only."}
 				adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + "/responses", Rule: "empty-responses"})

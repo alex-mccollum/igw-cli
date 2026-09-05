@@ -641,6 +641,47 @@ version/module matrix, remaining workflows, and v1 cutover/release gates remain
 unfinished. No push, tag, publication, host recovery, or memory-setting change
 was performed.
 
+The minimum-version review now recognizes the exact 8.3.0 Gateway-relative
+EULA identity and two parameter defects, with parser version 9 and compatibility
+policy `ignition-openapi/3`. Sixteen entity-section/SCIM parameters incorrectly
+mark a selected path placeholder optional. Their private model requires those
+placeholders and preserves every supplied value constraint; it never infers an
+alternate route. The script-cancellation ID has no schema. Discovery preserves
+that original omission and exposes the gap, while schema-assisted execution
+and preview return `catalog_schema`/2 before sending an operation. Explicit raw
+DELETE still requires `--yes`. Tests cover preserved raw descriptions, retained
+value constraints, rejected unreviewed shapes, missing placeholders, unrelated
+operation availability, corrected subsequent schemas, and no mutation during
+either rejection path.
+
+The full retained 8.3.0 document now passes the OAS metaschema with 326 reviewed
+adjustments: 222 path annotations, seven empty responses, 80 duplicate unused
+resource IDs, 16 selected-path requirements, and one undocumented ID. Full
+model resolution still fails on `#/$defs/key` and `#/$defs/keyVariant` in the
+keyboard-layout resource. The document contains 24 such references across
+config/backupConfig schemas in four operations, with nested definitions and no
+schema `$id` establishing their [reference base](https://json-schema.org/understanding-json-schema/structuring).
+No corresponding references are
+present in the retained 8.3.9 document. The CLI rejects the unresolved model;
+the historical 8.3.0 receipt remains unvalidated and has not been promoted.
+Failed inspection and model-resolution details remain under
+`bin/minimum-parameter-*.json` and `bin/minimum-parameter-model-errors.txt`.
+
+Both existing 8.3.9 fixtures passed current parser inspection with unchanged
+raw, document, and contract identities, 687 operations, and 638 adjustments.
+Only their current-parser qualification files were regenerated; original
+capture and reference-bundle receipts remain unchanged. Resolving the separate
+keyboard-layout defect, fresh minimum-image containment/capture/workflows, and
+the other matrix and v1 delivery gates remain required.
+
+The full unit suite, focused catalog/execution/CLI race checks, both binary
+builds, command-doc consistency, and docs lint passed under serialized bounded
+validation. Logs are in `bin/legacy-parameters-{unit,race,docs,smoke}.log`.
+Legacy smoke built successfully, then stopped at `doctor` with exit 2 because
+the default Gateway URL/token configuration is empty; no live smoke success is
+claimed. No Gateway containers or host-setting changes were needed for this
+slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

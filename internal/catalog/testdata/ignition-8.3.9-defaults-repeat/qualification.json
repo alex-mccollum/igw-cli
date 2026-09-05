@@ -1,7 +1,7 @@
 {
   "compatibility": {
     "adjustments": 638,
-    "policy": "ignition-openapi/2",
+    "policy": "ignition-openapi/3",
     "rules": {
       "empty-responses": 7,
       "path-allow-reserved-false": 343,
@@ -12,6 +12,6 @@
   "contractSha256": "fce0593c41f1d0ae31c0647c34bb10ccebf6f44958c3c55913c887654ff9ccbc",
   "documentSha256": "38e832ee35f346a42f76f26ceb605c39164dd48160d3dbd6da39d27117315133",
   "operationCount": 687,
-  "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/8",
+  "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/9",
   "rawSha256": "94e537dab80f0c9ba93b8cfe8b9c93754fa6e7e6b2127e6dbbc03500f25e51b3"
 }
