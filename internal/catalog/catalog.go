@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/16"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/17"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -388,6 +388,8 @@ func (c *Catalog) gaps(op Operation) []string {
 // Validate checks a credential-free request. The caller retains responsibility
 // for target selection, authorization, workflow effects, and server validation.
 // Request bodies must be independent readers: the validator may consume them.
+// Use outgoing client requests: nil Body omits input; a non-nil reader,
+// including http.NoBody, explicitly supplies a representation, possibly empty.
 // Concurrent calls are supported; schema compilation within one catalog is
 // serialized because the upstream renderer mutates shared schema nodes.
 func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {

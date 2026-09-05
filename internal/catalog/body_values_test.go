@@ -140,7 +140,11 @@ func TestJSONBodyMediaSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			req, _ := http.NewRequest("POST", "http://gateway.test/body", strings.NewReader(tt.body))
+			var body io.Reader
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			req, _ := http.NewRequest("POST", "http://gateway.test/body", body)
 			req.Header.Set("Content-Type", tt.contentType)
 			issues, err := c.Validate("POST /body", req)
 			if err != nil || (len(issues) == 0) != tt.valid {
@@ -193,7 +197,11 @@ func TestJSONBodyPresenceAndDirection(t *testing.T) {
 					{"", !required}, {`{"secret":"private-secret"}`, true}, {`{}`, false},
 					{`{"generated":1}`, false}, {`{"secret":false}`, false},
 				} {
-					req, _ := http.NewRequest("POST", "http://gateway.test/body", strings.NewReader(tt.body))
+					var body io.Reader
+					if tt.body != "" {
+						body = strings.NewReader(tt.body)
+					}
+					req, _ := http.NewRequest("POST", "http://gateway.test/body", body)
 					req.Header.Set("Content-Type", "application/json")
 					before := string(c.Raw())
 					issues, err := c.Validate("POST /body", req)

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -32,7 +33,7 @@ type Request struct {
 	PathParams   map[string]string
 	Query        url.Values
 	Headers      http.Header
-	Body         []byte
+	Body         []byte // nil omits input; a non-nil empty slice supplies zero bytes.
 	Upload       *artifact.Upload
 	ContentType  string
 	DryRun       bool
@@ -53,6 +54,7 @@ type Preview struct {
 	HeaderKeys  []string                     `json:"headerKeys,omitempty"`
 	ContentType string                       `json:"contentType,omitempty"`
 	BodyBytes   int64                        `json:"bodyBytes"`
+	BodyPresent bool                         `json:"bodyPresent"`
 	BodySHA256  string                       `json:"bodySha256,omitempty"`
 	Validation  string                       `json:"validation"`
 	Parts       []artifact.MultipartPartInfo `json:"parts,omitempty"`
@@ -94,7 +96,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		}
 		input.ContentType = input.Upload.ContentType()
 	}
-	if input.Upload != nil && (len(input.Body) != 0 || input.ContentType == "") {
+	if input.Upload != nil && (input.Body != nil || input.ContentType == "") {
 		return nil, result.Usage("upload requires an explicit content type and cannot be combined with an inline body")
 	}
 	if input.Overwrite && input.Out == "" {
@@ -146,7 +148,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		if err != nil {
 			return nil, err
 		}
-		if input.ContentType == "" && len(input.Body) > 0 {
+		if input.ContentType == "" && input.Body != nil {
 			input.ContentType = "application/json"
 		}
 		validationBody := input.Body
@@ -156,11 +158,16 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 			}
 			// Opaque content has no value assertions. Represent only presence to
 			// validate the remaining contract without reading a large upload.
+			validationBody = []byte{}
 			if input.Upload.Bytes() > 0 {
 				validationBody = []byte{0}
 			}
 		}
-		request, err := http.NewRequestWithContext(ctx, method, "http://igw.invalid"+path, bytes.NewReader(validationBody))
+		var validationReader io.Reader
+		if validationBody != nil {
+			validationReader = bytes.NewReader(validationBody)
+		}
+		request, err := http.NewRequestWithContext(ctx, method, "http://igw.invalid"+path, validationReader)
 		if err != nil {
 			return nil, result.Usage("invalid encoded request")
 		}
@@ -217,7 +224,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	if err != nil {
 		return nil, result.Usage(err.Error())
 	}
-	if len(input.Body) > 0 && input.ContentType == "" {
+	if input.Body != nil && input.ContentType == "" {
 		input.ContentType = "application/json"
 	}
 	if strings.ContainsAny(input.ContentType, "\r\n") {
@@ -241,11 +248,12 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	}
 	meta.Validation = validation
 	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: int64(len(input.Body)), Validation: validation}
+	preview.BodyPresent = input.Body != nil || input.Upload != nil
 	if input.Upload != nil {
 		preview.BodyBytes, preview.BodySHA256 = input.Upload.Bytes(), input.Upload.SHA256()
 		preview.Parts = input.Upload.Parts()
 	}
-	if len(input.Body) > 0 {
+	if input.Body != nil {
 		sum := sha256.Sum256(input.Body)
 		preview.BodySHA256 = hex.EncodeToString(sum[:])
 	}
@@ -319,7 +327,13 @@ func (e Engine) Execute(ctx context.Context, prepared *Prepared, token string) r
 			return result.Failure(&result.Problem{Kind: "upload", Message: "upload snapshot is unavailable", Code: 2})
 		}
 		defer reader.Close()
-		request.BodyReader, request.BodySize = reader, p.input.Upload.Bytes()
+		if p.input.Upload.Bytes() == 0 {
+			// A generic reader with ContentLength 0 means unknown length to
+			// net/http. Preserve the known zero-byte snapshot with NoBody framing.
+			request.Body = []byte{}
+		} else {
+			request.BodyReader, request.BodySize = reader, p.input.Upload.Bytes()
+		}
 	}
 	if request.MaxBodyBytes == 0 && download == nil {
 		request.MaxBodyBytes = 16 << 20

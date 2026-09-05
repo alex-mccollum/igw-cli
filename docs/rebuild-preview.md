@@ -76,6 +76,8 @@ See `docs/commands.md` for the accepted input spellings and limits.
 Schema-assisted streaming requires a declared opaque or unconstrained binary
 body and reports `declared_transport` validation. Plain text has exact UTF-8
 schema validation; unsupported body decoders are refused before dispatch.
+Explicit empty text/files retain their presence and still receive the applicable
+schema checks; previews distinguish them from omitted bodies with `bodyPresent`.
 `api describe.bodyInputs` exposes these support boundaries, and generic request
 metadata reports the checks actually performed. Multipart construction supports
 literal text fields, streamed files, and ordered JSON part manifests with

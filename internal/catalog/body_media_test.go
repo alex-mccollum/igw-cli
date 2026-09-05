@@ -3,6 +3,7 @@ package catalog
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -114,8 +115,8 @@ func TestBodyDeclarationPresence(t *testing.T) {
 		valid                          bool
 	}{
 		{"undeclared body", ``, "application/json", `{}`, false},
-		{"undeclared empty", ``, "", ``, true},
-		{"opaque required empty", `"requestBody":{"required":true,"content":{"application/zip":{}}},`, "application/zip", ``, false},
+		{"undeclared absent", ``, "", ``, true},
+		{"opaque required absent", `"requestBody":{"required":true,"content":{"application/zip":{}}},`, "application/zip", ``, false},
 		{"opaque required present", `"requestBody":{"required":true,"content":{"application/zip":{}}},`, "application/zip", `opaque`, true},
 		{"optional body needs media type", `"requestBody":{"content":{"application/json":{"schema":{"type":"object"}}}},`, "", `{}`, false},
 		{"optional omitted body", `"requestBody":{"content":{"application/json":{"schema":{"type":"object"}}}},`, "", ``, true},
@@ -127,7 +128,11 @@ func TestBodyDeclarationPresence(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			req, _ := http.NewRequest("POST", "http://gateway.test/body", strings.NewReader(tt.body))
+			var body io.Reader
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			req, _ := http.NewRequest("POST", "http://gateway.test/body", body)
 			req.Header.Set("Content-Type", tt.media)
 			issues, err := c.Validate("POST /body", req)
 			if (len(issues) == 0 && err == nil) != tt.valid {

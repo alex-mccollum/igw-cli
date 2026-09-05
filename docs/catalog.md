@@ -666,6 +666,24 @@ multipart declarations omit their part schema; this is a vendor contract gap.
 The builder accepts explicit user-supplied names without inventing a schema,
 and additional schema-bearing encodings still require a qualified decoder.
 
+Parser 17 separates explicit empty representations from omitted bodies. The
+typed request core uses a nil byte slice for omission and a non-nil empty slice
+for zero bytes. Catalog validation receives outgoing client requests with a nil
+body for omission; a non-nil reader, including Go's `http.NoBody` sentinel,
+preserves explicit presence. This follows the
+[client request constructor's behavior](https://pkg.go.dev/net/http#NewRequestWithContext);
+it is an input-intent convention, not a new HTTP wire marker.
+
+Empty text uses the same complete schema checks as other strings. The pinned
+request compiler otherwise short-circuits on raw byte count even when a value
+was already decoded. The adapter provides the empty string's JSON diagnostic
+representation to that helper while keeping the decoded value and outgoing
+bytes unchanged. Empty JSON still fails decoding. Required presence does not
+invent a minimum binary size when the document declares none. Previews expose
+`bodyPresent` and the exact zero-byte digest; empty file snapshots use known
+zero-length HTTP framing. Original vendor bytes, contract hashes, and historical
+qualification receipts remain unchanged.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

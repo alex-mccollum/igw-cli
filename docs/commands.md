@@ -118,6 +118,18 @@ schema encodings return `unsupported_input` with exit 2 before dispatch. Bodies
 without a declared request-body contract, missing required bodies, and missing
 or invalid content types also fail before dispatch; `api raw` remains explicit.
 
+`--body ''`, an empty `@file`, empty stdin, or an empty `--upload` file explicitly
+supplies a zero-byte body. Omit the input option to omit the body. A required
+body requires an explicit input, and empty text still must satisfy its schema
+(for example, `minLength: 1` rejects it). A JSON empty string is `--body '""'`;
+a zero-byte JSON input fails decoding. An explicit content type alone does not
+supply a body. The supplied content type is retained on the HTTP request.
+
+Generic previews include `bodyPresent` as well as `bodyBytes`. Explicit empty
+inputs have `bodyPresent: true` and the SHA-256 of zero bytes; omitted inputs
+have `bodyPresent: false` and no body hash. With an omitted optional body, only
+the applicable presence and parameter checks run.
+
 Generic request results report actual coverage in `meta.validation`; previews
 also retain `data.validation`. `declared_schema` means the supported declared
 schema checks passed. `declared_transport` means the body received media-type

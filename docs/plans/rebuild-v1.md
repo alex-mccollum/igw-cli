@@ -1289,6 +1289,30 @@ Explicit empty-body inputs, binary assertions, structured parameter encodings,
 multipart schema decoding, and the full workflow/cutover/release gates remain
 within the active goal.
 
+Explicit empty-body handling is the next input-contract slice. The baseline
+in `bin/body-presence-before.log` reproduced rejected valid empty strings/files,
+skipped optional-body assertions, accepted empty JSON/unsupported encodings,
+and dropped HTTP media types. Parser 17 now separates omitted inputs from
+explicit zero-byte representations, validates empty strings through the same
+request-specific compiler, and preserves known zero-length file framing.
+Previews report `bodyPresent` and the zero-byte digest. The content-type option
+alone does not supply a body, and explicit media metadata reaches the transport.
+
+The initial focused run passed the new regressions and exposed older fixtures
+using an empty reader to mean omission (`bin/body-presence-focused.log`). Those
+fixtures now construct omitted inputs explicitly; zero-byte opaque input moves
+to the accepted transport-only case. Historical vendor documents and live
+receipts remain unchanged while current parser expectations advance to 17.
+Final catalog/transport/CLI/execution race checks passed in
+`bin/body-presence-race.log`, including empty raw requests and preserved default
+media types. The full unit suite and both CLI builds passed, followed by command
+documentation consistency and docs lint
+(`bin/body-presence-{unit,build-docs}.log`). Legacy smoke built successfully,
+then stopped at the unconfigured default Gateway's `doctor` with exit 2
+(`bin/body-presence-smoke.log`). No live acceptance is claimed for the changed
+input boundary. No containers, host-service operations, host settings, or
+validation-limit changes were needed for this slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

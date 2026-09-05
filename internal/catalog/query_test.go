@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -118,11 +119,11 @@ func TestExplodedFilterInheritanceAndRequestBody(t *testing.T) {
 				item[strings.ToLower(method)] = op
 			})
 			for _, header := range []bool{false, true} {
-				body := ""
+				var body io.Reader
 				if method == "POST" || method == "PUT" || method == "PATCH" {
-					body = `{"enabled":true}`
+					body = strings.NewReader(`{"enabled":true}`)
 				}
-				req, _ := http.NewRequest(method, "http://gateway.test/items?name=present&field%5Beq%5D=one", strings.NewReader(body))
+				req, _ := http.NewRequest(method, "http://gateway.test/items?name=present&field%5Beq%5D=one", body)
 				req.Header.Set("Content-Type", "application/json")
 				if header {
 					req.Header.Set("X-Test", "present")

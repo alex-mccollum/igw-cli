@@ -44,18 +44,21 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	if len(raw) > MaxJSONBodyBytes {
 		return refuse("body_limit")
 	}
+	// Validation receives outgoing client requests: nil means omitted, while
+	// http.NoBody (or an independent empty reader) is an explicit empty input.
+	present := request.Body != nil
 	if op.RequestBody == nil {
-		if len(raw) > 0 {
+		if present {
 			return refuse("undeclared_body")
 		}
 		return ValidationSchema, nil, nil
 	}
 	required := op.RequestBody.Required != nil && *op.RequestBody.Required
-	if len(raw) == 0 && required {
+	if !present && required {
 		return refuse("required")
 	}
 	if request.Header.Get("Content-Type") == "" {
-		if len(raw) == 0 {
+		if !present {
 			return ValidationSchema, nil, nil
 		}
 		return refuse("content_type")
@@ -71,12 +74,12 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	if media == nil {
 		return refuse("content_type")
 	}
+	if !present {
+		return ValidationSchema, nil, nil
+	}
 	encoding := bodyEncoding(contentType, media)
 	if encoding == "opaque" || encoding == "binary" {
 		return ValidationTransport, nil, nil
-	}
-	if len(raw) == 0 {
-		return ValidationSchema, nil, nil
 	}
 	var value any
 	switch encoding {
@@ -115,10 +118,18 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	if media.Schema.Schema() == nil {
 		return "", nil, ErrSchemaCompilation
 	}
+	compilerRaw := raw
+	if len(compilerRaw) == 0 {
+		// Presence and decoding already succeeded for an empty text string.
+		// The upstream request compiler otherwise short-circuits on byte count,
+		// even with ValueDecoded. Supply its JSON diagnostic representation;
+		// DecodedValue remains the exact empty string and wire bytes stay empty.
+		compilerRaw = []byte(`""`)
+	}
 	valid, failures := requests.ValidateRequestSchema(&requests.ValidateRequestSchemaInput{
 		Request: request, Schema: media.Schema.Schema(), Version: c.schemaVersion(),
 		Options:      []validatorconfig.Option{validatorconfig.WithSchemaCache(nil), validatorconfig.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))},
-		BodyRequired: required, DecodedValue: value, RawBody: raw, ValueDecoded: true,
+		BodyRequired: required, DecodedValue: value, RawBody: compilerRaw, ValueDecoded: true,
 	})
 	if !valid {
 		issues, err := validationIssues(failures)

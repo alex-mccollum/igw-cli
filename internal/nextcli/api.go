@@ -153,6 +153,9 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		if f.Changed("body") && request.Body == nil {
+			request.Body = []byte{}
+		}
 		parts, err := i.multipartParts(multipartInput, formFields, formFiles)
 		if err != nil {
 			return err

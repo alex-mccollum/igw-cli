@@ -39,6 +39,7 @@ func TestAPIBodyValidationCoverageAndRefusals(t *testing.T) {
 		{"application/json", `{"enabled":false}`, "declared_schema"},
 		{"text/plain", " exact + 日本 \n", "declared_schema"},
 		{"application/zip", "\x00\xff", "declared_transport"},
+		{"application/zip", "", "declared_transport"},
 	} {
 		before := writes.Load()
 		if err := app.Run(context.Background(), args(tt.media, tt.body, "--dry-run")); err != nil {
@@ -62,7 +63,6 @@ func TestAPIBodyValidationCoverageAndRefusals(t *testing.T) {
 		{"application/json", `{"enabled":"private-body-text"}`, "validation"},
 		{"application/xml", `<secret>private-body-text</secret>`, "unsupported_input"},
 		{"text/plain; charset=iso-8859-1", "private-body-text", "unsupported_input"},
-		{"application/zip", "", "validation"},
 	} {
 		for _, mode := range []string{"--dry-run", "--yes"} {
 			err := app.Run(context.Background(), args(tt.media, tt.body, mode))

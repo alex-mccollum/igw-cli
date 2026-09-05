@@ -28,7 +28,7 @@ type CallRequest struct {
 	Path         string
 	Query        []string
 	Headers      []string
-	Body         []byte
+	Body         []byte // nil omits input; a non-nil empty slice is explicit.
 	BodyReader   io.Reader
 	BodySize     int64
 	ContentType  string
@@ -80,7 +80,7 @@ func JoinURL(baseURL string, apiPath string) (string, error) {
 }
 
 func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, error) {
-	if req.BodyReader != nil && (len(req.Body) != 0 || req.BodySize < 0 || req.Retry != 0) {
+	if req.BodyReader != nil && (req.Body != nil || req.BodySize < 0 || req.Retry != 0) {
 		return nil, &igwerr.UsageError{Msg: "streamed bodies require a nonnegative length, no inline body, and no retries"}
 	}
 	fullURL, err := JoinURL(c.BaseURL, req.Path)
@@ -129,7 +129,7 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 		var bodyReader io.Reader
 		if req.BodyReader != nil {
 			bodyReader = req.BodyReader
-		} else if len(req.Body) > 0 {
+		} else if req.Body != nil {
 			bodyReader = bytes.NewReader(req.Body)
 		}
 
@@ -149,7 +149,7 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 
 		httpReq.Header.Set(tokenHeader, c.Token)
 
-		if (len(req.Body) > 0 || req.BodyReader != nil) && req.ContentType != "" {
+		if req.ContentType != "" {
 			httpReq.Header.Set("Content-Type", req.ContentType)
 		}
 
