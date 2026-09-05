@@ -194,8 +194,31 @@ modules, the 687-operation contract, and 98 recorded checks from one binary:
 10 lifecycle, 27 resource, 38 project/tag, and 23 operational checks. It is about
 792 KiB. Qualification covers the recorded basic-schedule, disabled-project,
 memory-JSON-tag, and backup/log/diagnostics workflows; it does not qualify every
-request schema or prove general backward compatibility. The runtime commands
-for selecting bundled references and scheduled qualification remain pending.
+request schema or prove general backward compatibility.
+
+The development CLI embeds this complete bundle. `spec references list` exposes
+the available selectors; `inspect REFERENCE` checks every payload and reports
+the full manifest; `export REFERENCE --out NEW_DIRECTORY` preserves all ten
+original files. A selector can be a bundled name or an explicit local directory.
+`api list` and `api describe --reference REFERENCE` use the same current parser
+and operation model as Gateway discovery, after checksum and identity checks.
+All reference paths work without Gateway configuration, credentials, cache, or
+network. They return `meta.reference` with explicit source kind, origin, image,
+module inventory hash, qualification scope, and contract identities. Assembly
+time is `createdAt`; it is not a current Gateway verification timestamp.
+API discovery additionally reports `inspectionParserVersion`, distinguishing
+current parsing from the recorded qualification parser. Human output identifies
+the reference before listing operations. The `--spec-pin` check applies to
+inspection, export, and API discovery. Export verifies the reviewed identity
+again before publishing and refuses existing directories.
+
+References never populate a target cache and the flag is unavailable on request
+commands, including previews. Invalid or unavailable references fail without
+Gateway fallback. The binary therefore retains a usable offline source even
+when the upstream registry or a Gateway is unavailable. Independently exported
+directories retain all provenance; distribution still requires a trusted
+repository or release channel. Canonical examples are in `docs/commands.md`.
+Scheduled qualification and additional version/module profiles remain pending.
 
 ### Resolve and capture an image
 
@@ -352,7 +375,7 @@ Ignition 8.3.0 was also captured with the OPC UA whitelist. That document needs
 additional review for optional path parameters and a missing cancellation-ID
 schema; it is not yet a qualified fixture. The complete version/module matrix,
 observed module inventory, authenticated workflow tests, scheduled update
-automation, and independently distributed reference bundles remain tracked in
+automation, and additional independently distributed reference profiles remain tracked in
 the [execution plan](plans/rebuild-v1.md).
 
 ## Authenticated API acceptance

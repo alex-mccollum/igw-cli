@@ -23,6 +23,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/resource"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 )
@@ -227,6 +228,23 @@ func (i *invocation) withSnapshot(snapshot *catalog.Snapshot, data any) {
 }
 
 func human(out io.Writer, r result.Result) error {
+	if references, ok := r.Data.([]reference.Summary); ok {
+		for _, item := range references {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%d modules\t%s\n", item.Selector, item.Image.GatewayVersion, item.ModuleCount, item.Catalog.ContractSHA256); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if ref := r.Meta.Reference; ref != nil {
+		if _, err := fmt.Fprintf(out, "Reference: %s (%s; %d modules)\n", ref.Selector, ref.Image.GatewayVersion, ref.ModuleCount); err != nil {
+			return err
+		}
+	}
+	if exported, ok := r.Data.(referenceExport); ok {
+		_, err := fmt.Fprintf(out, "saved reference bundle to %s (%d files)\n", exported.Directory, exported.FileCount)
+		return err
+	}
 	if types, ok := r.Data.([]resource.Type); ok {
 		for _, item := range types {
 			if _, err := fmt.Fprintf(out, "%s\t%s\n", item.ID, item.Summary); err != nil {

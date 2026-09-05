@@ -20,7 +20,10 @@ Examples for this entrypoint are maintained in the development section of
 - `profile list` and `profile show`, using existing configuration precedence and
   environment variables without displaying token values.
 - `spec sync`, `inspect`, `import`, `export`, and `diff` for full documents.
+- `spec references list`, `inspect`, and `export` for qualified offline bundles.
 - `api list`, `describe`, and `request` using a selected target's catalog.
+- `api list` and `describe --reference NAME_OR_DIRECTORY` for explicit offline
+  discovery without target configuration or credentials.
 - `api raw` for explicit requests without schema validation.
 - `gateway doctor`, which only reads Gateway information.
 - `resource types`, `describe`, `list`, `get`, and named-resource
@@ -67,8 +70,8 @@ Schema-assisted streaming requires a declared media type without a body schema
 and reports `declared_transport` validation. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, broader tag format/policy verification,
-profile migration, reference bundles, and the complete container qualification
-matrix remain on the rebuild roadmap.
+profile migration, scheduled reference updates, and the complete container
+qualification matrix remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local
@@ -80,3 +83,15 @@ replacement. `spec inspect FILE --summary --json` returns compact identities and
 counts. `spec diff` distinguishes document changes from contract changes under
 the reported policy; it does not certify backward compatibility. See
 `docs/catalog.md` for storage and authority details.
+
+The development binary embeds the qualified 8.3.9 default-module reference.
+`spec references list` shows its exact image, module count, contract identity,
+assembly time, and qualification scope. Inspection reports individual module
+versions and original acceptance evidence checksums. Export preserves a complete
+standalone bundle; the same API discovery commands can use that directory on an
+offline machine. Reference results use `meta.reference` and never claim live
+target freshness. `parserVersion` identifies the recorded qualification;
+`inspectionParserVersion` appears only after API discovery reparses the document
+using the current parser. References are explicit and are never substituted for
+a Gateway during request execution. The scheduled updater and additional
+version/module profiles remain unfinished.

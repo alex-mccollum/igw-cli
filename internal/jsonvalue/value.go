@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/alex-mccollum/igw-cli/internal/result"
+	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
 
 // Equivalent compares values without rounding numbers. Subset permits extra
@@ -65,9 +65,9 @@ func Canonical(raw []byte) ([]byte, error) {
 // Reject duplicate keys even inside config. Otherwise body normalization could
 // silently select a different value than the user reviewed.
 func Validate(raw []byte) error {
-	bad := result.Usage("body must be valid JSON without duplicate keys or excessive nesting")
+	bad := &igwerr.UsageError{Msg: "body must be valid JSON without duplicate keys or excessive nesting"}
 	if len(raw) > 32<<20 {
-		return result.Usage("resource body exceeds 32 MiB")
+		return &igwerr.UsageError{Msg: "resource body exceeds 32 MiB"}
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()

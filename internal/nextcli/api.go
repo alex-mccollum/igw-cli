@@ -19,36 +19,40 @@ func (i *invocation) apiCommands() *cobra.Command {
 	var search string
 	list := &cobra.Command{Use: "list", Short: "List operation keys and aliases", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapshot, err := i.snapshot(cmd, false)
+			c, metadata, err := i.discovery(cmd)
 			if err != nil {
 				return err
 			}
-			defer snapshot.Close()
+			defer c.Close()
 			operations := make([]catalog.Operation, 0)
-			for _, op := range snapshot.Catalog.Operations() {
+			for _, op := range c.Operations() {
 				if strings.Contains(strings.ToLower(op.Key+" "+op.OperationID+" "+op.Summary+" "+strings.Join(op.Tags, " ")), strings.ToLower(search)) {
 					op.Definition = nil
 					operations = append(operations, op)
 				}
 			}
-			i.withSnapshot(snapshot, operations)
+			i.output = result.Success(operations)
+			i.output.Meta = metadata
 			return nil
 		}}
 	list.Flags().StringVar(&search, "search", "", "Filter operation keys, names, summaries, or tags")
+	list.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
 	describe := &cobra.Command{Use: "describe OPERATION", Short: "Inspect input, response, reference, and security contracts", Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapshot, err := i.snapshot(cmd, false)
+			c, metadata, err := i.discovery(cmd)
 			if err != nil {
 				return err
 			}
-			defer snapshot.Close()
-			description, err := snapshot.Catalog.Describe(args[0])
+			defer c.Close()
+			description, err := c.Describe(args[0])
 			if err != nil {
 				return result.Usage(err.Error())
 			}
-			i.withSnapshot(snapshot, description)
+			i.output = result.Success(description)
+			i.output.Meta = metadata
 			return nil
 		}}
+	describe.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
 	group.AddCommand(list, describe, i.requestCommand(false), i.requestCommand(true))
 	return group
 }

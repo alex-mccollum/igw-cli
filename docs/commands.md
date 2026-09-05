@@ -23,6 +23,31 @@ bin/igw-next api list --offline --json
 bin/igw-next spec diff before-openapi.json after-openapi.json --json
 ```
 
+Qualified API references are available without Gateway configuration, credentials,
+network access, or a populated cache:
+
+```bash
+bin/igw-next spec references list --json
+bin/igw-next spec references inspect ignition-8.3.9-defaults --json
+bin/igw-next spec references export ignition-8.3.9-defaults --out ./reference-8.3.9 --json
+bin/igw-next api list --reference ignition-8.3.9-defaults --search gateway --json
+bin/igw-next api describe 'GET /data/api/v1/gateway-info' --reference ./reference-8.3.9 --json
+```
+
+`REFERENCE` accepts a bundled selector or a local bundle directory; prefix a
+relative directory with `./` if it has the same name as a bundled selector.
+Export requires a new directory and preserves the complete evidence bundle,
+including exact compressed vendor JSON. It never replaces a previous bundle.
+`--spec-pin SHA256` checks the reference contract for inspection, export, and API
+discovery. `--reference` is available only on `api list` and `api describe`.
+These commands report provenance in `meta.reference`, with no target or target
+catalog receipt. They do not populate the Gateway cache or establish authority
+for a request. An invalid reference fails explicitly. See `docs/catalog.md` for
+the source-of-truth and qualification boundaries. On a shared Linux/WSL
+workstation, wrap API discovery in `bash scripts/bounded-run.sh --` because it
+parses the captured model; reference listing, inspection, and export only verify
+bounded metadata and payload checksums.
+
 `api request` accepts either an exact `METHOD /path` key or an unambiguous
 operationId. Use repeatable `--path-param name=value`, `--query key=value`,
 and `--header name:value` for parameters and `--body @file.json` for input.

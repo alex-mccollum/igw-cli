@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -29,7 +28,11 @@ var imageIDPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
 // Gateway or parsing its large OpenAPI model. Checksums establish integrity,
 // not publisher authenticity; callers must choose a trusted bundle source.
 func Read(ctx context.Context, dir string) (Manifest, error) {
-	b, err := ReadFile(ctx, filepath.Join(dir, "reference.json"), MaxManifestBytes)
+	return Directory(dir).Read(ctx)
+}
+
+func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
+	b, err := read(ctx, "reference.json", MaxManifestBytes)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -66,7 +69,7 @@ func Read(ctx context.Context, dir string) (Manifest, error) {
 			return Manifest{}, errors.New("reference contains an invalid or duplicate payload descriptor")
 		}
 		delete(expected, file.Path)
-		b, err := ReadFile(ctx, filepath.Join(dir, file.Path), fileLimit(file.Path))
+		b, err := read(ctx, file.Path, fileLimit(file.Path))
 		if err != nil {
 			return Manifest{}, err
 		}
@@ -82,11 +85,15 @@ func Read(ctx context.Context, dir string) (Manifest, error) {
 // with the current parser. Historical parser receipts are never used to skip
 // present validation or silently establish a target Gateway's contract.
 func OpenCatalog(ctx context.Context, dir string) (Manifest, *catalog.Catalog, error) {
-	m, err := Read(ctx, dir)
+	return Directory(dir).OpenCatalog(ctx)
+}
+
+func (bundle Bundle) OpenCatalog(ctx context.Context) (Manifest, *catalog.Catalog, error) {
+	m, err := bundle.Read(ctx)
 	if err != nil {
 		return Manifest{}, nil, err
 	}
-	b, err := ReadFile(ctx, filepath.Join(dir, "openapi.json.gz"), fileLimit("openapi.json.gz"))
+	b, err := bundle.read(ctx, "openapi.json.gz", fileLimit("openapi.json.gz"))
 	if err != nil {
 		return Manifest{}, nil, err
 	}

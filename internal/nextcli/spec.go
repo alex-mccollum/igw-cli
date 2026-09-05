@@ -15,6 +15,7 @@ import (
 
 func (i *invocation) specCommands() *cobra.Command {
 	group := &cobra.Command{Use: "spec", Short: "Manage complete Gateway OpenAPI snapshots"}
+	group.AddCommand(i.referenceCommands())
 	group.AddCommand(&cobra.Command{Use: "sync", Short: "Fetch and validate the selected Gateway's current contract", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			snapshot, err := i.snapshot(cmd, true)

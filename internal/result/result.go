@@ -9,6 +9,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
+	"github.com/alex-mccollum/igw-cli/internal/reference"
 )
 
 const Version = "igw/v1"
@@ -24,12 +25,13 @@ func (p *Problem) Error() string { return p.Message }
 func (p *Problem) ExitCode() int { return p.Code }
 
 type Metadata struct {
-	Target       *catalog.Target   `json:"target,omitempty"`
-	Catalog      *catalog.Metadata `json:"catalog,omitempty"`
-	Stale        bool              `json:"stale,omitempty"`
-	HTTPStatus   int               `json:"httpStatus,omitempty"`
-	Verification string            `json:"verification,omitempty"`
-	Warnings     []string          `json:"warnings,omitempty"`
+	Target       *catalog.Target    `json:"target,omitempty"`
+	Catalog      *catalog.Metadata  `json:"catalog,omitempty"`
+	Reference    *reference.Summary `json:"reference,omitempty"`
+	Stale        bool               `json:"stale,omitempty"`
+	HTTPStatus   int                `json:"httpStatus,omitempty"`
+	Verification string             `json:"verification,omitempty"`
+	Warnings     []string           `json:"warnings,omitempty"`
 }
 
 type Result struct {

@@ -564,6 +564,36 @@ path traversal, incomplete publication, and replacement of a previous bundle.
 Scheduled execution, runtime reference-selection commands, and the complete
 minimum/latest/module matrix remain required for the full v1 goal.
 
+The development binary now embeds the complete qualified 8.3.9 reference.
+`spec references list`, `inspect`, and `export` verify and preserve bundles;
+`api list` and `describe --reference` select either an embedded name or a local
+directory. Both storage paths use the same checksum, gzip, current-parser, and
+identity checks. Exports retain exact manifest/payload bytes, require a new
+directory, and check the reviewed identity before publication. Explicit pins
+are enforced for inspection, export, and discovery.
+
+Reference results use `meta.reference` with image/module/qualification evidence
+and no target receipt or freshness assertion. The qualification parser and
+current inspection parser are distinguished. Tests forbid configuration reads,
+environment credential access, network requests, and target cache writes; they
+also reject the flag on all request paths. The shared JSON helper now returns
+an existing typed usage error without importing result rendering, preserving
+exit-code behavior and keeping the reference/result dependency acyclic.
+
+Full unit tests, focused reference/builder/CLI race tests, all three builds,
+and docs checks passed (`bin/reference-runtime-final-gates.log`). Regressions
+cover original-byte export, changed identity, checksum corruption, no clobber,
+output failure, cancellation, pins, source selection, and human provenance.
+Standalone binary verification from an empty working directory passed listing,
+inspection, export, embedded/local discovery, and generated flag schemas;
+evidence is in `bin/reference-offline.yys37X/` and
+`bin/reference-runtime-binary-check.log`. The real Gateway-info description
+remains a compact 12,672-byte JSON result including reference provenance.
+Legacy smoke remains unavailable without a configured default Gateway; the
+fresh disposable-Gateway workflow qualification above is separate evidence.
+Scheduled qualification, additional version/module profiles, and the remaining
+workflow/cutover/release gates still keep the full v1 goal active.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
