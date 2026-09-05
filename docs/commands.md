@@ -157,6 +157,57 @@ remain `uncertain`; inspect exported state before retrying. Imports are never
 automatically replayed. Previews describe structure and digests without tag
 values or project file contents; explicit exports contain the selected data.
 
+Operational commands provide bounded log queries, complete downloads, and
+diagnostics collection through one invocation:
+
+```bash
+bin/igw-next backup export --out gateway.gwbk --json
+bin/igw-next logs list --limit 50 --min-level WARN --since 1h --json
+bin/igw-next logs list --logger Gateway --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --json
+bin/igw-next logs download --out system-logs.idb --json
+bin/igw-next diagnostics bundle status --json
+bin/igw-next diagnostics bundle collect --out diagnostics.zip --dry-run --json
+bin/igw-next diagnostics bundle collect --out diagnostics.zip --yes --timeout 2m --json
+bin/igw-next diagnostics bundle download --out diagnostics-latest.zip --json
+```
+
+All downloads require `--out`, default to a 1 GiB `--max-bytes` limit, and need
+`--overwrite` to replace an existing file. Complete files include byte counts
+and SHA-256 receipts. Backup export optionally accepts `--include-peer-local`
+for files from a redundant peer. Log download returns the complete internal
+SQLite log database on the qualified 8.3.9 Gateway. `logs list` returns one
+page, supports `--offset`, `--logger`, and `--search`, and accepts case-insensitive
+minimum levels. `--since` accepts a positive duration measured from the local
+invocation clock or an RFC3339 timestamp; `--until` requires an RFC3339 timestamp.
+Both are sent as epoch milliseconds. A log query does not change logger levels.
+
+Diagnostics status normalizes the qualified Gateway states `Invalid`,
+`Generating`, and `Valid` to `empty`, `generating`, and `ready`, retaining the
+original value in `gatewayState`. Unknown or incomplete status reports fail
+explicitly. A positive file size alone never establishes readiness.
+
+`collect` requires `--yes`, refuses to start while generation is already
+running, requests generation once, polls until ready, and downloads privately.
+The Gateway can acknowledge a generation request as already `Valid` and return
+the existing bundle. `generationState` records the acknowledgement; the CLI
+warns when a new generation job is unproven.
+`--interval` defaults to one second and accepts 100ms through one minute.
+`--timeout` bounds discovery, generation, polling, and download together.
+Temporary transport errors and HTTP 429/502/503/504 during polling can be
+retried within that deadline; generation requests are never replayed. Timeout
+or failed verification after generation reports an uncertain outcome and
+preserves an existing destination. Generation can continue on the Gateway.
+
+Before publishing, collection and download compare the received byte count
+with the reported size and recheck ready state and size. Results explicitly
+report `verification: "size_matched"` and `correlation: "gateway_latest"`:
+the API exposes no job ID or server content digest, so another client creating
+a same-sized bundle cannot be distinguished. Previews read status but do not
+start a job or create a file. Bundle generation can consume Gateway resources;
+the CLI uses the Gateway's existing configuration and does not enable heap
+dumps. See the [vendor's diagnostics documentation](https://docs.inductiveautomation.com/docs/8.3/platform/gateway/web-interface/diagnostics)
+for bundle contents and generation settings.
+
 ## Current Release Entrypoint
 
 This file is the canonical command example reference.

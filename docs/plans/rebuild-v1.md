@@ -14,7 +14,8 @@ Completion requires all of the following, backed by recorded verification:
 - A single command definition source for parsing, help, completion, and typed
   machine schemas; one versioned JSON result/error contract.
 - Target-bound credentials, bounded cancellation/retries, and atomic streamed
-  artifacts. Previews and diagnostics never send mutating requests.
+  artifacts. Previews and passive diagnostic checks never send mutating
+  requests; explicit collection requires confirmation.
 - Complete Gateway-specific OpenAPI catalogs with provenance, immutable
   snapshots, validation, freshness, import/export, diffs, and digest pinning.
 - Resource configuration, project/tag import/export, and operational workflows
@@ -402,10 +403,52 @@ and stopped with exit 2 at the unset default Gateway URL/token. The disposable
 receipt above supplies real transfer acceptance; no host lifecycle or memory
 configuration changes were made. Existing user script-mode edits are preserved.
 
-Remaining v1 work includes operational workflows and polling, bounded batch,
+Remaining v1 work includes Gateway restart verification, bounded batch,
 singleton/filter qualification, broader tag/version/module acceptance,
 scheduled reference updates and distribution, migration/cutover, and release
 artifact qualification. The full goal remains active.
+
+Operational implementation: backups and log databases have bounded atomic
+downloads; log queries support pagination, level/logger/search, and absolute
+or relative start times. The optional exploded-filter adapter is qualified
+for log pagination in parser version 8. Local inspection cancellation now
+retains exit 7 instead of being misclassified as usage exit 2 at the CLI root.
+
+The initial real 8.3.9 operations contract run passed 13 checks in 91.23
+seconds. Backup export produced a ZIP with 1,592 files; log download produced
+a SQLite database. Diagnostics status moved from `Invalid` to `Generating`
+to `Valid` and stayed `Valid` after download. Its six-file ZIP passed CRC
+reads and matched the reported size. This replaces guessed state synonyms and
+the legacy assumption that any positive file size means completion.
+The private receipt is `bin/operations-contract-8.3.9.json`, for test binary
+`f9c5d4239d2da1ef8dfdf9362e6d4ede3d4204077fe7d3ff9860ce4569832e9a`.
+
+The typed diagnostics workflow confirms generation explicitly, refuses an
+already-running job, polls within the invocation deadline, and publishes only
+after download size and a second ready-state observation agree. It reports
+`gateway_latest` correlation because no job ID or server digest exists; it
+cannot establish exclusive job ownership or distinguish a same-sized bundle
+created concurrently. Tests cover stale sizes, busy state, unknown reports,
+transient polling errors, cancellation, publication failure, and preservation
+of existing files.
+
+Dedicated operational qualification passed 23 checks in 114.20 seconds on the
+same pinned image, recorded in
+`internal/testgateway/testdata/ignition-8.3.9-operational-workflows.json` for
+binary `3b39df8c17a2df7cc16e725591ac1c4396d876c8269ea939a796112f0d292e11`.
+It includes filtered log pagination, backup/log downloads, collection previews
+with unchanged state, and size-checked collection/download. Repeated generation
+returned `Valid`, and the subsequent archive SHA-256 matched the original.
+The first workflow run correctly refused this unqualified acknowledgement;
+the implementation now records `generationState` and warns that a new job is
+unproven when the Gateway acknowledges an already-ready bundle. The API's
+"generate new" description does not establish freshness on every invocation.
+Owned-container cleanup passed. Full unit/race suites, all three builds,
+command-doc consistency, and docs lint passed. The validation cgroup peaked
+at 4.13 GiB within the approved 8 GiB cap. The read-only legacy smoke script
+rebuilt but stopped at doctor with exit 2 because the default Gateway URL/token
+remain unset. No WSL or Docker Desktop lifecycle/configuration changes were
+made, and user-owned script-mode edits remain untouched.
 
 ## References
 

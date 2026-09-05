@@ -29,6 +29,10 @@ Examples for this entrypoint are maintained in the development section of
   reviewed content digest required for replacement.
 - `tag export` and `import`, with explicit collision policies, import-report
   checks, and property readback for supported JSON imports.
+- `backup export`, filtered `logs list`, and `logs download` with bounded,
+  atomic artifacts.
+- `diagnostics bundle status`, `collect`, and `download`, with bounded polling
+  and state/size checks before publishing the latest bundle.
 - `schema`, help, version metadata, and generated shell completions.
 
 `--json` emits one result using `version: "igw/v1"`, including parse errors.

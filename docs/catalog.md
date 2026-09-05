@@ -292,3 +292,29 @@ existing tag value remains unchanged. Abort must not be assumed to roll back
 every successful item in an import report. XML/CSV, UDT configurations,
 Rename/Ignore verification, other modules, and other Gateway versions require
 separate evidence.
+
+## Operational workflow evidence
+
+The pinned 8.3.9 operational run passed 23 checks in 114.20 seconds, with receipt
+`internal/testgateway/testdata/ignition-8.3.9-operational-workflows.json`.
+It qualifies filtered log pagination, Gateway backup ZIP and SQLite log
+downloads, diagnostics preview non-mutation, collection, and repeated download.
+The test reads every ZIP entry to check CRCs and compares file hashes with CLI
+receipts. Runtime diagnostics verification separately checks reported ready
+state and file size before publishing the completed download.
+
+Run the precompiled acceptance binary with
+`-test.run '^TestLiveOperationalWorkflows$'`, the same pinned image/bootstrap
+environment above, and `IGW_OPERATIONS_EVIDENCE` pointing to a new receipt path.
+Optional `IGW_OPERATIONS_ARTIFACTS` retains exports in a new private directory.
+These files can contain sensitive diagnostic/configuration data; qualification
+uses only its disposable Gateway and commits receipts, not the exported files.
+
+The observed state vocabulary is `Invalid`, `Generating`, and `Valid`. Status
+reports retain `Valid` after download. A repeat generation request returned
+`Valid` and the same archive bytes: the route's "generate new" description
+alone cannot prove freshness. The CLI records the acknowledgement state and
+reports `gateway_latest` correlation with `size_matched` verification. Without
+a job ID or server digest, it cannot distinguish a concurrent same-sized
+bundle or certify that a new job ran. Scheduled compatibility checks must test
+repeat generation and artifact behavior as well as the schema's state field.
