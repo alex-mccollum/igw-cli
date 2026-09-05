@@ -1,4 +1,4 @@
-package resource
+package jsonvalue
 
 import (
 	"bytes"
@@ -11,9 +11,60 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/result"
 )
 
+// Equivalent compares values without rounding numbers. Subset permits extra
+// object properties, including defaults supplied by the Gateway.
+func Equivalent(a, b []byte, subset bool) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return len(a) == 0 && len(b) == 0
+	}
+	decode := func(raw []byte) (any, error) {
+		var value any
+		d := json.NewDecoder(bytes.NewReader(raw))
+		d.UseNumber()
+		err := d.Decode(&value)
+		return value, err
+	}
+	left, errA := decode(a)
+	right, errB := decode(b)
+	return errA == nil && errB == nil && sameValue(left, right, subset)
+}
+
+// Canonical rejects ambiguous JSON and normalizes key order and bounded number
+// spellings. It does not reorder arrays or strip application fields.
+func Canonical(raw []byte) ([]byte, error) {
+	if err := Validate(raw); err != nil {
+		return nil, err
+	}
+	var value any
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.UseNumber()
+	if err := d.Decode(&value); err != nil {
+		return nil, err
+	}
+	var normalize func(any) any
+	normalize = func(value any) any {
+		switch v := value.(type) {
+		case map[string]any:
+			for key, child := range v {
+				v[key] = normalize(child)
+			}
+		case []any:
+			for i, child := range v {
+				v[i] = normalize(child)
+			}
+		case json.Number:
+			if len(v) <= 128 {
+				return json.Number(numberKey(string(v)))
+			}
+		}
+		return value
+	}
+	return json.Marshal(normalize(value))
+}
+
 // Reject duplicate keys even inside config. Otherwise body normalization could
 // silently select a different value than the user reviewed.
-func uniqueJSON(raw []byte) error {
+func Validate(raw []byte) error {
 	bad := result.Usage("body must be valid JSON without duplicate keys or excessive nesting")
 	if len(raw) > 32<<20 {
 		return result.Usage("resource body exceeds 32 MiB")

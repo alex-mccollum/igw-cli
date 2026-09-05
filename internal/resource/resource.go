@@ -3,7 +3,6 @@
 package resource
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/url"
 	"regexp"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 )
 
@@ -82,7 +82,7 @@ func (c Change) Validate() (map[string]json.RawMessage, error) {
 		}
 		return nil, nil
 	}
-	if err := uniqueJSON(c.Body); err != nil {
+	if err := jsonvalue.Validate(c.Body); err != nil {
 		return nil, err
 	}
 	var fields map[string]json.RawMessage
@@ -139,7 +139,7 @@ func Apply(runner Runner, change Change) result.Result {
 		}
 	}
 	for key, value := range fields {
-		if !equivalent(value, before[key], false) {
+		if !jsonvalue.Equivalent(value, before[key], false) {
 			evidence.ChangedFields = append(evidence.ChangedFields, key)
 		}
 	}
@@ -185,7 +185,7 @@ func Apply(runner Runner, change Change) result.Result {
 		Changes []struct{ Name, Type, Collection, NewSignature string } `json:"changes"`
 	}
 	raw, _ := written.Data.(json.RawMessage)
-	acknowledged := written.OK && uniqueJSON(raw) == nil && json.Unmarshal(raw, &response) == nil && response.Success != nil && *response.Success
+	acknowledged := written.OK && jsonvalue.Validate(raw) == nil && json.Unmarshal(raw, &response) == nil && response.Success != nil && *response.Success
 	newSignature := ""
 	matches := 0
 	for _, item := range response.Changes {
@@ -266,7 +266,7 @@ func state(out result.Result, change Change) (map[string]json.RawMessage, bool, 
 	}
 	raw, ok := out.Data.(json.RawMessage)
 	var object map[string]json.RawMessage
-	if !ok || uniqueJSON(raw) != nil || json.Unmarshal(raw, &object) != nil || stringField(object, "name") != change.Name || stringField(object, "collection") != change.Collection || stringField(object, "type") != change.Type || stringField(object, "signature") == "" {
+	if !ok || jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &object) != nil || stringField(object, "name") != change.Name || stringField(object, "collection") != change.Collection || stringField(object, "type") != change.Type || stringField(object, "signature") == "" {
 		return nil, false, false
 	}
 	return object, true, true
@@ -280,35 +280,16 @@ func stringField(object map[string]json.RawMessage, key string) string {
 
 func matchesFields(fields, before, after map[string]json.RawMessage, update bool) bool {
 	for key, value := range fields {
-		if !equivalent(value, after[key], true) {
+		if !jsonvalue.Equivalent(value, after[key], true) {
 			return false
 		}
 	}
 	if update {
 		for _, key := range []string{"description", "enabled", "config", "backupConfig"} {
-			if _, supplied := fields[key]; !supplied && !equivalent(before[key], after[key], false) {
+			if _, supplied := fields[key]; !supplied && !jsonvalue.Equivalent(before[key], after[key], false) {
 				return false
 			}
 		}
 	}
 	return true
-}
-
-// Compare JSON values without floating-point conversion. Object subsets allow
-// Gateway defaults alongside supplied fields, while omitted top-level fields
-// must remain exactly equivalent after an update.
-func equivalent(a, b []byte, subset bool) bool {
-	if len(a) == 0 || len(b) == 0 {
-		return len(a) == 0 && len(b) == 0
-	}
-	decode := func(raw []byte) any {
-		var v any
-		d := json.NewDecoder(bytes.NewReader(raw))
-		d.UseNumber()
-		if d.Decode(&v) != nil {
-			return nil
-		}
-		return v
-	}
-	return sameValue(decode(a), decode(b), subset)
 }

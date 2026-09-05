@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 )
 
@@ -202,7 +203,7 @@ func TestVerificationPreservesExactNumbersAndOmittedConfig(t *testing.T) {
 		{`-0`, `0.0`, true},
 		{`1e99999999999999999999999999`, `1e99999999999999999999999998`, false},
 	} {
-		if equivalent([]byte(tc.a), []byte(tc.b), false) != tc.equal {
+		if jsonvalue.Equivalent([]byte(tc.a), []byte(tc.b), false) != tc.equal {
 			t.Fatal("numeric comparison lost precision")
 		}
 	}
