@@ -99,6 +99,26 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	if input.Upload != nil && (input.Body != nil || input.ContentType == "") {
 		return nil, result.Usage("upload requires an explicit content type and cannot be combined with an inline body")
 	}
+	headers, err := gateway.NormalizeHeaders(input.Headers)
+	if err != nil {
+		return nil, result.Usage(err.Error())
+	}
+	input.Headers = headers
+	for key := range headers {
+		if strings.EqualFold(key, "X-Ignition-API-Token") || strings.EqualFold(key, "Authorization") || strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Host") {
+			return nil, result.Usage("authentication and routing headers are managed by the CLI")
+		}
+		if strings.EqualFold(key, "Content-Type") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
+			return nil, result.Usage("content type and body framing are managed by the CLI; use --content-type")
+		}
+	}
+	if input.ContentType != "" {
+		_, contentType, err := gateway.ParseHeader("Content-Type:" + input.ContentType)
+		if err != nil || contentType == "" {
+			return nil, result.Usage("invalid content type")
+		}
+		input.ContentType = contentType
+	}
 	if input.Overwrite && input.Out == "" {
 		return nil, result.Usage("--overwrite requires --out")
 	}
@@ -226,25 +246,6 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	}
 	if input.Body != nil && input.ContentType == "" {
 		input.ContentType = "application/json"
-	}
-	if strings.ContainsAny(input.ContentType, "\r\n") {
-		return nil, result.Usage("invalid content type")
-	}
-	for key, values := range input.Headers {
-		if strings.EqualFold(key, "X-Ignition-API-Token") || strings.EqualFold(key, "Authorization") || strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Host") {
-			return nil, result.Usage("authentication and routing headers are managed by the CLI")
-		}
-		if strings.EqualFold(key, "Content-Type") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
-			return nil, result.Usage("content type and body framing are managed by the CLI; use --content-type")
-		}
-		if strings.ContainsAny(key, ":\r\n ") || key == "" {
-			return nil, result.Usage("invalid header name")
-		}
-		for _, value := range values {
-			if strings.ContainsAny(value, "\r\n") {
-				return nil, result.Usage("invalid header value")
-			}
-		}
 	}
 	meta.Validation = validation
 	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: int64(len(input.Body)), Validation: validation}

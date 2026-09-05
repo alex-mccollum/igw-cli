@@ -1352,6 +1352,43 @@ Path/header structured encodings, content parameters, body encoding work,
 current-source live acceptance, and the full workflow/cutover/release gates
 remain within the active goal.
 
+Header transport is the next shared-input slice. The guarded inventory
+`bin/header-parameter-inventory-parser18.json` found no header parameter
+declarations in either default Gateway capture. A guarded reference audit found
+zero path-item or parameter references, so that inventory omitted no referenced
+declarations (`bin/header-parameter-inventory-reference-audit.json`).
+Header-schema work therefore needs synthetic evidence and must not be described
+as captured Gateway support.
+The transport still needs consistent handling for user-supplied headers and
+workflow preconditions.
+
+The corrected regressions were run against an isolated checkout of `fad7c74`
+with only the three new header test files added. They reproduced Unicode
+whitespace loss, invalid input reaching discovery or dispatch, inconsistent
+usage/transport errors, sensitive field text in errors, and previews differing
+from effective headers (`bin/header-input-baseline-corrected.log`). The initial
+working-tree harness had an exit-code assertion and output-buffer mistake;
+use the corrected baseline as evidence. The temporary checkout was removed
+after its tracked state and three owned test files were verified.
+
+One standard-library normalizer now supplies the CLI parser, typed execution
+core, and HTTP client. It preserves Unicode text and repeated-field order,
+strips only HTTP SP/HTAB whitespace, and rejects invalid field syntax without
+echoing values. Typed requests normalize before catalog acquisition; supplied
+content types are normalized before preview, and actual managed token/media
+fields are checked by the client before dispatch. Prepared headers are
+independent snapshots. Original OpenAPI captures, parser identity, historical
+Gateway receipts, and host settings remain unchanged. Corrected transport,
+execution, and CLI race checks passed in `bin/header-input-race.log`, including
+empty bodies and multipart/binary uploads. The full unit suite passed in
+`bin/header-input-unit.log`. Both binaries, command-doc consistency, and docs
+lint passed in `bin/header-input-build-docs.log`. Legacy smoke built, then stopped
+at the unconfigured default Gateway's `doctor` with exit 2
+(`bin/header-input-smoke.log`). No live acceptance is claimed. Exact
+header-schema and structured-parameter work, current-source Gateway acceptance,
+and the full workflow/cutover/release gates remain active. No containers or
+host-service operations ran, and the resource guard remains unchanged.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

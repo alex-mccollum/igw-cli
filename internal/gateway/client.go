@@ -98,6 +98,18 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 		return nil, err
 	}
 	parsedURL.RawQuery = values.Encode()
+	headers := make(http.Header)
+	headers.Set(tokenHeader, c.Token)
+	if req.ContentType != "" {
+		headers.Set("Content-Type", req.ContentType)
+	}
+	if err := addHeaders(headers, req.Headers); err != nil {
+		return nil, err
+	}
+	headers, err = NormalizeHeaders(headers)
+	if err != nil {
+		return nil, err
+	}
 
 	ctxReq := ctx
 	cancel := func() {}
@@ -147,15 +159,7 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 			httpReq = httpReq.WithContext(httptrace.WithClientTrace(httpReq.Context(), timing.httpTrace(startedAt)))
 		}
 
-		httpReq.Header.Set(tokenHeader, c.Token)
-
-		if req.ContentType != "" {
-			httpReq.Header.Set("Content-Type", req.ContentType)
-		}
-
-		if err := addHeaders(httpReq.Header, req.Headers); err != nil {
-			return nil, err
-		}
+		httpReq.Header = headers.Clone()
 
 		resp, err := client.Do(httpReq)
 		if err != nil {
@@ -365,16 +369,14 @@ func addQuery(values url.Values, pairs []string) error {
 
 func addHeaders(headers http.Header, pairs []string) error {
 	for _, pair := range pairs {
-		key, value, ok := strings.Cut(pair, ":")
-		if !ok || strings.TrimSpace(key) == "" {
-			return &igwerr.UsageError{Msg: fmt.Sprintf("invalid --header value %q (expected key:value)", pair)}
+		key, value, err := ParseHeader(pair)
+		if err != nil {
+			return err
 		}
-
-		key = http.CanonicalHeaderKey(strings.TrimSpace(key))
 		if strings.EqualFold(key, tokenHeader) {
 			return &igwerr.UsageError{Msg: fmt.Sprintf("header %q is managed by the CLI and cannot be overridden", tokenHeader)}
 		}
-		headers.Add(key, strings.TrimSpace(value))
+		headers.Add(key, value)
 	}
 
 	return nil

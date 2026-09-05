@@ -81,6 +81,16 @@ remain inspectable with `api describe`. A path template with multiple expression
 in one segment must have an unambiguous binding. `api raw` remains the explicit
 escape hatch for encodings that are not yet supported.
 
+`--header name:value` supplies HTTP field text. Header names are case-insensitive;
+repeated flags retain their value order. Leading/trailing HTTP spaces and tabs
+are removed from field values. Unicode whitespace, commas, percent escapes,
+and internal tabs remain literal; the CLI does not URL-decode header values.
+An empty value supplies an empty field, while omitting the flag supplies none.
+Invalid field names or control bytes fail with exit 2 before discovery or
+dispatch, including during previews. Errors do not echo supplied field text.
+The same checks apply to `--content-type`; a whitespace-only media type fails.
+Authentication, routing, and body-framing headers remain managed by the CLI.
+
 `api describe` includes `bodyInputs` alongside the original vendor contract.
 Each entry reports the declared media type, required-body flag, schema presence,
 supported encoding, validation coverage, and streaming support. `selected_media`

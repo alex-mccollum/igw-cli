@@ -11,6 +11,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
@@ -132,11 +133,11 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 			request.Query.Add(key, value)
 		}
 		for _, pair := range headers {
-			key, value, ok := strings.Cut(pair, ":")
-			if !ok || key == "" {
-				return result.Usage("header requires name:value")
+			key, value, err := gateway.ParseHeader(pair)
+			if err != nil {
+				return result.Usage(err.Error())
 			}
-			request.Headers.Add(strings.TrimSpace(key), strings.TrimSpace(value))
+			request.Headers.Add(key, value)
 		}
 		for _, pair := range pathParams {
 			key, value, ok := strings.Cut(pair, "=")
