@@ -139,3 +139,38 @@ func TestReferenceRejectsProfileRelabeling(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceRetainsHistoricalActiveWhitelist(t *testing.T) {
+	in := fixtureInputs(t)
+	m, err := Build(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Before module profiles, all-active inventories qualified regardless of
+	// whether startup used an explicit whitelist. Model that historical format.
+	m.ModuleProfile = nil
+	path := filepath.Join(in.Out, "capture.json")
+	mutateReceipt(t, path, func(c map[string]any) {
+		c["moduleWhitelist"] = []string{moduleprofile.OPCUA}
+	})
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range m.Files {
+		if m.Files[i].Path == "capture.json" {
+			m.Files[i].SHA256, m.Files[i].Bytes = digest(b), int64(len(b))
+		}
+	}
+	b, err = json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(in.Out, "reference.json"), b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := reference.Read(context.Background(), in.Out)
+	if err != nil || loaded.ModuleProfile != nil {
+		t.Fatalf("historical active whitelist was rejected or relabeled: %v", err)
+	}
+}

@@ -102,15 +102,16 @@ func (m Manifest) validateCapturedProfile(raw []byte) error {
 	if jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &c) != nil {
 		return errors.New("invalid captured module profile")
 	}
-	profile, err := moduleprofile.FromWhitelist(c.Whitelist)
-	// Historical manifests have no profile field and require image defaults.
-	// Removing the new field cannot turn a filtered core capture into one.
-	want := "image-defaults"
+	// Historical qualification required every observed module to be active,
+	// without limiting the recorded whitelist. Preserve that rule, while still
+	// checking the complete inventory so inactive modules cannot be filtered out.
+	profile, _ := moduleprofile.Select("image-defaults")
 	if m.ModuleProfile != nil {
-		want = m.ModuleProfile.Name
-	}
-	if err != nil || profile.Name != want {
-		return errors.New("reference profile differs from the captured selection")
+		var err error
+		profile, err = moduleprofile.FromWhitelist(c.Whitelist)
+		if err != nil || profile.Name != m.ModuleProfile.Name {
+			return errors.New("reference profile differs from the captured selection")
+		}
 	}
 	if err := profile.ValidateInventory(c.Inventory); err != nil {
 		return err
