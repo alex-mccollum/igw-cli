@@ -14,7 +14,7 @@ func statusHint(statusCode int) string {
 	case http.StatusUnauthorized:
 		return "token missing or invalid"
 	case http.StatusForbidden:
-		return "token authenticated but lacks permissions or requires secure connections"
+		return "authentication or permission denied; verify the full name:key token, security levels, and secure-connection requirements"
 	default:
 		return ""
 	}

@@ -48,7 +48,9 @@ The commands in this section are examples. Replace placeholder values for your e
 
 Assumptions:
 - You can reach your Ignition Gateway.
-- You have an Ignition API token with the permissions you need.
+- You have the full Ignition API token (`name:key`) with the permissions you
+  need. Preserve the name and colon when copying it into your token file or
+  `IGNITION_API_TOKEN`; the generated key component alone cannot authenticate.
 - Commands below use `bash` syntax.
 
 ```bash
@@ -165,7 +167,8 @@ For full command examples (wrappers, profiles, API discovery, completions, and s
 
 ## Auth and Connectivity Troubleshooting
 - `401 Unauthorized`: token missing/invalid.
-- `403 Forbidden`: token authenticated but lacks required gateway permission/security-level mapping.
+- `403 Forbidden`: authentication or permission was denied. Check the full
+  `name:key` token, its secure-connection requirement, and security-level mapping.
 - Timeout from WSL2 to Windows host: verify gateway host IP and Windows firewall inbound access for port `8088`.
 
 ## Exit Codes

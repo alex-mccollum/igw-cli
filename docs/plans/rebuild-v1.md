@@ -275,6 +275,39 @@ The read-only legacy smoke script builds but exits 2 at doctor with an empty
 Gateway URL/token; it remains unavailable as live acceptance evidence. No
 WSL or Docker Desktop lifecycle/configuration commands were used in this slice.
 
+Authenticated API qualification: the contributor test harness now provisions a
+dedicated security level and temporary API token inside its fresh container.
+Security singleton changes carry observed signatures, retain administrator
+permissions, and refuse public/unexpected policies. The full header credential
+is `name:key`; the generator's key component alone is insufficient. Runtime
+tokens remain opaque and unchanged by the CLI. README and doctor/HTTP hints no
+longer claim that HTTP 403 proves authentication succeeded.
+
+A real 8.3.9 run through `nextcli.App` confirmed authenticated catalog acquisition,
+basic-schedule preview with independently observed absence, creation/readback,
+description-only update preserving omitted configuration, stale-signature
+rejection with unchanged-state verification, and deletion/readback. The stale
+signature returned HTTP 500 rather than 409/412. The Gateway contract hash
+matched the two committed captures despite different original document bytes.
+API token material stays in process memory; acceptance receipts identify the
+image, observed version, test binary, catalog, checks, and successful cleanup.
+The final run passed all 13 assertions in 101.78 seconds, including denied
+anonymous and bare-key access; its receipt is committed at
+`internal/testgateway/testdata/ignition-8.3.9-basic-schedule.json`. Full unit and
+race suites, all three binary builds, command-doc checks, and docs lint passed
+under the 8 GiB guard. Legacy smoke rebuilt successfully but still exited 2 at
+doctor because the default Gateway URL/token are unset. No owned test container
+remained after acceptance.
+
+Next implementation boundary: introduce a typed workflow invocation that owns
+one fresh target catalog across read/prepare/write/verify, then expose resource
+type discovery, list/get, and create/update/delete commands. Resource workflows
+must check the response's `success` field, supported signatures, and observed
+state; generic HTTP acceptance alone is insufficient. They must preserve
+uncertain outcomes and avoid replay, including the observed HTTP 500 conflict
+case. Dedicated resource commands, project/tag workflows, the minimum-version
+matrix, migration/cutover, and the other full v1 gates remain unfinished.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

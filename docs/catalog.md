@@ -197,3 +197,39 @@ schema; it is not yet a qualified fixture. The complete version/module matrix,
 observed module inventory, authenticated workflow tests, scheduled update
 automation, and independently distributed reference bundles remain tracked in
 the [execution plan](plans/rebuild-v1.md).
+
+## Authenticated API acceptance
+
+After the pinned image passes the lifecycle probe, compile and run the separate
+API acceptance test. Builds and live Gateway workloads remain separate jobs.
+
+```sh
+bash scripts/bounded-run.sh -- go test -c -o bin/testgateway.test ./internal/testgateway
+bash scripts/bounded-run.sh -- env \
+  IGW_ACCEPTANCE_TEST_IMAGE=inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2 \
+  IGW_ACCEPTANCE_EVIDENCE=bin/api-acceptance.json \
+  bin/testgateway.test -test.run '^TestLiveAPIResourceContract$' -test.v -test.timeout=7m
+```
+
+The test creates a dedicated security level and API key only inside its fresh
+container. It adds the level to the existing read/write policies with signature
+preconditions while retaining administrator access. Public read/write access
+is never enabled. Browser cookies and CSRF protection are used for bootstrap;
+CLI requests then use the complete `name:key` token with no cookies. Anonymous
+and bare-key requests must still fail. The receipt is published only after
+assertions and exact-owner cleanup succeed.
+
+The 8.3.9 API run demonstrated create/read/update/delete of a basic schedule and
+absence after preview. A description-only update preserved omitted configuration
+and returned a new signature. A stale signature returned HTTP 500, and an
+independent read proved the resource remained unchanged. Workflows therefore
+cannot recognize concurrency conflicts from HTTP 409/412 alone; they need the
+observed resource signature and state. Generic mutations still report
+`accepted`, and the test performs verification separately. Dedicated workflow
+commands will own these completion checks.
+
+The generated API key component alone is insufficient for the HTTP header.
+Keep the full resource-name/key pair and assign a dedicated security level with
+the required Gateway permissions; API keys do not impersonate a user's built-in
+Administrator role. See the [vendor's credential example](https://forum.inductiveautomation.com/t/ign-13978-x-ignition-api-token-is-being-sent-lowercase-from-browsers/109911/2)
+and [Gateway permission settings](https://docs.inductiveautomation.com/docs/8.3/platform/security/gateway-general-security-settings).

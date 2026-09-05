@@ -215,7 +215,7 @@ func doctorHintForError(err error) string {
 		case http.StatusUnauthorized:
 			return "401 indicates a missing or invalid token. Re-check your API key."
 		case http.StatusForbidden:
-			return "403 indicates permission mapping or secure-connection restrictions. Ensure token security levels are included in Gateway Read permissions."
+			return "403 can indicate failed authentication or denied permission. Check the full name:key token, secure-connection requirements, and Gateway Read permissions."
 		}
 	}
 

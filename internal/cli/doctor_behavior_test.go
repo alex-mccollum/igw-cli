@@ -114,7 +114,7 @@ func TestDoctorAuthFailureMapsToAuthExitCode(t *testing.T) {
 		t.Fatalf("exit code: got %d want 6", code)
 	}
 
-	if !strings.Contains(out.String(), "hint: 403 indicates permission mapping or secure-connection restrictions") {
+	if !strings.Contains(out.String(), "Check the full name:key token") || strings.Contains(out.String(), "token authenticated") {
 		t.Fatalf("expected 403 hint in output, got %q", out.String())
 	}
 }
