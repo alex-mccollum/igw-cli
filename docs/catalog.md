@@ -252,3 +252,28 @@ pattern. Supplied/ambiguous filters return `unsupported_serialization` until
 their binding is qualified; explicit generic raw requests remain available.
 Scalar constraints still run. Raw documents, contract identities, and stored model
 parameters remain unchanged. Both captured catalogs exercise this behavior.
+
+## Project and tag transfer evidence
+
+The pinned 8.3.9 image passed the generic transfer contract test in 135.07
+seconds. Its receipt is
+`internal/testgateway/testdata/ignition-8.3.9-project-tag-contract.json`.
+The test imported a disabled project into a different name, compared exported
+archive contents, checked preview absence and duplicate refusal, then imported
+and overwrote a memory tag and independently exported its values. It ran with
+the same guarded container ownership, limits, API-token bootstrap, and cleanup
+as resource acceptance. Run it with the precompiled acceptance binary using
+`-test.run '^TestLiveProjectTagContract$'` and set `IGW_TRANSFER_EVIDENCE` to a
+new receipt path. Optional `IGW_TRANSFER_ARTIFACTS` preserves exports in a new
+private directory. This receipt qualifies generic transfers, not dedicated
+workflow completion checks.
+
+The captured OpenAPI declares tag import results as an array of quality codes.
+The real 8.3.9 Gateway instead returned an object with `successCount`,
+`failureCount`, and `failures`. A duplicate tag under the Abort collision policy
+returned HTTP 200 with nonzero failures. A transport success is therefore
+insufficient evidence of an applied import. Preserve the vendor document and
+record this discrepancy; reviewed workflow policy must interpret the report
+and verify resulting state. Unknown report shapes cannot establish completion.
+This is a concrete reason that scheduled source updates must run workflow
+acceptance as well as schema parsing and diffing.

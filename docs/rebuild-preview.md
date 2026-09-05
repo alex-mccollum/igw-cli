@@ -53,7 +53,10 @@ collection behavior, and verification limits.
 The default invocation deadline is 30 seconds across discovery and execution.
 In-memory response bodies default to a 16 MiB limit. `--out` streams directly
 to atomic artifact storage; existing files require `--overwrite`. Request
-bodies currently have a 32 MiB limit. Larger streamed uploads, multipart/form
+bodies using `--body` have a 32 MiB limit. `--upload` snapshots a regular file
+to private disk storage and streams it once, with a default 1 GiB limit.
+Schema-assisted streaming requires a declared media type without a body schema
+and reports `declared_transport` validation. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, project/tag workflows, profile migration,
 reference bundles, and the complete container qualification matrix remain on

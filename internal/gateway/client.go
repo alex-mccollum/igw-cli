@@ -29,6 +29,8 @@ type CallRequest struct {
 	Query        []string
 	Headers      []string
 	Body         []byte
+	BodyReader   io.Reader
+	BodySize     int64
 	ContentType  string
 	Timeout      time.Duration
 	Retry        int
@@ -78,6 +80,9 @@ func JoinURL(baseURL string, apiPath string) (string, error) {
 }
 
 func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, error) {
+	if req.BodyReader != nil && (len(req.Body) != 0 || req.BodySize < 0 || req.Retry != 0) {
+		return nil, &igwerr.UsageError{Msg: "streamed bodies require a nonnegative length, no inline body, and no retries"}
+	}
 	fullURL, err := JoinURL(c.BaseURL, req.Path)
 	if err != nil {
 		return nil, &igwerr.UsageError{Msg: err.Error()}
@@ -122,13 +127,18 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 
 	for attempt := 1; attempt <= attempts; attempt++ {
 		var bodyReader io.Reader
-		if len(req.Body) > 0 {
+		if req.BodyReader != nil {
+			bodyReader = req.BodyReader
+		} else if len(req.Body) > 0 {
 			bodyReader = bytes.NewReader(req.Body)
 		}
 
 		httpReq, err := http.NewRequestWithContext(ctxReq, req.Method, parsedURL.String(), bodyReader)
 		if err != nil {
 			return nil, &igwerr.UsageError{Msg: fmt.Sprintf("build request: %v", err)}
+		}
+		if req.BodyReader != nil {
+			httpReq.ContentLength = req.BodySize
 		}
 
 		startedAt := time.Now()
@@ -139,7 +149,7 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 
 		httpReq.Header.Set(tokenHeader, c.Token)
 
-		if len(req.Body) > 0 && req.ContentType != "" {
+		if (len(req.Body) > 0 || req.BodyReader != nil) && req.ContentType != "" {
 			httpReq.Header.Set("Content-Type", req.ContentType)
 		}
 

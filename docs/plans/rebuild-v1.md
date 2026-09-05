@@ -355,6 +355,18 @@ dependent on a configured default Gateway; its read-only run rebuilt the binary
 and exited 2 at doctor with the unset default URL/token. Real-Gateway acceptance
 is supplied by the disposable test receipt above.
 
+Project/tag transfer foundation: opaque uploads now snapshot a regular input
+file to private disk storage, compute its size/digest, and stream those exact
+bytes without loading the body into memory. The default limit is 1 GiB, with
+context checks during copying/reading and deterministic cleanup. Streamed
+requests cannot combine inline bytes or enable retries, and content type/body
+framing are CLI-managed. Catalog validation accepts streaming only for declared
+opaque media without a body schema and reports `declared_transport`; it does
+not imply content validation. A 40 MiB CLI transfer test verifies byte identity,
+length, credentials, and preview without dispatch. Source-file replacement,
+size limits, cancellation, closed streams, and schema/framing bypasses have
+specific regressions. Project and tag imports use these opaque wire contracts.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

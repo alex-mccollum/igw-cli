@@ -29,6 +29,19 @@ and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
 
+For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
+The input must be a regular file; the CLI creates a private disk snapshot so
+preview metadata and transmission use the same bytes within an invocation.
+`--max-upload-bytes` defaults to 1 GiB. The snapshot is removed on completion.
+`--body` and `--upload` are mutually exclusive. Schema-assisted streaming is
+available when the declared media type has no body schema; its validation
+coverage is `declared_transport`, not validation of archive or tag contents.
+Use bounded `--body` for a schema-bearing request, or `api raw` explicitly.
+
+```bash
+bin/igw-next api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
+```
+
 Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:
 

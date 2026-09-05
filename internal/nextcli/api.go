@@ -1,12 +1,14 @@
 package nextcli
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/result"
@@ -54,6 +56,8 @@ func (i *invocation) apiCommands() *cobra.Command {
 func (i *invocation) requestCommand(raw bool) *cobra.Command {
 	var request execute.Request
 	var body string
+	var upload string
+	var uploadLimit int64
 	var query, headers, pathParams []string
 	cmd := &cobra.Command{Use: "request OPERATION", Short: "Validate, preview, and execute an operation", Args: cobra.ExactArgs(1)}
 	if raw {
@@ -61,6 +65,9 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&body, "body", "", "Body text, @file, or - for stdin")
+	f.StringVar(&upload, "upload", "", "Stream a private snapshot of a regular file; requires --content-type")
+	f.Int64Var(&uploadLimit, "max-upload-bytes", artifact.DefaultUploadLimit, "Maximum size of the streamed upload (default 1 GiB)")
+	cmd.MarkFlagsMutuallyExclusive("body", "upload")
 	f.StringVar(&request.ContentType, "content-type", "", "Request media type; defaults to application/json for a body")
 	f.StringArrayVar(&query, "query", nil, "Query key=value; repeat for multiple values")
 	f.StringArrayVar(&headers, "header", nil, "Request header name:value; authentication is managed")
@@ -112,12 +119,16 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		return i.runRequest(cmd, request)
+		return i.runRequestWithUpload(cmd, request, upload, uploadLimit)
 	}
 	return cmd
 }
 
 func (i *invocation) runRequest(cmd *cobra.Command, request execute.Request) error {
+	return i.runRequestWithUpload(cmd, request, "", 0)
+}
+
+func (i *invocation) runRequestWithUpload(cmd *cobra.Command, request execute.Request, upload string, uploadLimit int64) error {
 	target, token, err := i.runtime()
 	if err != nil {
 		return err
@@ -131,6 +142,20 @@ func (i *invocation) runRequest(cmd *cobra.Command, request execute.Request) err
 		return err
 	}
 	defer cancel()
+	if upload != "" {
+		if request.ContentType == "" {
+			return result.Usage("--upload requires --content-type")
+		}
+		source, err := artifact.SnapshotUpload(ctx, upload, uploadLimit)
+		if err != nil {
+			if errors.Is(err, ctx.Err()) {
+				return result.FromError(err)
+			}
+			return result.Usage(err.Error())
+		}
+		defer source.Close()
+		request.Upload = source
+	}
 	request.Offline, request.AllowStale, request.Pin = i.offline, i.allowStale, i.pin
 	engine := execute.Engine{Catalog: svc, HTTP: i.app.HTTP}
 	prepared, err := engine.Prepare(ctx, target, token, request)

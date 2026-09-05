@@ -33,6 +33,7 @@ type Request struct {
 	Query        url.Values
 	Headers      http.Header
 	Body         []byte
+	Upload       *artifact.Upload
 	ContentType  string
 	DryRun       bool
 	Yes          bool
@@ -51,7 +52,7 @@ type Preview struct {
 	QueryKeys   []string `json:"queryKeys,omitempty"`
 	HeaderKeys  []string `json:"headerKeys,omitempty"`
 	ContentType string   `json:"contentType,omitempty"`
-	BodyBytes   int      `json:"bodyBytes"`
+	BodyBytes   int64    `json:"bodyBytes"`
 	BodySHA256  string   `json:"bodySha256,omitempty"`
 	Validation  string   `json:"validation"`
 }
@@ -85,6 +86,9 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	}
 	if input.MaxBodyBytes < 0 {
 		return nil, result.Usage("--max-body-bytes must be nonnegative")
+	}
+	if input.Upload != nil && (len(input.Body) != 0 || input.ContentType == "") {
+		return nil, result.Usage("upload requires an explicit content type and cannot be combined with an inline body")
 	}
 	if input.Overwrite && input.Out == "" {
 		return nil, result.Usage("--overwrite requires --out")
@@ -138,7 +142,18 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		if input.ContentType == "" && len(input.Body) > 0 {
 			input.ContentType = "application/json"
 		}
-		request, err := http.NewRequestWithContext(ctx, method, "http://igw.invalid"+path, bytes.NewReader(input.Body))
+		validationBody := input.Body
+		if input.Upload != nil {
+			if !snapshot.Catalog.OpaqueUpload(op.Key, input.ContentType) {
+				return nil, result.Usage("streamed uploads require a declared media type without a body schema; use a bounded --body or explicit api raw")
+			}
+			// Opaque content has no value assertions. Represent only presence to
+			// validate the remaining contract without reading a large upload.
+			if input.Upload.Bytes() > 0 {
+				validationBody = []byte{0}
+			}
+		}
+		request, err := http.NewRequestWithContext(ctx, method, "http://igw.invalid"+path, bytes.NewReader(validationBody))
 		if err != nil {
 			return nil, result.Usage("invalid encoded request")
 		}
@@ -171,6 +186,9 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		meta.Stale = snapshot.Stale
 		meta.Warnings = append(append([]string(nil), snapshot.Warnings...), description.Gaps...)
 		validation = "declared_schema"
+		if input.Upload != nil {
+			validation = "declared_transport"
+		}
 	} else {
 		if len(input.PathParams) != 0 {
 			return nil, result.Usage("path parameters require a catalog operation")
@@ -202,6 +220,9 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		if strings.EqualFold(key, "X-Ignition-API-Token") || strings.EqualFold(key, "Authorization") || strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Host") {
 			return nil, result.Usage("authentication and routing headers are managed by the CLI")
 		}
+		if strings.EqualFold(key, "Content-Type") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
+			return nil, result.Usage("content type and body framing are managed by the CLI; use --content-type")
+		}
 		if strings.ContainsAny(key, ":\r\n ") || key == "" {
 			return nil, result.Usage("invalid header name")
 		}
@@ -211,7 +232,10 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 			}
 		}
 	}
-	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: len(input.Body), Validation: validation}
+	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: int64(len(input.Body)), Validation: validation}
+	if input.Upload != nil {
+		preview.BodyBytes, preview.BodySHA256 = input.Upload.Bytes(), input.Upload.SHA256()
+	}
 	if len(input.Body) > 0 {
 		sum := sha256.Sum256(input.Body)
 		preview.BodySHA256 = hex.EncodeToString(sum[:])
@@ -231,6 +255,9 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 		query[key] = append([]string(nil), values...)
 	}
 	input.Query = query
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return &Prepared{preview: preview, meta: meta, target: target, url: endpoint, input: input}, nil
 }
 
@@ -251,6 +278,9 @@ func catalogProblem(err error) error {
 func (e Engine) Execute(ctx context.Context, prepared *Prepared, token string) result.Result {
 	if prepared == nil {
 		return result.Failure(result.Usage("prepared request is required"))
+	}
+	if err := ctx.Err(); err != nil {
+		return result.Failure(err)
 	}
 	p := prepared
 	if p.input.DryRun {
@@ -274,6 +304,14 @@ func (e Engine) Execute(ctx context.Context, prepared *Prepared, token string) r
 		defer download.Abort()
 	}
 	request := gateway.CallRequest{Method: p.preview.Method, Path: p.url, Body: p.input.Body, ContentType: p.input.ContentType, MaxBodyBytes: p.input.MaxBodyBytes}
+	if p.input.Upload != nil {
+		reader, err := p.input.Upload.Open(ctx)
+		if err != nil {
+			return result.Failure(&result.Problem{Kind: "upload", Message: "upload snapshot is unavailable", Code: 2})
+		}
+		defer reader.Close()
+		request.BodyReader, request.BodySize = reader, p.input.Upload.Bytes()
+	}
 	if request.MaxBodyBytes == 0 && download == nil {
 		request.MaxBodyBytes = 16 << 20
 	}
