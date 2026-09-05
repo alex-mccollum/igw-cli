@@ -18,6 +18,7 @@ func (c *CLI) runTagsExport(args []string) error {
 	var recursive string
 	var includeUdts string
 	var outPath string
+	var overwrite bool
 	bindWrapperCommon(fs, &common)
 	fs.StringVar(&provider, "provider", "default", "Tag provider name")
 	fs.StringVar(&exportType, "type", "json", "Export type: json|xml")
@@ -25,6 +26,7 @@ func (c *CLI) runTagsExport(args []string) error {
 	fs.StringVar(&recursive, "recursive", "", "Set recursive query to true/false")
 	fs.StringVar(&includeUdts, "include-udts", "", "Set includeUdts query to true/false")
 	fs.StringVar(&outPath, "out", "", "Write tag export to file")
+	fs.BoolVar(&overwrite, "overwrite", false, "Replace an existing output file after a complete download")
 
 	if err := parseWrapperFlagSet(fs, args); err != nil {
 		return err
@@ -64,7 +66,13 @@ func (c *CLI) runTagsExport(args []string) error {
 		callArgs = append(callArgs, "--query", "includeUdts="+normalizedIncludeUdts)
 	}
 	if strings.TrimSpace(outPath) != "" {
+		if overwrite {
+			callArgs = append(callArgs, "--overwrite")
+		}
 		callArgs = append(callArgs, "--out", outPath)
+	}
+	if overwrite && strings.TrimSpace(outPath) == "" {
+		return &igwerr.UsageError{Msg: "--overwrite requires --out"}
 	}
 	return c.runCall(callArgs)
 }

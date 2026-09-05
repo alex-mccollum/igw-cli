@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/apidocs"
+	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
@@ -38,6 +39,7 @@ func (c *CLI) runCall(args []string) error {
 		retry         int
 		retryBackoff  time.Duration
 		outPath       string
+		overwrite     bool
 		queries       stringList
 		headers       stringList
 	)
@@ -61,6 +63,7 @@ func (c *CLI) runCall(args []string) error {
 	fs.IntVar(&retry, "retry", 0, "Retry attempts for idempotent requests")
 	fs.DurationVar(&retryBackoff, "retry-backoff", 250*time.Millisecond, "Retry backoff duration")
 	fs.StringVar(&outPath, "out", "", "Write response body to file")
+	fs.BoolVar(&overwrite, "overwrite", false, "Replace an existing --out file after a complete download")
 
 	if err := fs.Parse(args); err != nil {
 		return &igwerr.UsageError{Msg: err.Error()}
@@ -76,6 +79,9 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	batchRequested := strings.TrimSpace(batchInput) != ""
+	if overwrite && strings.TrimSpace(outPath) == "" {
+		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--overwrite requires --out"})
+	}
 	if !batchRequested && batchParallel != 1 {
 		return c.printCallError(common.jsonOutput, selectOpts, &igwerr.UsageError{Msg: "--parallel requires --batch"})
 	}
@@ -189,17 +195,17 @@ func (c *CLI) runCall(args []string) error {
 		HTTP:    c.runtimeHTTPClient(),
 	}
 
-	streamWriter, closeStreamWriter, err := c.callOutputWriter(outPath, stream, common.jsonOutput)
-	if err != nil {
-		return c.printCallError(common.jsonOutput, selectOpts, err)
-	}
-	if closeStreamWriter != nil {
-		defer closeStreamWriter()
-	}
-
 	bodyBytes, err := readBody(c.In, body)
 	if err != nil {
 		return c.printCallError(common.jsonOutput, selectOpts, err)
+	}
+
+	streamWriter, download, err := c.callOutputWriter(outPath, stream, overwrite)
+	if err != nil {
+		return c.printCallError(common.jsonOutput, selectOpts, err)
+	}
+	if download != nil {
+		defer download.Abort()
 	}
 
 	start := time.Now()
@@ -224,8 +230,14 @@ func (c *CLI) runCall(args []string) error {
 	}
 
 	bodyFile := ""
-	if strings.TrimSpace(outPath) != "" && (stream || !common.jsonOutput) {
-		bodyFile = outPath
+	var artifactInfo *artifact.Info
+	if download != nil {
+		info, err := download.Commit()
+		if err != nil {
+			return c.printCallError(common.jsonOutput, selectOpts, igwerr.NewTransportError(err))
+		}
+		bodyFile = info.Path
+		artifactInfo = &info
 	}
 
 	timingPayload := buildCallStats(resp, time.Since(start).Milliseconds())
@@ -242,6 +254,7 @@ func (c *CLI) runCall(args []string) error {
 				Headers:   maybeHeaders(resp.Headers, common.includeHeaders),
 				Body:      string(resp.Body),
 				BodyFile:  bodyFile,
+				Artifact:  artifactInfo,
 				Truncated: resp.Truncated,
 				Bytes:     resp.BodyBytes,
 			},
@@ -292,7 +305,7 @@ func (c *CLI) runCall(args []string) error {
 	return nil
 }
 
-func (c *CLI) callOutputWriter(outPath string, stream bool, jsonOutput bool) (io.Writer, func() error, error) {
+func (c *CLI) callOutputWriter(outPath string, stream bool, overwrite bool) (io.Writer, *artifact.Writer, error) {
 	outPath = strings.TrimSpace(outPath)
 	if outPath == "" {
 		if stream {
@@ -301,15 +314,14 @@ func (c *CLI) callOutputWriter(outPath string, stream bool, jsonOutput bool) (io
 		return nil, nil, nil
 	}
 
-	if !stream && jsonOutput {
-		return nil, nil, nil
-	}
-
-	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	outFile, err := artifact.New(outPath, overwrite)
 	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil, nil, &igwerr.UsageError{Msg: "destination exists; use --overwrite to replace it"}
+		}
 		return nil, nil, igwerr.NewTransportError(err)
 	}
-	return outFile, outFile.Close, nil
+	return outFile, outFile, nil
 }
 
 func resolveOperationsByID(ops []apidocs.Operation, operationID string) []apidocs.Operation {
@@ -395,6 +407,7 @@ type callJSONResponse struct {
 	Headers   map[string][]string `json:"headers,omitempty"`
 	Body      string              `json:"body"`
 	BodyFile  string              `json:"bodyFile,omitempty"`
+	Artifact  *artifact.Info      `json:"artifact,omitempty"`
 	Truncated bool                `json:"truncated,omitempty"`
 	Bytes     int64               `json:"bytes,omitempty"`
 }

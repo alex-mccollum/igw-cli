@@ -6,6 +6,8 @@ All notable user-facing changes to `igw` are documented here.
 
 ### Fixed
 - Reject request URLs outside the configured Gateway origin and stop cross-origin redirects before forwarding the API token.
+- Stream `--json --out` downloads to atomic files with SHA-256 metadata. Require `--overwrite` for existing destinations and preserve them on failed transfers.
+- Fail with exit code `7` when a successful HTTP response exceeds `--max-body-bytes`, instead of reporting a truncated transfer as successful.
 
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 

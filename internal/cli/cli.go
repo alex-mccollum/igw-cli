@@ -113,7 +113,7 @@ var nestedCompletionCommands = map[string][]string{
 var completionFlags = []string{
 	"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--timing", "--json-stats", "--include-headers",
 	"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
-	"--dry-run", "--retry", "--retry-backoff", "--out", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
+	"--dry-run", "--retry", "--retry-backoff", "--out", "--overwrite", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
 	"--interval", "--wait-timeout", "--openapi-path",
 	"--check-write",
 	"--workers", "--queue-size",

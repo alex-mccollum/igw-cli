@@ -96,7 +96,7 @@ igw call --method POST --path /data/api/v1/scan/projects --yes
 igw call --method POST --path /data/api/v1/scan/projects --dry-run --yes --json
 igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
 igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
-igw call --method GET --path /data/api/v1/gateway-info --stream --out gateway-info.json
+igw call --method GET --path /data/api/v1/gateway-info --json --out gateway-info.json --overwrite
 igw call --method GET --path /data/api/v1/gateway-info --stream --max-body-bytes 1048576
 igw call --batch @batch.ndjson --batch-output ndjson
 igw call --batch @batch.json --batch-output json --parallel 4
@@ -104,6 +104,15 @@ igw call --method GET --path /data/api/v1/gateway-info --json --select response.
 igw call --method GET --path /data/api/v1/gateway-info --json --select ok --select response.status --compact
 igw call --method GET --path /data/api/v1/gateway-info --json --json-stats
 ```
+
+Downloads with `--out` stream into a private temporary file and publish the
+destination only after the complete response succeeds. Existing files require
+`--overwrite`. This also applies to backup, logs, diagnostics, tag exports, and
+gateway info. With `--json --out`, the response includes `artifact.path`,
+`artifact.bytes`, and `artifact.sha256` alongside `bodyFile`; binary content is
+kept out of the JSON body. Exceeding `--max-body-bytes` fails with exit code `7`
+and does not publish a partial file. A stream sent directly to stdout may
+already contain bytes when a transfer fails; check the exit code.
 
 Config:
 

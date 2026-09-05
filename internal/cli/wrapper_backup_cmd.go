@@ -13,9 +13,11 @@ func (c *CLI) runBackupExport(args []string) error {
 
 	var common wrapperCommon
 	var outPath string
+	var overwrite bool
 	var includePeerLocal string
 	bindWrapperCommon(fs, &common)
 	fs.StringVar(&outPath, "out", "", "Write gateway backup (.gwbk) to file")
+	fs.BoolVar(&overwrite, "overwrite", false, "Replace an existing output file after a complete download")
 	fs.StringVar(&includePeerLocal, "include-peer-local", "", "Set includePeerLocal query to true/false")
 
 	if err := parseWrapperFlagSet(fs, args); err != nil {
@@ -33,6 +35,9 @@ func (c *CLI) runBackupExport(args []string) error {
 		callArgs = append(callArgs, "--query", "includePeerLocal="+normalizedIncludePeerLocal)
 	}
 	resolvedOut := chooseDefaultOutPath(outPath, "gateway.gwbk")
+	if overwrite {
+		callArgs = append(callArgs, "--overwrite")
+	}
 	if resolvedOut != "" {
 		callArgs = append(callArgs, "--out", resolvedOut)
 	}

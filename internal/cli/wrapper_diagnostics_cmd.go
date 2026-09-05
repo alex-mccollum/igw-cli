@@ -49,8 +49,10 @@ func (c *CLI) runDiagnosticsBundleDownload(args []string) error {
 
 	var common wrapperCommon
 	var outPath string
+	var overwrite bool
 	bindWrapperCommon(fs, &common)
 	fs.StringVar(&outPath, "out", "", "Write diagnostics bundle to file")
+	fs.BoolVar(&overwrite, "overwrite", false, "Replace an existing output file after a complete download")
 
 	if err := parseWrapperFlagSet(fs, args); err != nil {
 		return err
@@ -59,6 +61,9 @@ func (c *CLI) runDiagnosticsBundleDownload(args []string) error {
 	callArgs := []string{"--method", "GET", "--path", "/data/api/v1/diagnostics/bundle/download"}
 	callArgs = append(callArgs, common.callArgs()...)
 	resolvedOut := chooseDefaultOutPath(outPath, "diagnostics.zip")
+	if overwrite {
+		callArgs = append(callArgs, "--overwrite")
+	}
 	if resolvedOut != "" {
 		callArgs = append(callArgs, "--out", resolvedOut)
 	}

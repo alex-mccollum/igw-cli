@@ -165,6 +165,9 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 		if readErr != nil {
 			return nil, igwerr.NewTransportError(readErr)
 		}
+		if success && truncated {
+			return nil, igwerr.NewTransportError(fmt.Errorf("response exceeds --max-body-bytes (%d); transfer incomplete", req.MaxBodyBytes))
+		}
 		timing.bodyReadDone = time.Now()
 
 		if !success {

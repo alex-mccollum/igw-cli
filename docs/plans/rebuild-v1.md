@@ -130,7 +130,7 @@ tests whose asserted behavior contradicts the accepted new contract.
 - [x] Repository and primary IA documentation assessed; design choices accepted.
 - [x] Active goal created with the full outcome and explicit acceptance gates.
 - [x] Baseline Go tests/build/race verification.
-- [ ] Transport credential isolation and atomic-artifact regressions repaired.
+- [x] Transport credential isolation and atomic-artifact regressions repaired.
 - [ ] Disposable Gateway capture and real-schema qualification.
 - [ ] New typed command/execution architecture.
 - [ ] Complete catalog lifecycle and discovery.
@@ -151,6 +151,14 @@ tests, the CLI build, command-doc consistency, and docs lint pass. Origin
 isolation regressions cover foreign absolute URLs, redirects, caller redirect
 hooks, and default ports. The smoke script builds successfully but stops at
 missing Gateway configuration; this is not real-Gateway verification.
+
+Artifact storage now streams into unique private temporary files, publishes
+complete transfers atomically, protects existing files unless --overwrite is
+explicit, and reports SHA-256/bytes with --json --out. Regressions cover HTTP
+failure, broken streams, size limits, invalid inputs, missing confirmation,
+concurrent destination creation, and successful JSON/binary exports. Docker
+Desktop start reports already running, but status and engine connection still
+fail; no disposable Gateway has run yet.
 
 ## References
 

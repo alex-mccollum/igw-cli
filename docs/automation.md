@@ -87,6 +87,10 @@ igw diagnostics bundle download --out diagnostics.zip --json
 igw backup export --out gateway.gwbk --json
 ```
 
+`--out` streams atomically even with `--json`. A successful response reports
+the file path, byte count, and SHA-256 at `response.artifact`. Add `--overwrite`
+to replace an existing destination; failed or truncated transfers preserve it.
+
 Persistent machine mode:
 
 ```bash

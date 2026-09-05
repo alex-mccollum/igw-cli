@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/config"
+	"github.com/alex-mccollum/igw-cli/internal/igwerr"
 )
 
 func TestCallStreamRespectsMaxBodyBytes(t *testing.T) {
@@ -43,15 +45,11 @@ func TestCallStreamRespectsMaxBodyBytes(t *testing.T) {
 		"--stream",
 		"--max-body-bytes", "3",
 		"--out", outPath,
-	}); err != nil {
-		t.Fatalf("stream call failed: %v", err)
+	}); igwerr.ExitCode(err) != 7 {
+		t.Fatalf("expected incomplete transfer error, got: %v", err)
 	}
 
-	b, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatalf("read output file: %v", err)
-	}
-	if string(b) != "abc" {
-		t.Fatalf("unexpected streamed body %q", string(b))
+	if _, err := os.Stat(outPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("partial file was published: %v", err)
 	}
 }
