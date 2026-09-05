@@ -82,6 +82,8 @@ func (a App) Run(ctx context.Context, args []string) error {
 		var problem *result.Problem
 		if errors.As(err, &problem) {
 			i.output = result.Failure(problem)
+		} else if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			i.output = result.Failure(err)
 		} else {
 			i.output = result.Failure(result.Usage(err.Error()))
 		}
