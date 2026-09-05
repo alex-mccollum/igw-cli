@@ -225,8 +225,17 @@ and returned a new signature. A stale signature returned HTTP 500, and an
 independent read proved the resource remained unchanged. Workflows therefore
 cannot recognize concurrency conflicts from HTTP 409/412 alone; they need the
 observed resource signature and state. Generic mutations still report
-`accepted`, and the test performs verification separately. Dedicated workflow
-commands will own these completion checks.
+`accepted`, and the test performs verification separately. Dedicated resource
+commands own these completion checks and report `completed` only after their
+acknowledgement, signature, and readback checks agree.
+
+The extended run passed 27 checks in 137.07 seconds on the same pinned 8.3.9
+image, including type discovery, paginated listing, dedicated resource previews,
+create/update/delete verification, duplicate-create refusal, and rejection of a
+stale reviewed signature. Its receipt is
+`internal/testgateway/testdata/ignition-8.3.9-resource-workflows.json`. The result
+qualifies the recorded basic-schedule workflow and image; other resource types,
+module sets, and versions require their own acceptance evidence.
 
 The generated API key component alone is insufficient for the HTTP header.
 Keep the full resource-name/key pair and assign a dedicated security level with

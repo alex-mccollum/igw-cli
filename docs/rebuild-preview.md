@@ -23,6 +23,8 @@ Examples for this entrypoint are maintained in the development section of
 - `api list`, `describe`, and `request` using a selected target's catalog.
 - `api raw` for explicit requests without schema validation.
 - `gateway doctor`, which only reads Gateway information.
+- `resource types`, `describe`, `list`, `get`, and named-resource
+  `create`/`update`/`delete` with signatures, previews, and state verification.
 - `schema`, help, version metadata, and generated shell completions.
 
 `--json` emits one result using `version: "igw/v1"`, including parse errors.
@@ -40,15 +42,22 @@ within the invocation and requires `--yes`. Mutations do not follow redirects
 or automatically retry. A transfer failure after dispatch is conservatively
 reported as `uncertain`. A successful generic mutation is `accepted`, with
 `verification: "not_performed"`; it does not imply that the resulting Gateway
-state was checked. Task-specific completion verification is still pending.
+state was checked. Named resource workflows share a fresh catalog across
+read/write/readback and require the Gateway's success flag plus observed state.
+Update/delete execution requires the reviewed `--if-signature`; preview can
+read and report it. Verified workflows report `completed` and `verified`, while
+ambiguous outcomes stay `uncertain`. This qualifies stored configuration, not
+the resource's operational health. See the command guide for body semantics,
+collection behavior, and verification limits.
 
 The default invocation deadline is 30 seconds across discovery and execution.
 In-memory response bodies default to a 16 MiB limit. `--out` streams directly
 to atomic artifact storage; existing files require `--overwrite`. Request
 bodies currently have a 32 MiB limit. Larger streamed uploads, multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
-resource signatures/diffs, bounded batch, task workflows, profile migration,
-reference bundles, and container qualification remain on the rebuild roadmap.
+bounded batch, singleton resources, project/tag workflows, profile migration,
+reference bundles, and the complete container qualification matrix remain on
+the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local

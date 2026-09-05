@@ -29,6 +29,57 @@ and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
 
+Named resource workflows discover their routes from the selected Gateway's
+catalog and verify successful changes with an independent read:
+
+```bash
+bin/igw-next resource types --offline --json
+bin/igw-next resource describe ignition/schedule --json
+bin/igw-next resource list ignition/schedule --limit 50 --offset 0 --json
+bin/igw-next resource get ignition/schedule Example --collection core --json
+bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --dry-run --json
+bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --yes --json
+bin/igw-next resource update ignition/schedule Example --body '{"description":"Day shift"}' --dry-run --json
+bin/igw-next resource update ignition/schedule Example --body '{"description":"Day shift"}' --if-signature REVIEWED_SIGNATURE --yes --json
+bin/igw-next resource delete ignition/schedule Example --dry-run --json
+bin/igw-next resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes --json
+```
+
+Replace `REVIEWED_SIGNATURE` with the `data.signature` from `get` or the
+`data.beforeSignature` from the corresponding preview. A changed signature
+stops execution before a mutation; the observed signature is also sent to the
+Gateway to cover changes between the read and write. Create requires observed
+absence and uses the Gateway's create endpoint. None of these commands replay
+failed writes or force deletion of referenced resources.
+
+`--body` is one object containing `description`, `enabled`, `config`, and/or
+`backupConfig`. Name, collection, and signature come from command arguments;
+the CLI builds the API's array wrapper. Omitted top-level update fields remain
+unchanged. Supply a complete `config` or `backupConfig` when changing it; this is
+not a recursive merge patch. A basic `schedule-fields.json` can contain:
+
+```json
+{"description":"Day shift","enabled":true,"config":{"profile":{"type":"basic schedule"},"settings":{"allDays":true,"allDayTime":"08:00-16:00"}}}
+```
+
+Get and changes default to collection `core`; list uses the Gateway's active
+collection and returns one page with the Gateway's pagination metadata. Resource
+types can be discovered offline, but state reads and change previews require
+connectivity. Previews expose changed field names and a request digest without
+configuration values. Explicit `get` and `list` return resource configuration.
+
+Successful workflows report `outcome: "completed"` and
+`meta.verification: "verified"` after response/state checks. This verifies stored
+configuration, not operational health of the configured connection or device.
+Verification compares submitted values, permits additional Gateway defaults,
+and checks that omitted top-level writable fields remain unchanged. It does not
+prove removal of unspecified nested properties.
+If acknowledgement, signature, or readback cannot establish the outcome,
+the result stays failed or uncertain. Redacted secrets or vendor-normalized
+values that cannot be compared can prevent verification; inspect current state
+before retrying. Singleton resources and forced reference changes still use
+explicit generic API requests.
+
 ## Current Release Entrypoint
 
 This file is the canonical command example reference.

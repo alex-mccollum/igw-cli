@@ -32,9 +32,12 @@ memory. Browser authentication and CSRF tokens are confined to bootstrap.
 All subsequent requests run through `nextcli.App` with an API token and no
 cookie jar. Checks cover denied anonymous/bare-key access, catalog acquisition,
 preview without mutation, basic-schedule creation, partial update, stale
-signature rejection, and deletion with independent state reads. The optional
+signature rejection, and deletion with independent state reads. The extended
+test also runs resource type/descriptor/page discovery and named-resource
+previews, create/update/delete completion, duplicate-create refusal, and a
+reviewed-signature conflict through the dedicated workflow commands. The optional
 `IGW_ACCEPTANCE_EVIDENCE` path receives a new atomic receipt only after every
 assertion passes and the owned container has been removed. It contains the
 image/version, test-binary hash, catalog provenance, and check outcomes, never
-credentials or resource configuration values. This qualifies generic API
-requests; dedicated resource workflow commands still need their own acceptance.
+credentials or resource configuration values. Each receipt qualifies only the
+checks present in that run; earlier generic-only receipts remain historical.

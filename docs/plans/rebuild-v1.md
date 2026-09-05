@@ -299,14 +299,15 @@ under the 8 GiB guard. Legacy smoke rebuilt successfully but still exited 2 at
 doctor because the default Gateway URL/token are unset. No owned test container
 remained after acceptance.
 
-Next implementation boundary: introduce a typed workflow invocation that owns
-one fresh target catalog across read/prepare/write/verify, then expose resource
-type discovery, list/get, and create/update/delete commands. Resource workflows
+The next boundary selected after generic API acceptance was a typed workflow
+invocation owning one fresh target catalog across read/prepare/write/verify,
+plus resource type discovery, list/get, and create/update/delete commands. Resource workflows
 must check the response's `success` field, supported signatures, and observed
 state; generic HTTP acceptance alone is insufficient. They must preserve
 uncertain outcomes and avoid replay, including the observed HTTP 500 conflict
-case. Dedicated resource commands, project/tag workflows, the minimum-version
-matrix, migration/cutover, and the other full v1 gates remain unfinished.
+case. The following slices implement that resource boundary; project/tag
+workflows, the minimum-version matrix, migration/cutover, and the other full
+v1 gates remain unfinished.
 
 Workflow invocation foundation: `execute.Scope` now owns one catalog, target,
 credential, and cancellation context across serial steps. Write scopes refresh
@@ -316,6 +317,43 @@ a read scope to write access. Closing cancels an in-flight request and releases
 the catalog. Specific unit/race checks cover catalog fetch counts across repeated
 workflows, request validation, denied escalation, and cancellation; existing
 generic-request CLI tests continue to pass.
+
+Named-resource implementation now exposes type discovery, describe/list/get,
+and create/update/delete over the shared scope. Change bodies contain writable
+fields only; the service owns identity, collection, array wrapping, and observed
+signatures. Update/delete execution requires a reviewed `--if-signature`, then
+checks it against current state before sending that same precondition. Preview
+reports changed root fields and the validated request digest without values.
+Completion requires a success acknowledgement, a matching returned/readback
+signature for create/update, supplied-field comparison, preservation of omitted
+root fields on update, or observed absence after delete. Generic HTTP 500 does
+not become an invented concurrency conflict; uncertain transfers are never
+replayed. Singleton and forced reference changes remain generic operations.
+
+The first extended live run passed the existing API contract and resource type
+discovery, then failed list validation before dispatch and removed its container.
+Offline reproduction identified validator 0.14.0 incorrectly assigning limit
+and offset to the absent optional exploded filter. A narrow private validation
+view now excludes only provably absent filters while retaining scalar checks
+and refusing unqualified supplied/ambiguous filter input. Parser version 6
+and captured-catalog regressions record this correction without rewriting vendor
+bytes or changing contract identity.
+
+The second extended live run passed all 27 assertions in 137.07 seconds on
+pinned 8.3.9, including paginated listing and dedicated resource workflow
+completion. Its committed receipt is
+`internal/testgateway/testdata/ignition-8.3.9-resource-workflows.json`; the
+test-binary hash was checked and no owned container remained. This is a
+qualified basic-schedule workflow, not full resource/module/version coverage.
+Remaining workflow work includes singleton resources, filter serialization,
+project/tag round trips, and operational actions, alongside the existing batch,
+catalog distribution/update, minimum-version, migration, and cutover gates.
+Full unit and race suites, all three binary builds, command-doc checks, and
+docs lint passed after the resource implementation and parser correction. All
+local checks used the 8 GiB guard. The separate legacy smoke script remains
+dependent on a configured default Gateway; its read-only run rebuilt the binary
+and exited 2 at doctor with the unset default URL/token. Real-Gateway acceptance
+is supplied by the disposable test receipt above.
 
 ## References
 

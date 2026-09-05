@@ -172,6 +172,55 @@ func TestLiveAPIResourceContract(t *testing.T) {
 	}
 	confirmed("delete", run("delete", "api", "request", "DELETE "+resource+"/{name}/{signature}", "--path-param", "name="+name, "--path-param", "signature="+updated.Signature, "--query", "collection=core", "--yes"))
 	absent("verify-deleted")
+	for _, args := range [][]string{{"types"}, {"describe", "ignition/schedule"}, {"list", "ignition/schedule", "--limit", "10"}} {
+		if !run("resource-"+args[0], append([]string{"resource"}, args...)...).OK {
+			t.Fatal("resource discovery failed")
+		}
+	}
+	const workflowBody = `{"description":"created by workflow","enabled":true,"config":{"profile":{"type":"basic schedule"},"settings":{"allDays":true,"allDayTime":"01:00-02:00"}}}`
+	if got := run("resource-preview-create", "resource", "create", "ignition/schedule", name, "--body", workflowBody, "--dry-run"); !got.OK || got.Outcome != "preview" {
+		t.Fatal("resource preview failed")
+	}
+	absent("resource-preview-absence")
+	completed := func(step string, got envelope) string {
+		t.Helper()
+		var evidence struct{ AfterSignature string }
+		_ = json.Unmarshal(got.Data, &evidence)
+		if !got.OK || got.Outcome != "completed" || got.Meta.Verification != "verified" {
+			// Error kinds and state evidence contain no configuration values.
+			kind := ""
+			if got.Error != nil {
+				kind = got.Error.Kind
+			}
+			t.Fatalf("%s: workflow outcome=%s error=%s data=%s", step, got.Outcome, kind, got.Data)
+		}
+		return evidence.AfterSignature
+	}
+	createdSignature := completed("resource-create", run("resource-create", "resource", "create", "ignition/schedule", name, "--body", workflowBody, "--yes"))
+	if createdSignature == "" {
+		t.Fatal("creation omitted verified signature")
+	}
+	if got := run("resource-get", "resource", "get", "ignition/schedule", name); !got.OK {
+		t.Fatal("resource get failed")
+	}
+	if got := run("resource-duplicate-create", "resource", "create", "ignition/schedule", name, "--body", workflowBody, "--yes"); got.OK || got.Error == nil || got.Error.Kind != "conflict" {
+		t.Fatal("resource create did not enforce absence")
+	}
+	if got := run("resource-preview-update", "resource", "update", "ignition/schedule", name, "--body", `{"description":"updated by workflow"}`, "--dry-run"); !got.OK || got.Outcome != "preview" {
+		t.Fatal("update preview failed")
+	}
+	updatedSignature := completed("resource-update", run("resource-update", "resource", "update", "ignition/schedule", name, "--body", `{"description":"updated by workflow"}`, "--if-signature", createdSignature, "--yes"))
+	if updatedSignature == "" || updatedSignature == createdSignature {
+		t.Fatal("update omitted new verified signature")
+	}
+	if got := run("resource-stale-update", "resource", "update", "ignition/schedule", name, "--body", `{"description":"must not apply"}`, "--if-signature", createdSignature, "--yes"); got.OK || got.Error == nil || got.Error.Kind != "conflict" {
+		t.Fatal("workflow discarded reviewed signature")
+	}
+	if got := run("resource-preview-delete", "resource", "delete", "ignition/schedule", name, "--dry-run"); !got.OK || got.Outcome != "preview" {
+		t.Fatal("delete preview failed")
+	}
+	completed("resource-delete", run("resource-delete", "resource", "delete", "ignition/schedule", name, "--if-signature", updatedSignature, "--yes"))
+	absent("resource-verified-deleted")
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}

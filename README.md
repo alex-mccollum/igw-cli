@@ -2,6 +2,11 @@
 
 `igw` is a lightweight CLI wrapper for the Ignition Gateway API.
 
+The [v1 development CLI](docs/rebuild-preview.md) adds Gateway-specific API
+catalogs, consistent JSON results, and resource commands with change previews,
+reviewed signatures, and readback verification. It is available as `igw-next`
+while the remaining [rebuild gates](docs/plans/rebuild-v1.md) are completed.
+
 ## Principles
 - Default to the Go standard library; add third-party dependencies only when they provide clear, durable value.
 - Generic API execution first (`call`).
