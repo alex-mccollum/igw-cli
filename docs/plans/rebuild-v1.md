@@ -129,7 +129,7 @@ tests whose asserted behavior contradicts the accepted new contract.
 
 - [x] Repository and primary IA documentation assessed; design choices accepted.
 - [x] Active goal created with the full outcome and explicit acceptance gates.
-- [ ] Baseline Go tests/build/race verification.
+- [x] Baseline Go tests/build/race verification.
 - [ ] Transport credential isolation and atomic-artifact regressions repaired.
 - [ ] Disposable Gateway capture and real-schema qualification.
 - [ ] New typed command/execution architecture.
@@ -144,6 +144,13 @@ remain pending while independent local implementation proceeds. The initial
 command-doc consistency check passed; full docs lint could not finish without
 Go. Seventeen pre-existing script executable-bit changes belong to the user
 and must not be staged as part of this work.
+
+2026-09-05: installed the official Go 1.27.1 toolchain in a private build cache
+after verifying its published SHA-256. All package tests, all package race
+tests, the CLI build, command-doc consistency, and docs lint pass. Origin
+isolation regressions cover foreign absolute URLs, redirects, caller redirect
+hooks, and default ports. The smoke script builds successfully but stops at
+missing Gateway configuration; this is not real-Gateway verification.
 
 ## References
 

@@ -61,16 +61,20 @@ type CallTiming struct {
 
 func JoinURL(baseURL string, apiPath string) (string, error) {
 	base, err := url.Parse(strings.TrimRight(baseURL, "/"))
-	if err != nil {
-		return "", fmt.Errorf("parse base url: %w", err)
+	if err != nil || !validHTTPURL(base) || base.RawQuery != "" || base.Fragment != "" {
+		return "", fmt.Errorf("gateway URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
 	}
 
 	path, err := url.Parse(apiPath)
-	if err != nil {
-		return "", fmt.Errorf("parse path: %w", err)
+	if err != nil || path.User != nil || path.Fragment != "" || path.Opaque != "" {
+		return "", fmt.Errorf("invalid request path")
 	}
 
-	return base.ResolveReference(path).String(), nil
+	target := base.ResolveReference(path)
+	if !validHTTPURL(target) || !sameOrigin(base, target) {
+		return "", fmt.Errorf("request path must stay on the configured Gateway origin")
+	}
+	return target.String(), nil
 }
 
 func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, error) {
@@ -101,6 +105,9 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 	if client == nil {
 		client = &http.Client{}
 	}
+	// Preserve caller transport/timeouts without changing a shared client's policy.
+	// net/http forwards custom headers on redirects, including our API token.
+	client = clientForOrigin(client, parsedURL)
 
 	attempts := req.Retry + 1
 	if attempts < 1 {

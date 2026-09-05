@@ -4,6 +4,9 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Reject request URLs outside the configured Gateway origin and stop cross-origin redirects before forwarding the API token.
+
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 
 ### Added
