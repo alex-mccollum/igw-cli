@@ -97,6 +97,7 @@ target freshness. `parserVersion` identifies the recorded qualification;
 using the current parser. References are explicit and are never substituted for
 a Gateway during request execution. The local reference updater has passed
 default-module acceptance on 8.3.0 and 8.3.9; the minimum reference explicitly
-records missing tag APIs. Remote schedule activation, a fresh 8.3.9 run under
-the current qualification policy, and additional module profiles remain
-unfinished. See `docs/reference-updates.md` for retained evidence.
+records missing tag APIs. Both versions now have fresh evidence under the
+current qualification policy. Remote schedule activation and additional module
+profiles remain unfinished. See `docs/reference-updates.md` for retained
+evidence and `docs/compatibility-matrix.md` for coverage boundaries.

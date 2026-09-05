@@ -49,3 +49,23 @@ offline. It does not renew live evidence or add a runtime bundled selector.
 The comparison with the default 8.3.9 baseline reports 15 absent operations and
 other document changes, with `compatibility: requires_review`; qualification
 covers the recorded workflows, not arbitrary cross-version API compatibility.
+
+## Full tag coverage with the current policy
+
+`ignition-8.3.9-policy2` retains the complete clean run from source
+`f5993f97223c35a2ab3fea292cd3e526bcbaf786`, using Go 1.27.1 on Linux amd64.
+All 18 stages passed from 18:55:58 to 19:04:46 UTC on 2026-09-05 (528.63
+seconds). The lifecycle/resource/project-tag/operational receipts contain
+10/27/39/23 checks. They identify the same test executable as the minimum run;
+the intervening commit added only evidence, its separate regression, and docs.
+Every container was removed, and an independent query found none remaining.
+
+The 687-operation catalog has 32 active modules and current contract identity
+`17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea`.
+The comparison with the earlier bundled 8.3.9 document reports unchanged
+contract identity under policy 2, with no added or removed operations. New
+original bytes retain their own raw/document checksums. All six scopes are
+qualified, including all historical tag checks plus capability discovery.
+The shared retained-evidence test verifies both capability shapes through
+the original catalogs and complete image/workflow receipts. Neither candidate
+changes the embedded runtime reference or renews historical observations.

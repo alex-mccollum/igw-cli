@@ -944,6 +944,37 @@ the requested setting alone is insufficient evidence. The complete v1 goal,
 remote scheduler activation, and remaining implementation/release gates stay
 active.
 
+The fresh 8.3.9 policy-2 pipeline from clean `f5993f9` passed all 18 stages from
+18:55:58 to 19:04:46 UTC on 2026-09-05 in 528.63 seconds. Its
+10/27/39/23 lifecycle/resource/project-tag/operational checks passed, retaining
+every historical tag check and adding capability discovery. The test executable
+hash is identical to the minimum run: only separate evidence tests and docs
+changed between the two source commits. Every container was removed; an
+independent query found none remaining. The clean source worktree was removed
+after verification, with no host recovery or changes to limits.
+
+The original run and complete candidate are retained in
+`internal/referencebuild/testdata/ignition-8.3.9-policy2/`. All six scopes are
+qualified. The 687-operation catalog has the same current contract identity
+and 32-module inventory as earlier captures, while preserving new raw hash
+`8b53ecad684cd32fd387142af58f3512d3c9b39b1c52ac90e37912c0020b87ce`
+and document hash
+`106f238119d2f0cf6dfa785454e21203a95724289b761e6b7c4766bce917870c`.
+The reference comparison reports `unchanged_under_policy`; no operations were
+added or removed. Both default-module cells now have current-policy acceptance.
+The shared retained-evidence regression covers both capability shapes; the
+new `docs/compatibility-matrix.md` makes qualified coverage and remaining module
+cells explicit. The runtime embedded reference remains unchanged.
+
+Both retained-evidence cases passed under the bounded runner, as did compiled
+offline 8.3.9 capability discovery and command/docs checks. Discovery reports
+all tag prerequisites advertised, six qualified scopes, and no unavailable
+scope. All 11 new retained files match the original run byte for byte. Logs are
+in `bin/defaults-policy2-retained.log`, `bin/full-tags-policy2-discovery.json`,
+and `bin/defaults-policy2-docs.log`. No full v1 completion or remote schedule
+activation is claimed; module-profile propagation and both smaller-profile
+cells are the next qualification slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

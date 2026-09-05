@@ -186,6 +186,18 @@ Every container was removed, and an independent query found none remaining.
 The original run and qualified candidate are retained in
 `internal/referencebuild/testdata/ignition-8.3.0-policy2/`. This establishes the
 minimum default-module workflow cell, without changing the embedded default or
-claiming full version/module compatibility. A fresh 8.3.9 policy-2 run and the
-smaller module profiles remain required. Remote schedule activation is still
-unverified.
+claiming full version/module compatibility.
+
+The fresh 8.3.9 policy-2 run from clean `f5993f9` also passed all 18 stages, from
+18:55:58 to 19:04:46 UTC on 2026-09-05 (528.63 seconds). Its
+10/27/39/23 lifecycle/resource/project-tag/operational checks passed, preserving
+all historical tag checks and adding capability discovery. The 687-operation
+catalog retains the same current contract identity as the earlier 8.3.9
+captures. All six scopes are qualified, with no unavailable scope. Cleanup and
+an independent empty-container query passed. Original evidence is retained in
+`internal/referencebuild/testdata/ignition-8.3.9-policy2/`.
+
+Both default-module cells now have current-policy evidence. Smaller module
+profiles and remote schedule activation remain unverified. The
+[compatibility matrix](compatibility-matrix.md) distinguishes these boundaries
+from general API and version support.

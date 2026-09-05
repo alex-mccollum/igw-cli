@@ -8,6 +8,8 @@
 - `docs/development-safety.md`: bounded local validation and WSL/Docker incident safeguards.
 - `docs/plans/rebuild-v1.md`: accepted v1 rebuild goal, roadmap, and verification evidence.
 - `docs/catalog.md`: Gateway catalog authority, snapshot storage, and freshness policy.
+- `docs/compatibility-matrix.md`: qualified version/module cells, retained evidence, and remaining coverage.
+- `docs/reference-updates.md`: reproducible reference pipeline and scheduled-run requirements.
 - `docs/rebuild-preview.md`: development CLI entrypoint, implemented contracts, and remaining work.
 - `docs/automation.md`: machine-oriented automation patterns (`--json`, exit codes, workflow).
 - `docs/rpc-protocol.md`: persistent RPC wire contract, handshake fields, and compatibility rules.
