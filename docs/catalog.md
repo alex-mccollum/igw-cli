@@ -45,6 +45,50 @@ assumed to be the Gateway version.
 
 Library dependencies are pinned in go.mod/go.sum. The selected parser and
 validator require Go 1.25.7. The package boundary keeps vendor models out of the
-CLI and workflow contracts. Tests currently use clearly labeled synthetic
-OpenAPI fixtures; real Ignition capture and compatibility qualification remain
-required by `docs/plans/rebuild-v1.md`.
+CLI and workflow contracts.
+
+## Real Gateway qualification
+
+The test suite includes the exact compressed document captured from an official
+Ignition 8.3.9 container with its default modules. It contains 687 operations
+across 587 paths and is about 12.7 MB uncompressed. Its receipt records the
+image digest, observed `ignitionVersion`, capture time, raw/contract hashes,
+parser version, and compatibility policy. `info.version` is `1.0.0` in that
+document; it is not the Gateway release version.
+
+The vendor document needs a narrowly scoped adapter before OAS validation:
+
+- 343 path parameters contain `allowReserved: false`. That field applies only
+  to query parameters. The parser's private model omits this false annotation.
+- Seven operations declare an empty `responses` object. The private model uses
+  an explicitly undocumented default response without inventing a status code
+  or response schema. Operation descriptions expose the missing contract.
+
+Policy `ignition-openapi/1` matches the observed generator identity and those
+exact structural shapes. Each snapshot binds the policy to its original raw
+SHA-256. It does not grant trust based on the document's title or license URL;
+the resulting model must still pass OAS validation and reference checks.
+Descriptions and exports retain the vendor definitions. `spec inspect` exposes
+every adjustment with its operation and JSON pointer; snapshot metadata reports
+counts by rule. Any additional defect remains an error. This adapter implements
+the [OAS parameter and response rules](https://spec.openapis.org/oas/v3.1.0.html).
+
+Recursive arrays, such as required security-level children, accept finite trees
+and are checked against actual input values. The parser receives a formatted
+private copy: its node index otherwise performs quadratic work on large compact
+JSON. Eager compilation of unrelated request/response schemas is disabled.
+Local discovery of the captured expanded document took about two seconds with
+roughly 600 MiB peak RSS on the development machine; memory needs optimization
+before release qualification.
+
+Document/model validation is not proof that every request schema is usable.
+For example, 8.3.9 schedule creation repeats `$id` in `config` and `backupConfig`,
+which fails JSON Schema compilation. This produces a `catalog_schema` error,
+not a claim that the user's payload is invalid. Explicit raw requests remain
+available. A separate reviewed solution and real mutation tests are required
+before those resource workflows are qualified.
+
+Two fresh instances also produced different example timestamps in scan-lock
+responses. The current conservative contract hash includes examples, so a pin
+can change after restart even when input constraints do not. Separating stable
+wire-contract identity from documentation/example drift is still required.

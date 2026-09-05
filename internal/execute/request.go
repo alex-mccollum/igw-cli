@@ -144,6 +144,9 @@ func (e Engine) Prepare(ctx context.Context, target catalog.Target, token string
 		}
 		issues, err := snapshot.Catalog.Validate(op.Key, request)
 		if err != nil {
+			if errors.Is(err, catalog.ErrSchemaCompilation) {
+				return nil, &result.Problem{Kind: "catalog_schema", Message: "the Gateway's schema cannot validate this operation; inspect api describe or use api raw explicitly", Code: 2}
+			}
 			return nil, result.Usage("could not validate request against the selected operation")
 		}
 		if len(issues) > 0 {

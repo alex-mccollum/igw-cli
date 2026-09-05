@@ -149,6 +149,37 @@ func TestExecutionPreservesJSONAndRefreshesWriteContract(t *testing.T) {
 	}
 }
 
+func TestUnusableOperationSchemaFailsBeforeMutation(t *testing.T) {
+	t.Parallel()
+	// Reduced from the vendor's config/backupConfig duplicate schema IDs.
+	schema := `{"type":"object","properties":{"config":{"$id":"urn:igw:test:duplicate","type":"object"},"backupConfig":{"$id":"urn:igw:test:duplicate","type":"object"}}}`
+	spec := strings.Replace(fixtureSpec, `{"type":"object","required":["enabled"],"properties":{"enabled":{"type":"boolean"}}}`, schema, 1)
+	var writes atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/proxy/openapi.json" {
+			_, _ = w.Write([]byte(spec))
+			return
+		}
+		writes.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	for _, mode := range []string{"--dry-run", "--yes"} {
+		app, out, stderr := testApp(t, srv)
+		err := app.Run(context.Background(), []string{"api", "request", "updateItem", "--path-param", "name=test", "--body", `{"config":{"value":"private-input"}}`, mode, "--json"})
+		if igwerr.ExitCode(err) != 2 || strings.Contains(out.String(), "private-input") || stderr.Len() != 0 {
+			t.Fatalf("invalid schema failure contract: %v", err)
+		}
+		r := decodeResult(t, out)
+		if r.OK || r.Error == nil || r.Error.Kind != "catalog_schema" {
+			t.Fatalf("vendor defect was reported as a payload error: %+v", r)
+		}
+	}
+	if writes.Load() != 0 {
+		t.Fatal("an unvalidated operation was sent to the Gateway")
+	}
+}
+
 func TestDoctorOnlyReads(t *testing.T) {
 	t.Parallel()
 	var methods []string

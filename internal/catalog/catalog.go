@@ -25,7 +25,9 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/1"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/3"
+
+var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 
 type Operation struct {
 	Key         string          `json:"key"`
@@ -42,11 +44,12 @@ type Operation struct {
 // Description includes the containing path item and shared components so that
 // inherited parameters, security, and referenced schemas remain inspectable.
 type Description struct {
-	Operation  Operation       `json:"operation"`
-	PathItem   json.RawMessage `json:"pathItem"`
-	Components json.RawMessage `json:"components,omitempty"`
-	Security   json.RawMessage `json:"security,omitempty"`
-	Gaps       []string        `json:"gaps,omitempty"`
+	Operation   Operation       `json:"operation"`
+	PathItem    json.RawMessage `json:"pathItem"`
+	Components  json.RawMessage `json:"components,omitempty"`
+	Security    json.RawMessage `json:"security,omitempty"`
+	Gaps        []string        `json:"gaps,omitempty"`
+	Adjustments []Adjustment    `json:"adjustments,omitempty"`
 }
 
 type Issue struct {
@@ -69,16 +72,17 @@ type Catalog struct {
 	validator    validator.Validator
 	rawHash      string
 	contractHash string
+	adjustments  []Adjustment
 }
 
 func Parse(raw []byte) (*Catalog, error) {
 	if len(raw) == 0 || len(raw) > MaxDocumentBytes {
 		return nil, fmt.Errorf("OpenAPI document must contain 1 to %d bytes", MaxDocumentBytes)
 	}
-	var value any
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
-	if err := decoder.Decode(&value); err != nil {
+	value, err := decodeUniqueJSON(decoder, 0)
+	if err != nil {
 		return nil, errors.New("OpenAPI document must be valid JSON")
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
@@ -100,10 +104,20 @@ func Parse(raw []byte) (*Catalog, error) {
 	if !strings.HasPrefix(version, "3.0.") && !strings.HasPrefix(version, "3.1.") {
 		return nil, errors.New("supported OpenAPI versions are 3.0 and 3.1")
 	}
-	doc, err := libopenapi.NewDocumentWithConfiguration(raw, &datamodel.DocumentConfiguration{
+	adjustments := normalizeIgnition(value)
+	// The parser's node index scans each line's nodes linearly. Indent its
+	// private input to avoid quadratic work on compact multi-megabyte JSON.
+	modelBytes, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	doc, err := libopenapi.NewDocumentWithConfiguration(modelBytes, &datamodel.DocumentConfiguration{
 		AllowFileReferences: false, AllowRemoteReferences: false,
 		SkipExternalRefResolution: true,
-		Logger:                    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		// Recursive arrays can terminate with an empty array, including IA's
+		// required SecurityLevelRuleNode.children. Validate actual values later.
+		IgnoreArrayCircularReferences: true,
+		Logger:                        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	if err != nil {
 		return nil, errors.New("invalid OpenAPI document structure")
@@ -122,6 +136,7 @@ func Parse(raw []byte) (*Catalog, error) {
 		raw: bytes.Clone(raw), root: root, document: doc, model: model,
 		ops: make(map[string]Operation), aliases: make(map[string][]string),
 		rawHash: digest(raw), contractHash: digest(canonical),
+		adjustments: adjustments,
 	}
 	if err := json.Unmarshal(root["paths"], &c.paths); err != nil {
 		c.Close()
@@ -186,9 +201,22 @@ func (c *Catalog) pathDefinitions(path string) (map[string]json.RawMessage, erro
 }
 
 func checkReferences(value any) error {
+	return walkReferences(value, false)
+}
+
+// A property name can itself be "$ref" (SCIM uses this). Map keys in schema
+// property/definition collections are names, while the values remain schemas
+// whose own reference and dialect keywords must still be checked.
+func walkReferences(value any, names bool) error {
 	switch v := value.(type) {
 	case map[string]any:
 		for key, child := range v {
+			if names {
+				if err := walkReferences(child, false); err != nil {
+					return err
+				}
+				continue
+			}
 			if key == "$ref" || key == "$dynamicRef" || key == "$recursiveRef" {
 				ref, ok := child.(string)
 				if !ok || !strings.HasPrefix(ref, "#") {
@@ -202,7 +230,8 @@ func checkReferences(value any) error {
 					return errors.New("custom JSON Schema dialects are disabled to prevent external schema retrieval")
 				}
 			}
-			if err := checkReferences(child); err != nil {
+			nameMap := key == "properties" || key == "patternProperties" || key == "$defs" || key == "definitions" || key == "schemas"
+			if err := walkReferences(child, nameMap); err != nil {
 				return err
 			}
 		}
@@ -274,8 +303,17 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 	if err != nil {
 		return Description{}, err
 	}
-	return Description{Operation: op, PathItem: pathItem, Components: bytes.Clone(c.root["components"]),
-		Security: bytes.Clone(c.root["security"]), Gaps: c.gaps(op)}, nil
+	description := Description{Operation: op, PathItem: pathItem, Components: bytes.Clone(c.root["components"]),
+		Security: bytes.Clone(c.root["security"]), Gaps: c.gaps(op)}
+	for _, adjustment := range c.adjustments {
+		if adjustment.Operation == op.Key {
+			description.Adjustments = append(description.Adjustments, adjustment)
+			if adjustment.Rule == "empty-responses" {
+				description.Gaps = append(description.Gaps, "The Gateway declares no response contract for this operation.")
+			}
+		}
+	}
+	return description, nil
 }
 
 func (c *Catalog) gaps(op Operation) []string {
@@ -306,7 +344,10 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 		return nil, errors.New("request method differs from selected operation")
 	}
 	c.once.Do(func() {
-		c.validator = validator.NewValidatorFromV3Model(&c.model.Model, validatorconfig.WithoutSecurityValidation())
+		// The default eagerly compiles every request/response schema. A CLI
+		// invocation needs only the selected contract, and unrelated vendor
+		// schema defects must not interfere with that operation.
+		c.validator = validator.NewValidatorFromV3Model(&c.model.Model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
 	})
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
 	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(request, item, op.Path)
@@ -315,6 +356,9 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	}
 	issues := make([]Issue, 0, len(failures))
 	for _, failure := range failures {
+		if len(failure.SchemaValidationErrors) == 0 && strings.Contains(failure.Message, "failed schema compilation") {
+			return nil, ErrSchemaCompilation
+		}
 		issue := Issue{Kind: failure.ValidationType, Rule: failure.ValidationSubType, Parameter: failure.ParameterName}
 		if len(failure.SchemaValidationErrors) == 0 {
 			issues = append(issues, issue)

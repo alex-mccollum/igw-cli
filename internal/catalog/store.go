@@ -18,19 +18,20 @@ import (
 )
 
 type Metadata struct {
-	Version        int       `json:"version"`
-	Target         Target    `json:"target"`
-	Source         string    `json:"source"`
-	SourceKind     string    `json:"sourceKind"`
-	FetchedAt      time.Time `json:"fetchedAt"`
-	VerifiedAt     time.Time `json:"verifiedAt"`
-	RawSHA256      string    `json:"rawSha256"`
-	ContractSHA256 string    `json:"contractSha256"`
-	ParserVersion  string    `json:"parserVersion"`
-	ETag           string    `json:"etag,omitempty"`
-	LastModified   string    `json:"lastModified,omitempty"`
-	GatewayVersion string    `json:"gatewayVersion,omitempty"`
-	Modules        []string  `json:"modules,omitempty"`
+	Version        int            `json:"version"`
+	Target         Target         `json:"target"`
+	Source         string         `json:"source"`
+	SourceKind     string         `json:"sourceKind"`
+	FetchedAt      time.Time      `json:"fetchedAt"`
+	VerifiedAt     time.Time      `json:"verifiedAt"`
+	RawSHA256      string         `json:"rawSha256"`
+	ContractSHA256 string         `json:"contractSha256"`
+	ParserVersion  string         `json:"parserVersion"`
+	ETag           string         `json:"etag,omitempty"`
+	LastModified   string         `json:"lastModified,omitempty"`
+	GatewayVersion string         `json:"gatewayVersion,omitempty"`
+	Modules        []string       `json:"modules,omitempty"`
+	Compatibility  *Compatibility `json:"compatibility,omitempty"`
 }
 
 type Snapshot struct {
@@ -62,6 +63,7 @@ func (s Store) Save(snapshot *Snapshot) error {
 	if m.RawSHA256 != snapshot.Catalog.RawHash() || m.ContractSHA256 != snapshot.Catalog.ContractHash() {
 		return errors.New("snapshot hashes do not match document")
 	}
+	m.Compatibility = snapshot.Catalog.Compatibility()
 	if target, err := NewTarget(m.Target.Profile, m.Target.URL); err != nil || target != m.Target {
 		return errors.New("snapshot target must be normalized")
 	}
@@ -169,6 +171,7 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 		c.Close()
 		return nil, errors.New("catalog contract checksum mismatch")
 	}
+	m.Compatibility = c.Compatibility()
 	return &Snapshot{Metadata: m, Catalog: c}, nil
 }
 

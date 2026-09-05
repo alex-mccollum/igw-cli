@@ -34,7 +34,7 @@ func (i *invocation) specCommands() *cobra.Command {
 				return err
 			}
 			defer c.Close()
-			i.output = result.Success(map[string]any{"operationCount": len(c.Operations()), "operations": c.Operations(), "rawSha256": c.RawHash(), "contractSha256": c.ContractHash()})
+			i.output = result.Success(map[string]any{"operationCount": len(c.Operations()), "operations": c.Operations(), "rawSha256": c.RawHash(), "contractSha256": c.ContractHash(), "compatibility": c.Compatibility(), "adjustments": c.Adjustments()})
 			return nil
 		}})
 	group.AddCommand(&cobra.Command{Use: "import FILE", Short: "Store an explicit local reference for this target's offline inspection", Args: cobra.ExactArgs(1),

@@ -146,6 +146,36 @@ func TestCatalogValidatesBodyAndDoesNotExposeValues(t *testing.T) {
 	}
 }
 
+func TestSCIMReferencePropertyIsDataButItsSchemaIsChecked(t *testing.T) {
+	t.Parallel()
+	raw := `{"openapi":"3.1.0","info":{"title":"SCIM regression","version":"test"},"paths":{"/groups":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"$ref":{"type":"string"}}}}}},"responses":{"200":{"description":"OK"}}}}}}`
+	c, err := Parse([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Close()
+	for _, schema := range []string{`{"$ref":"https://example.invalid/schema"}`, `{"$schema":"https://example.invalid/dialect","type":"string"}`} {
+		bad := strings.Replace(raw, `{"type":"string"}`, schema, 1)
+		if c, err := Parse([]byte(bad)); err == nil {
+			c.Close()
+			t.Fatal("property's schema bypassed external reference protection")
+		}
+	}
+}
+
+func TestCatalogRejectsAmbiguousOrExcessivelyNestedJSON(t *testing.T) {
+	t.Parallel()
+	for _, raw := range []string{
+		`{"openapi":"3.1.0","info":{"title":"A","title":"B","version":"test"},"paths":{}}`,
+		`{"openapi":"3.1.0","info":{"title":"A","version":"test"},"paths":{},"x-deep":` + strings.Repeat("[", 257) + `0` + strings.Repeat("]", 257) + `}`,
+	} {
+		if c, err := Parse([]byte(raw)); err == nil {
+			c.Close()
+			t.Fatal("ambiguous or excessively nested input accepted")
+		}
+	}
+}
+
 func TestReferencedPathItemKeepsOperationDefinition(t *testing.T) {
 	t.Parallel()
 	raw := `{"openapi":"3.1.0","info":{"title":"Fixture","version":"test"},"paths":{"/health":{"$ref":"#/components/pathItems/Health"}},"components":{"pathItems":{"Health":{"get":{"operationId":"health","responses":{"200":{"description":"OK"}}}}}}}`
