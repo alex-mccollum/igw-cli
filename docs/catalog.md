@@ -178,6 +178,13 @@ Use the returned immutable `image` throughout one qualification run; do not
 resolve the moving tag separately for each test. Publish the resolution receipt
 alongside capture and workflow receipts so an update can be audited later.
 
+`internal/imageref.Load` revalidates saved resolution directories entirely
+offline, including bounded regular files, receipt provenance, exact manifest
+digests, and the index-to-platform relationship. `ConfigurationDigest` returns
+the selected image config digest only after this validation. Saving a candidate
+uses the same checks, so modified receipts cannot publish a different image,
+repository, platform, or incomplete chain as a verified resolution.
+
 Live resolution on 2026-09-05 found the `8.3` channel at the same index digest as
 the qualified 8.3.9 fixture below; its `linux/amd64` manifest digest is
 `sha256:1e6778e8b787baf0b46d9018ac1b77ba58b5c618ea0f3ae543a465fb657d4295`.

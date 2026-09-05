@@ -17,10 +17,7 @@ func (c Candidate) Save(ctx context.Context, dir string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := verifyDigest(c.Index, c.Resolution.IndexDigest); err != nil {
-		return err
-	}
-	if err := verifyDigest(c.Manifest, c.Resolution.ManifestDigest); err != nil {
+	if _, err := c.ConfigurationDigest(); err != nil {
 		return err
 	}
 	receipt, err := json.MarshalIndent(c.Resolution, "", "  ")

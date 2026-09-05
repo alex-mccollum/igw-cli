@@ -528,6 +528,15 @@ Owned-container cleanup and independent absence verification passed. Full unit
 checks, focused contributor/resolver race checks, all builds, and docs checks
 passed. Legacy smoke still stops at unset default Gateway configuration.
 
+Saved image resolutions now have an offline loader and full-chain validation.
+It verifies regular-file/size limits, the supported receipt version and source,
+image/tag/platform/timestamp provenance, both exact digests, descriptor size and
+media type, and the platform link before exposing the image config digest.
+Publication reuses the same validation. Tests reject forged metadata, corrupt
+manifests, incomplete directories, non-regular files, and canceled reads; full
+unit checks, focused race checks, all builds, and docs checks passed. This gives
+the update packager a reusable check against the image ID observed by Docker.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

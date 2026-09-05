@@ -109,23 +109,12 @@ func resolve(ctx context.Context, tag string, client *http.Client, now func() ti
 	if err := verifyDigest(index, indexDigest); err != nil {
 		return Candidate{}, err
 	}
-	var root manifest
-	if decode(index, &root) != nil || root.SchemaVersion != 2 || (root.MediaType != ociIndex && root.MediaType != dockerIndex) || root.MediaType != indexType {
-		return Candidate{}, errors.New("release must provide a supported image index with platform descriptors")
+	selected, expectedType, err := selectPlatform(index)
+	if err != nil {
+		return Candidate{}, err
 	}
-	var selected descriptor
-	matches := 0
-	for _, entry := range root.Manifests {
-		if entry.Platform.OS == "linux" && entry.Platform.Architecture == "amd64" && entry.Platform.Variant == "" {
-			selected = entry
-			matches++
-		}
-	}
-	if matches != 1 {
-		return Candidate{}, errors.New("release index must identify exactly one linux/amd64 manifest")
-	}
-	if !sha256Digest.MatchString(selected.Digest) || selected.Size <= 0 || selected.Size > maxManifestBytes || len(selected.URLs) > 0 || (selected.MediaType != ociManifest && selected.MediaType != dockerManifest) {
-		return Candidate{}, errors.New("release index has an unsupported platform manifest descriptor")
+	if indexType != expectedType {
+		return Candidate{}, errors.New("release must provide a supported image index with matching content type")
 	}
 	body, digest, mediaType, err := get(ctx, &copyClient, manifestURL+selected.Digest, auth.Token, maxManifestBytes)
 	if err != nil {
@@ -134,18 +123,10 @@ func resolve(ctx context.Context, tag string, client *http.Client, now func() ti
 	if digest != selected.Digest || int64(len(body)) != selected.Size || mediaType != selected.MediaType {
 		return Candidate{}, errors.New("platform manifest does not match its index descriptor")
 	}
-	if err := verifyDigest(body, digest); err != nil {
+	if _, err := validatePlatformManifest(body, selected); err != nil {
 		return Candidate{}, err
 	}
-	var child manifest
-	if decode(body, &child) != nil || child.SchemaVersion != 2 || child.MediaType != mediaType || len(child.Manifests) != 0 || !sha256Digest.MatchString(child.Config.Digest) || child.Config.Size <= 0 || len(child.Layers) == 0 {
-		return Candidate{}, errors.New("registry returned an invalid platform image manifest")
-	}
-	for _, layer := range child.Layers {
-		if !sha256Digest.MatchString(layer.Digest) || layer.Size <= 0 {
-			return Candidate{}, errors.New("registry returned an invalid image layer descriptor")
-		}
-	}
+
 	return Candidate{Resolution: Resolution{Version: 1, Repository: Repository, Tag: tag, ResolvedAt: now().UTC(), Image: Repository + "@" + indexDigest, IndexDigest: indexDigest, ManifestDigest: digest, Platform: Platform}, Index: index, Manifest: body}, nil
 }
 
@@ -196,4 +177,45 @@ func decode(body []byte, into any) error {
 		return errors.New("invalid registry JSON")
 	}
 	return json.Unmarshal(body, into)
+}
+
+func selectPlatform(index []byte) (descriptor, string, error) {
+	var root manifest
+	if decode(index, &root) != nil || root.SchemaVersion != 2 || (root.MediaType != ociIndex && root.MediaType != dockerIndex) {
+		return descriptor{}, "", errors.New("release must provide a supported image index with platform descriptors")
+	}
+	var selected descriptor
+	matches := 0
+	for _, entry := range root.Manifests {
+		if entry.Platform.OS == "linux" && entry.Platform.Architecture == "amd64" && entry.Platform.Variant == "" {
+			selected = entry
+			matches++
+		}
+	}
+	if matches != 1 {
+		return descriptor{}, "", errors.New("release index must identify exactly one linux/amd64 manifest")
+	}
+	if !sha256Digest.MatchString(selected.Digest) || selected.Size <= 0 || selected.Size > maxManifestBytes || len(selected.URLs) > 0 || (selected.MediaType != ociManifest && selected.MediaType != dockerManifest) {
+		return descriptor{}, "", errors.New("release index has an unsupported platform manifest descriptor")
+	}
+	return selected, root.MediaType, nil
+}
+
+func validatePlatformManifest(body []byte, selected descriptor) (string, error) {
+	if int64(len(body)) != selected.Size {
+		return "", errors.New("platform manifest size does not match its descriptor")
+	}
+	if err := verifyDigest(body, selected.Digest); err != nil {
+		return "", err
+	}
+	var child manifest
+	if decode(body, &child) != nil || child.SchemaVersion != 2 || child.MediaType != selected.MediaType || len(child.Manifests) != 0 || !sha256Digest.MatchString(child.Config.Digest) || child.Config.Size <= 0 || len(child.Layers) == 0 {
+		return "", errors.New("registry returned an invalid platform image manifest")
+	}
+	for _, layer := range child.Layers {
+		if !sha256Digest.MatchString(layer.Digest) || layer.Size <= 0 {
+			return "", errors.New("registry returned an invalid image layer descriptor")
+		}
+	}
+	return child.Config.Digest, nil
 }
