@@ -4,6 +4,9 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+### Added
+- Add the development `cmd/igw-next` entrypoint with a typed execution core, versioned JSON results, full Gateway catalogs, true request previews, and offline schema inspection. Workflow migration and real-Gateway qualification are still in progress.
+
 ### Fixed
 - Reject request URLs outside the configured Gateway origin and stop cross-origin redirects before forwarding the API token.
 - Stream `--json --out` downloads to atomic files with SHA-256 metadata. Require `--overwrite` for existing destinations and preserve them on failed transfers.

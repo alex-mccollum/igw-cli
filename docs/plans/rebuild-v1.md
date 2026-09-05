@@ -132,7 +132,7 @@ tests whose asserted behavior contradicts the accepted new contract.
 - [x] Baseline Go tests/build/race verification.
 - [x] Transport credential isolation and atomic-artifact regressions repaired.
 - [ ] Disposable Gateway capture and real-schema qualification.
-- [ ] New typed command/execution architecture.
+- [x] New typed command/execution architecture introduced alongside legacy CLI.
 - [ ] Complete catalog lifecycle and discovery.
 - [ ] Validated task workflows and end-to-end verification.
 - [ ] Migration, cutover, and release-artifact qualification.
@@ -168,6 +168,15 @@ large numbers, parameter/body validation, concurrent publication, cancellation,
 corruption recovery, and target isolation. It remains separate from the legacy
 CLI pending command/execution integration. Selected dependencies require Go
 1.25.7+; docs and go.mod now declare that minimum.
+
+The development entrypoint cmd/igw-next now uses one Cobra command tree,
+internal/execute preparation/execution, and the igw/v1 result contract. It
+supports profile inspection, full catalog discovery/import/export/diff, typed
+flag schemas, schema-assisted requests, explicit raw requests, real previews,
+read-only doctor, and generated completions. End-to-end HTTP fixture tests
+verify no mutation during preview/validation, fresh writes, proxy/path encoding,
+JSON precision, downloads, and non-retried uncertain mutations. Scope and
+remaining implementation limits are recorded in docs/rebuild-preview.md.
 
 ## References
 

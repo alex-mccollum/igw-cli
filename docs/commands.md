@@ -1,5 +1,35 @@
 # Commands
 
+## v1 Development Entrypoint
+
+The staged rebuild is available through `cmd/igw-next`; current release commands
+remain below. Scope and limitations are in `docs/rebuild-preview.md`.
+
+```bash
+go build -o bin/igw-next ./cmd/igw-next
+bin/igw-next schema --json
+bin/igw-next profile show --json
+bin/igw-next spec sync --json
+bin/igw-next api list --search gateway --json
+bin/igw-next api describe 'GET /data/api/v1/gateway-info' --json
+bin/igw-next api request 'GET /data/api/v1/gateway-info' --json
+bin/igw-next gateway doctor --json
+bin/igw-next api raw --method POST --path /data/api/v1/scan/projects --dry-run --json
+bin/igw-next spec export --out gateway-openapi.json --json
+bin/igw-next spec inspect gateway-openapi.json --json
+bin/igw-next spec import gateway-openapi.json --json
+bin/igw-next api list --offline --json
+bin/igw-next spec diff before-openapi.json after-openapi.json --json
+```
+
+`api request` accepts either an exact `METHOD /path` key or an unambiguous
+operationId. Use repeatable `--path-param name=value`, `--query key=value`,
+and `--header name:value` for parameters and `--body @file.json` for input.
+Preview mutations with `--dry-run`; execution requires `--yes`. A preview
+may fetch the API document but never sends the proposed request.
+
+## Current Release Entrypoint
+
 This file is the canonical command example reference.
 For script/agent workflow guidance, see `docs/automation.md`.
 
