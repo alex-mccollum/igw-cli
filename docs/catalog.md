@@ -233,3 +233,13 @@ Keep the full resource-name/key pair and assign a dedicated security level with
 the required Gateway permissions; API keys do not impersonate a user's built-in
 Administrator role. See the [vendor's credential example](https://forum.inductiveautomation.com/t/ign-13978-x-ignition-api-token-is-being-sent-lowercase-from-browsers/109911/2)
 and [Gateway permission settings](https://docs.inductiveautomation.com/docs/8.3/platform/security/gateway-general-security-settings).
+
+The resource list regression exposed an input-binding defect in validator
+0.14.0: an absent optional exploded `filter` object receives scalar `limit`,
+`offset`, or `search` values and rejects their names. Parser adapter version 6
+uses a private validation view that omits this filter only when every supplied
+query key names another scalar parameter and cannot match the filter's key
+pattern. Supplied/ambiguous filters return `unsupported_serialization` until
+their binding is qualified; explicit generic raw requests remain available.
+Scalar constraints still run. Raw documents, contract identities, and stored model
+parameters remain unchanged. Both captured catalogs exercise this behavior.

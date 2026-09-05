@@ -85,6 +85,23 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 			}
 			identicalImages[group] = c.ContractHash()
 			for _, tc := range []struct {
+				query string
+				valid bool
+			}{
+				{"limit=10&offset=0", true},
+				{"search=Example", true},
+				{"limit=invalid", false},
+				{"unexpected=invalid", false},
+				{"filter=invalid", false},
+				{"limit=10&offset=0", true}, // A prior call must not mutate the model.
+			} {
+				req, _ := http.NewRequest("GET", "http://gateway.test/data/api/v1/resources/list/ignition/schedule?"+tc.query, nil)
+				issues, err := c.Validate("GET /data/api/v1/resources/list/ignition/schedule", req)
+				if err != nil || (len(issues) == 0) != tc.valid {
+					t.Fatalf("captured list query %s: %v %v", tc.query, issues, err)
+				}
+			}
+			for _, tc := range []struct {
 				body  string
 				valid bool
 			}{

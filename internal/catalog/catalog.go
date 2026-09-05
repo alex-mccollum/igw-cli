@@ -25,7 +25,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/5"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/6"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 
@@ -356,6 +356,10 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 		c.validator = validator.NewValidatorFromV3Model(&c.model.Model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
 	})
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
+	item, bindingIssue := listValidationView(item, request, op.Path)
+	if bindingIssue != nil {
+		return []Issue{*bindingIssue}, nil
+	}
 	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(request, item, op.Path)
 	if valid {
 		return nil, nil
