@@ -246,8 +246,8 @@ and [Gateway permission settings](https://docs.inductiveautomation.com/docs/8.3/
 The resource list regression exposed an input-binding defect in validator
 0.14.0: an absent optional exploded `filter` object receives scalar `limit`,
 `offset`, or `search` values and rejects their names. Parser adapter version 6
-introduced a private validation view; version 7 also applies it to project
-listing. It omits this filter only when every supplied
+introduced a private validation view; version 7 added project listing and
+version 8 adds log listing. It omits this filter only when every supplied
 query key names another scalar parameter and cannot match the filter's key
 pattern. Supplied/ambiguous filters return `unsupported_serialization` until
 their binding is qualified; explicit generic raw requests remain available.

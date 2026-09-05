@@ -84,11 +84,13 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				t.Fatal("identical image/module captures have unstable contract identities")
 			}
 			identicalImages[group] = c.ContractHash()
-			for _, query := range []string{"limit=10&offset=0", "limit=invalid"} {
-				req, _ := http.NewRequest("GET", "http://gateway.test/data/api/v1/projects/list?"+query, nil)
-				issues, err := c.Validate("GET /data/api/v1/projects/list", req)
-				if err != nil || (len(issues) == 0) != (query != "limit=invalid") {
-					t.Fatalf("captured project list query: %v %v", issues, err)
+			for _, route := range []string{"/data/api/v1/projects/list", "/data/api/v1/logs"} {
+				for _, query := range []string{"limit=10&offset=0", "limit=invalid", "filter=invalid"} {
+					req, _ := http.NewRequest("GET", "http://gateway.test"+route+"?"+query, nil)
+					issues, err := c.Validate("GET "+route, req)
+					if err != nil || (len(issues) == 0) != (query == "limit=10&offset=0") {
+						t.Fatalf("captured %s list query: %v %v", route, issues, err)
+					}
 				}
 			}
 			for _, tc := range []struct {
