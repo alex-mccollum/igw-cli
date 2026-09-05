@@ -1,7 +1,7 @@
 # Installation
 
 ## Requirements
-- Go `1.23+` (for source install/build).
+- Go `1.25.7+` (for source install/build; required by the OpenAPI parser).
 - Network reachability to your Ignition Gateway.
 - Ignition API token with required permissions.
 

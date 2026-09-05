@@ -160,6 +160,15 @@ concurrent destination creation, and successful JSON/binary exports. Docker
 Desktop start reports already running, but status and engine connection still
 fail; no disposable Gateway has run yet.
 
+The new internal/catalog package now preserves full vendor documents and
+request schemas, validates OpenAPI 3.0/3.1, rejects external references/dialects,
+and supports scoped immutable snapshots, conditional refresh, pins, and explicit
+stale-write policy. Synthetic fixture tests and race checks cover references,
+large numbers, parameter/body validation, concurrent publication, cancellation,
+corruption recovery, and target isolation. It remains separate from the legacy
+CLI pending command/execution integration. Selected dependencies require Go
+1.25.7+; docs and go.mod now declare that minimum.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

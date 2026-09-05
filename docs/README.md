@@ -6,6 +6,7 @@
 - `docs/troubleshooting.md`: common failures and remediation commands.
 - `docs/architecture.md`: architecture and contract notes.
 - `docs/plans/rebuild-v1.md`: accepted v1 rebuild goal, roadmap, and verification evidence.
+- `docs/catalog.md`: Gateway catalog authority, snapshot storage, and freshness policy.
 - `docs/automation.md`: machine-oriented automation patterns (`--json`, exit codes, workflow).
 - `docs/rpc-protocol.md`: persistent RPC wire contract, handshake fields, and compatibility rules.
 - `docs/host-integration.md`: recommended host adapter contract (rpc primary, fallback, startup checks).
