@@ -1,16 +1,12 @@
 package catalog
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
 
-	validatorconfig "github.com/pb33f/libopenapi-validator/config"
-	"github.com/pb33f/libopenapi-validator/schema_validation"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
@@ -69,9 +65,9 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 		if peer.Schema == nil || peer.Schema.Schema() == nil || matcher.MatchString(name) {
 			return refuse("ambiguous_parameter_binding")
 		}
-		// Only named scalar peers have qualified, disjoint wire ownership here.
-		types := peer.Schema.Schema().Type
-		if len(types) != 1 || (types[0] != "string" && types[0] != "integer" && types[0] != "number" && types[0] != "boolean") || (peer.Style != "" && peer.Style != "form") {
+		// Named primitive/array peers own only their exact query key.
+		kind := querySchemaKind(peer.Schema.Schema())
+		if kind == "" || (peer.Style != "" && peer.Style != "form") || (kind == "array" && !peer.IsDefaultFormEncoding()) {
 			return refuse("unsupported_serialization")
 		}
 	}
@@ -107,58 +103,13 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 			return refuse("required")
 		}
 	} else {
-		v := schema_validation.NewSchemaValidatorWithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)), validatorconfig.WithSchemaCache(nil))
-		defer v.Release()
-		version := float32(3.1)
-		if strings.HasPrefix(c.model.Model.Version, "3.0.") {
-			version = 3.0
-		}
-		valid, failures := v.ValidateSchemaObjectWithVersion(schema, properties, version)
-		if !valid {
-			issues, err := validationIssues(failures)
-			if err != nil || len(issues) == 0 {
-				return item, request, nil, ErrSchemaCompilation
-			}
-			for i := range issues {
-				issues[i].Kind, issues[i].Rule, issues[i].Parameter = "parameter", "query", "filter"
-			}
-			return item, request, issues, nil
+		issues, err := c.validateQueryValue("filter", schema, properties)
+		if err != nil || len(issues) > 0 {
+			return item, request, issues, err
 		}
 	}
-	withoutFilter := func(params []*v3.Parameter) []*v3.Parameter {
-		out := make([]*v3.Parameter, 0, len(params))
-		for _, p := range params {
-			if p.In != "query" || p.Name != "filter" {
-				out = append(out, p)
-			}
-		}
-		return out
-	}
-	view, op := *item, *operation
-	view.Parameters = withoutFilter(item.Parameters)
-	op.Parameters = withoutFilter(operation.Parameters)
-	switch request.Method {
-	case http.MethodGet:
-		view.Get = &op
-	case http.MethodPost:
-		view.Post = &op
-	case http.MethodPut:
-		view.Put = &op
-	case http.MethodPatch:
-		view.Patch = &op
-	case http.MethodDelete:
-		view.Delete = &op
-	case http.MethodHead:
-		view.Head = &op
-	case http.MethodOptions:
-		view.Options = &op
-	case http.MethodTrace:
-		view.Trace = &op
-	}
-	// Remove filter properties from the private request too. Otherwise a key
-	// such as name[eq] can be misread as a value for a separate name parameter.
-	req, u := *request, *request.URL
-	u.RawQuery = values.Encode()
-	req.URL = &u
-	return &view, &req, nil, nil
+	// Bound filter properties must be absent from the private request too:
+	// name[eq] cannot supply a distinct named parameter called name.
+	view, req := queryValidationView(item, request, map[string]bool{"filter": true}, values)
+	return view, req, nil, nil
 }

@@ -66,6 +66,31 @@ and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
 
+For named query parameters, supply one value for a primitive, or repeat the
+same key for each item in an exploded form array. A comma inside an array item
+remains part of that item. For example, this previews two session IDs:
+
+```bash
+bin/igw-next api request 'DELETE /data/perspective/api/v1/sessions' --query sessionId=SESSION_1 --query sessionId=SESSION_2 --dry-run --json
+```
+
+The Gateway's complete parameter schema validates each primitive or whole
+array, including enums, numeric bounds, item constraints, array size, and
+uniqueness. Repeating a primitive parameter fails before dispatch. Strings
+retain whitespace, commas, reserved characters, and Unicode; the CLI performs
+URL encoding. Supplied empty strings are validated as values, with no implicit
+null, default, or omission substitution. Booleans use `true` or `false`.
+Integers use JSON decimal integer syntax; numbers also accept JSON decimal
+fractions and exponents. Numeric validation preserves precision, with a limit
+of 4096 characters and an exponent between -4096 and 4096 to bound computation.
+The original wire text is never rounded or rewritten by validation.
+
+This covers the named primitive and exploded primitive-array query shapes in
+the qualified Gateway catalogs. Other query styles, nested values, and schema
+types without an unambiguous text representation require additional encoding
+support; use `api raw` explicitly for those cases. Header/path encoding and
+multipart input have separate contracts and remaining implementation work.
+
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so
 preview metadata and transmission use the same bytes within an invocation.

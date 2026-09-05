@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/13"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/14"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -384,6 +384,10 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	})
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
 	item, request, bindingIssues, err := c.filterValidationView(item, request)
+	if err != nil || len(bindingIssues) != 0 {
+		return bindingIssues, err
+	}
+	item, request, bindingIssues, err = c.namedQueryValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, err
 	}

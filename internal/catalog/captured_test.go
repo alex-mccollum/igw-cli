@@ -99,6 +99,22 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				t.Fatal("identical image/module captures have unstable contract identities")
 			}
 			identicalImages[group] = c.ContractHash()
+			for _, tc := range []struct {
+				query string
+				valid bool
+			}{
+				{"sessionId=one&sessionId=two", true},
+				{"sessionId=one%2Ctwo&message=text%20%2B%20%26%20%23%20%25", true},
+				{"message=no-session", false},
+				{"sessionId=one&message=one&message=two", false},
+			} {
+				const route = "/data/perspective/api/v1/sessions"
+				req, _ := http.NewRequest("DELETE", "http://gateway.test"+route+"?"+tc.query, nil)
+				issues, err := c.Validate("DELETE "+route, req)
+				if err != nil || (len(issues) == 0) != tc.valid || req.URL.RawQuery != tc.query {
+					t.Fatalf("captured session array valid=%t: %+v %v", tc.valid, issues, err)
+				}
+			}
 			for _, route := range []string{"/data/api/v1/projects/list", "/data/api/v1/logs"} {
 				for _, query := range []string{"limit=10&offset=0", "limit=invalid", "filter=invalid"} {
 					req, _ := http.NewRequest("GET", "http://gateway.test"+route+"?"+query, nil)

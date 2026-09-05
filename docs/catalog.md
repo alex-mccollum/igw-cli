@@ -570,6 +570,27 @@ no operation. Each run also verified cleanup independently. The
 [qualification matrix](compatibility-matrix.md) distinguishes this added
 evidence from the original reference workflow receipts.
 
+Parser 14 also validates named primitive query values and exploded form arrays
+as complete schema instances. Validator 0.14.0 otherwise omits boolean value
+constraints, uses fixed-size numeric conversions, and splits/revalidates each
+repeated array value independently. The CLI binds the entire array, preserves
+strings exactly, and passes exact `json.Number` values for numeric validation.
+It removes validated query declarations from a private request/model view so
+the remaining header, path, and body checks retain their original roles.
+The same helpers serve filter objects and named values, under the catalog's
+schema-renderer lock. No outgoing query or vendor document changes.
+
+Named values use explicit primitive types; arrays require a primitive item
+type and form/explode serialization. Repeated primitive keys and unsupported
+shapes fail explicitly. Booleans use their JSON literals, integer text uses
+JSON decimal integer syntax, and numbers use JSON number syntax. Numeric text
+is limited to 4096 characters and exponents to -4096..4096 before exact rational
+validation. Empty text remains an actual string value, including when
+`allowEmptyValue` is present; no implicit unused/null/default interpretation is
+performed. OpenAPI defines that field's interaction with schemas as
+[implementation-defined](https://spec.openapis.org/oas/v3.1.1.html#parameter-object).
+These rules leave contract hashes and earlier qualification records unchanged.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

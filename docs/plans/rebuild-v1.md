@@ -1142,6 +1142,44 @@ under the bounded runner (`bin/query-filter-retained-final.log` and
 both image directories match their original successful runs byte for byte.
 The only unrelated working-tree changes remain the user's 17 script modes.
 
+Named-query validation is the next input-contract slice. Inspection of the
+pinned validator found fixed-size numeric conversion, omitted boolean
+constraints, and array validation applied independently to repeated values.
+The initial synthetic regression reproduced 19 failures, including correctly
+encoded reserved text being rejected, repeated primitive values being accepted,
+large/precise numbers being misinterpreted, and missed array constraints.
+The failing result is preserved in `bin/parameter-values-before.log`.
+
+Parser 14 now binds named primitives and whole exploded form arrays, validates
+their complete schemas with exact numeric values, and uses the same private
+validation views as filters. It preserves strings and wire encoding, rejects
+ambiguous repeated primitives, and bounds numeric validation work. Explicit
+JSON boolean/numeric spelling replaces permissive aliases. Remaining path,
+header, other query encodings, structured inputs, and multipart support are
+still required; this slice does not redefine complete input support.
+
+Focused tests passed for OpenAPI 3.0/3.1, exact schema bounds and numeric values,
+whole-array constraints, inherited/overridden declarations, filter/array
+ownership, numeric work limits, and the captured Perspective session-array
+contract on all four default captures. Logs are in
+`bin/parameter-values-{focused,boundaries,captured}.log`. Current-parser fixture
+expectations advance separately; original OpenAPI bytes and live receipts
+remain unchanged. The catalog regressions and actual CLI wire tests passed
+under the race detector. The full unit suite, both CLI builds, command-doc
+consistency, and docs lint also passed under the bounded runner. Logs are in
+`bin/parameter-values-{race,cli-race,unit,build-docs}.log`; the first CLI race
+attempt exposed a test-handler proxy-path mistake, corrected before its passing
+rerun. Legacy smoke built successfully and stopped at `doctor` with exit 2
+because no default Gateway is configured (`bin/parameter-values-smoke.log`).
+Live qualification recorded under parser 13 remains historical evidence; this
+slice has no new live acceptance claim. No host settings or limits changed.
+
+Source inspection also found that the upstream JSON body decoder and subsequent
+canonicalization both convert numbers through floating-point values. The next
+input slice must preserve exact body values during request-specific schema
+validation, including explicit null and directionality constraints, before
+adding multipart construction and the remaining structured input encodings.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
