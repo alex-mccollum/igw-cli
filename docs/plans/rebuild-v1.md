@@ -682,6 +682,42 @@ the default Gateway URL/token configuration is empty; no live smoke success is
 claimed. No Gateway containers or host-setting changes were needed for this
 slice.
 
+The keyboard-layout reference defect now has a constraint-preserving adapter.
+Expanding the two definitions from the retained 8.3.0 config schema produces
+exactly the inline config schema in the retained 8.3.9 document; the comparison
+is recorded in `bin/keyboard-schema-comparison.json`. Parser version 10 and
+policy `ignition-openapi/4` expand eight primary/backup schemas across the four
+reviewed operations. The operation's complete reference graph must match the
+observed acyclic shape, both configs must match and use at most 64 KiB each, and
+no unknown reference, scope, identity, dialect, or `$ref` sibling may be present.
+All assertions and source evidence survive. Descriptions explain the correction
+once per operation while retaining both adjustment pointers.
+
+The complete historical minimum document now passes model resolution with 446
+operations and 334 adjustments. Raw SHA-256 remains
+`de174add02ef1557f603edae7c7802ea298bce35301b9675b5b620f4247b2e9c`,
+document SHA-256 is
+`90ab3938159692f3371fba9f3becde9a899ee28fc339ec906f92fa25152c297d`,
+and contract SHA-256 is
+`8f6578c201fb31c718c778b2b5593e3f44d09bb86199c17f7a5c1991c8567c08`.
+`bin/keyboard-minimum-inspection.json` records the current inspection. This is
+parser evidence, not a replacement for the original unvalidated capture receipt
+or current containment and live workflow qualification.
+
+Regression tests use an extracted vendor keyboard schema and cover all four
+embedding positions, both primary and backup validation, valid nested keys,
+invalid key types/accents/system values, missing fields, forbidden properties,
+newly supplied value constraints, and atomic rejection of unreviewed graphs.
+Both 8.3.9 parser fixtures were requalified with identical hashes, operation
+counts, and adjustment counts. Fresh minimum-version Gateway qualification is
+the next acceptance gate; the complete v1 goal remains active.
+
+Full unit tests, focused catalog race tests, the development CLI build, and
+documentation checks passed under the workstation guard. Unit and race logs
+are in `bin/keyboard-{unit,race}.log`. Legacy live smoke still lacks a configured
+default Gateway; the fresh guarded coordinator run will provide separate
+minimum-version acceptance evidence.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

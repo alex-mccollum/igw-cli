@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const compatibilityPolicy = "ignition-openapi/3"
+const compatibilityPolicy = "ignition-openapi/4"
 
 // Compatibility describes the model adapter, not a claim that original vendor
 // bytes satisfy the OAS schema. Receipts bind this policy to the raw SHA-256.
@@ -56,6 +56,9 @@ func normalizeIgnition(value any) []Adjustment {
 				}
 			}
 			adjustments = append(adjustments, normalizeLegacyParameters(op, key, pointer)...)
+			if dialect := root["jsonSchemaDialect"]; dialect == nil || dialect == "https://spec.openapis.org/oas/3.1/dialect/base" {
+				adjustments = append(adjustments, normalizeKeyboardDefinitions(op, key, pointer)...)
+			}
 			if responses, ok := op["responses"].(map[string]any); ok && len(responses) == 0 {
 				responses["default"] = map[string]any{"description": "Response undocumented by the Gateway; placeholder for parser compatibility only."}
 				adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + "/responses", Rule: "empty-responses"})

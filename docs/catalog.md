@@ -90,7 +90,7 @@ The vendor document needs a narrowly scoped adapter before OAS validation:
   shape and every variant is free of references, anchors, nested identifiers,
   and dialect changes. All pairs must qualify before an operation is adapted.
 
-Policy `ignition-openapi/3` matches the observed generator identity and those
+Policy `ignition-openapi/4` matches the observed generator identity and those
 exact structural shapes, recognizing both the current IA license URL and the
 8.3.0 Gateway-relative `/res/sys/license.html` EULA. Each snapshot binds the
 policy to its original raw SHA-256. It does not grant trust based on the
@@ -114,6 +114,16 @@ sending the operation. `api raw` remains available with explicit `--yes` for
 the DELETE request. These adjustments match only the reviewed route, method,
 and parameter shapes; unknown defects remain errors. The corresponding fields
 are already corrected in the retained 8.3.9 document.
+
+8.3.0 also embeds keyboard-layout `$defs` without rebasing 24 local references.
+The private model expands the supplied definitions at eight config/backupConfig
+positions in four exact resource operations. Expansion produces the same
+inline schema emitted by 8.3.9; it preserves every value constraint. Both
+variants must match, stay within 64 KiB each, and contain only the reviewed
+acyclic reference graph. Unknown references, siblings on `$ref`, identity or
+dialect changes, or extra definition scopes prevent adaptation. Descriptions
+retain the original references and explain the correction. This follows
+[JSON Schema reference and definition semantics](https://json-schema.org/understanding-json-schema/structuring).
 
 Recursive arrays, such as required security-level children, accept finite trees
 and are checked against actual input values. The parser receives a formatted
@@ -391,11 +401,11 @@ not be bundled as a qualified reference.
 
 Ignition 8.3.0 was also captured with the OPC UA whitelist. Its optional path
 parameters and missing cancellation-ID schema have reviewed adapters, but the
-full model still fails on unresolved `#/$defs/key` and `#/$defs/keyVariant`
-references in keyboard-layout schemas. The CLI continues to reject that
-document. The historical capture is not a qualified reference: model resolution,
-current containment, module inventory, and authenticated workflow evidence are
-still required for that image. The complete version/module matrix and additional reference profiles
+keyboard-layout references also required the definition expansion above. The
+full 446-operation model now parses with 334 reported adjustments and unchanged
+raw/document/contract identities. The historical capture is not a qualified
+reference: current containment, module inventory, and authenticated workflow
+evidence are still required for that image. The complete version/module matrix and additional reference profiles
 remain tracked in the [execution plan](plans/rebuild-v1.md). The serialized
 [reference updater](reference-updates.md) has passed local 8.3.9 acceptance;
 remote scheduling still requires a provisioned runner and explicit activation.

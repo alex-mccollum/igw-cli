@@ -16,7 +16,7 @@ original document is fully compliant with OpenAPI.
 parameters with `allowReserved: false` and seven empty response objects.
 The adapter omits that inapplicable path annotation and represents an unknown
 response internally without inventing status codes or payload constraints.
-Current policy `ignition-openapi/3` also qualifies 288 duplicate unused settings
+Current policy `ignition-openapi/4` also qualifies 288 duplicate unused settings
 identifiers across mirrored resource request variants. Reference-bearing or
 otherwise unreviewed variants remain schema errors. The current qualification
 records 638 total adjustments without changing the historical capture receipt.
@@ -35,3 +35,16 @@ captures use version 2 receipts with distinct document and contract hashes.
 Fixture updates must retain the original bytes, image/version provenance, and
 checksums. Review new captures before replacing a fixture; see the qualification
 rules in [catalog docs](../../../docs/catalog.md).
+
+`legacy-keyboard-config.json` is an extracted schema, not a qualified Gateway
+capture. It comes from the `config` property of the POST
+`/data/api/v1/resources/ignition/keyboard_layout` request's array items in the
+historical 8.3.0 OPC UA capture. Original document SHA-256 (raw bytes) is
+`de174add02ef1557f603edae7c7802ea298bce35301b9675b5b620f4247b2e9c`.
+The schema retains vendor annotations, examples, and constraints; only JSON
+formatting changed during extraction. The source identifies the Inductive
+Automation EULA at `/res/sys/license.html`. Tests use reduced surrounding
+operations to verify the four observed embedding positions, strict expansion
+of local definitions, preserved key constraints, and rejection of unreviewed
+reference scopes. Expanding this schema matches the corresponding retained
+8.3.9 schema exactly. This extraction does not establish live 8.3.0 acceptance.

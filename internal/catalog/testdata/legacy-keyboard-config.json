@@ -1,0 +1,303 @@
+{
+  "$defs": {
+    "key": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "example": {
+            "lowercase": "a",
+            "uppercase": "A"
+          },
+          "properties": {
+            "lowercase": {
+              "$ref": "#/$defs/keyVariant"
+            },
+            "uppercase": {
+              "$ref": "#/$defs/keyVariant"
+            }
+          },
+          "required": [
+            "lowercase"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Use one of the specific enum values to add a system key before or after the keys on this row.",
+          "enum": [
+            "BACKSPACE",
+            "SUBMIT",
+            "SHIFT",
+            "CANCEL",
+            "CAPSLOCK",
+            "NUMERIC_LAYOUT"
+          ],
+          "example": "SHIFT",
+          "type": "string"
+        }
+      ]
+    },
+    "keyVariant": {
+      "oneOf": [
+        {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "accents": {
+              "description": "Variants of this key to add after long press or the hold key is toggled.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "alias": {
+              "description": "An alternate presentation string for this key.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "character": {
+              "description": "The actual character (sequence) to submit when this key is pressed.",
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "required": [
+            "character"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "alias": {
+      "description": "A short (2-3 character) string to identify this keyboard, to present on the language selector button",
+      "type": "string"
+    },
+    "id": {
+      "description": "A fixed UUID for the keyboard layout.",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": false,
+      "default": {
+        "BACKSPACE": "Backsp",
+        "CANCEL": "Cancel",
+        "SHIFT": "Shift",
+        "SPACE": "Space",
+        "SUBMIT": "Enter"
+      },
+      "description": "Localized strings to change the text on various system keys",
+      "properties": {
+        "ALPHABET_LAYOUT": {
+          "default": "ABC",
+          "description": "A short string to display while in numeric entry mode, indicating the switch back to standard entry mode.",
+          "type": "string"
+        },
+        "BACKSPACE": {
+          "default": "Backsp",
+          "type": "string"
+        },
+        "CANCEL": {
+          "default": "Cancel",
+          "type": "string"
+        },
+        "CAPSLOCK": {
+          "default": "CAPS",
+          "type": "string"
+        },
+        "NUMERIC_LAYOUT": {
+          "default": "!123",
+          "description": "A short string to display while in normal entry mode, indicating the switch to numeric/symbols entry mode.",
+          "type": "string"
+        },
+        "SHIFT": {
+          "default": "Shift",
+          "type": "string"
+        },
+        "SPACE": {
+          "default": "Space",
+          "type": "string"
+        },
+        "SUBMIT": {
+          "default": "Enter",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": {
+      "description": "The name of this keyboard layout.",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_]+$",
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "example": [
+          {
+            "lowercase": "q",
+            "uppercase": "Q"
+          },
+          {
+            "lowercase": "w",
+            "uppercase": "W"
+          },
+          {
+            "lowercase": {
+              "accents": [
+                "\u00e8",
+                "\u00e9",
+                "\u00ea",
+                "\u00eb",
+                "\u0115"
+              ],
+              "character": "e"
+            },
+            "uppercase": {
+              "accents": [
+                "\u00c8",
+                "\u00c9",
+                "\u00ca",
+                "\u00cb",
+                "\u0114"
+              ],
+              "character": "E"
+            }
+          },
+          {
+            "lowercase": "r",
+            "uppercase": "R"
+          },
+          {
+            "lowercase": "t",
+            "uppercase": "T"
+          },
+          {
+            "lowercase": "y",
+            "uppercase": "Y"
+          },
+          {
+            "lowercase": {
+              "accents": [
+                "\u00f9",
+                "\u00fa",
+                "\u00fb",
+                "\u00fc",
+                "\u0169"
+              ],
+              "character": "u"
+            },
+            "uppercase": {
+              "accents": [
+                "\u00d9",
+                "\u00da",
+                "\u00db",
+                "\u00dc",
+                "\u0168"
+              ],
+              "character": "U"
+            }
+          },
+          {
+            "lowercase": {
+              "accents": [
+                "\u00ec",
+                "\u00ed",
+                "\u00ee",
+                "\u00ef",
+                "\u0129"
+              ],
+              "character": "i"
+            },
+            "uppercase": {
+              "accents": [
+                "\u00cc",
+                "\u00cd",
+                "\u00ce",
+                "\u00cf",
+                "\u0128"
+              ],
+              "character": "I"
+            }
+          },
+          {
+            "lowercase": {
+              "accents": [
+                "\u00f2",
+                "\u00f3",
+                "\u00f4",
+                "\u00f5",
+                "\u00f6"
+              ],
+              "character": "o"
+            },
+            "uppercase": {
+              "accents": [
+                "\u00d2",
+                "\u00d3",
+                "\u00d4",
+                "\u00d5",
+                "\u00d6"
+              ],
+              "character": "O"
+            }
+          },
+          {
+            "lowercase": "p",
+            "uppercase": "P"
+          },
+          "BACKSPACE"
+        ],
+        "items": {
+          "$ref": "#/$defs/key"
+        },
+        "type": "array"
+      },
+      "type": "array"
+    },
+    "supportedLanguages": {
+      "description": "An array of IETF language tags representing the languages this keyboard layout supports.",
+      "items": {
+        "suggestions": {
+          "Arabic": "ar",
+          "Czech": "cs",
+          "Danish": "da",
+          "Dutch": "nl",
+          "English": "en",
+          "French": "fr",
+          "German": "de",
+          "Greek": "el",
+          "Hungarian": "hu",
+          "Italian": "it",
+          "Polish": "pl",
+          "Portuguese": "pt",
+          "Russian": "ru",
+          "Spanish": "es"
+        },
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "title": {
+      "description": "The string to present to the end user when selecting this layout.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "title",
+    "alias",
+    "rows"
+  ],
+  "type": "object"
+}
