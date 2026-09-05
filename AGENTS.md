@@ -28,10 +28,12 @@ Project-local operating notes for `igw-cli`.
   or use an isolated CI runner. Do not fall back to an unbounded invocation.
 - Do not overlap builds, tests, image pulls, or Gateway captures. The bounded
   runner limits Linux child processes; Docker workloads require separate limits.
-- Live Gateway capture remains paused after the 2026-09-05 incident. Before
-  resuming, verify capture admission/cleanup and explicit container memory, swap,
-  CPU, and PID limits without restarting the host. Cleanup may target only the
-  disposable container whose exact ID and ownership label were verified.
+- Live Gateway capture must use the guarded contributor binary. Before using
+  a newly qualified image, run the opt-in lifecycle probe documented in
+  `docs/catalog.md`. It verifies admission, kernel limits, lifetime termination,
+  and cleanup. The 8.3.9 image passed that probe after the 2026-09-05 incident.
+  Cleanup may target only the disposable container whose exact ID and ownership
+  label were verified; leftover qualification containers block new captures.
 
 ## Delivery Rules
 - Keep changes small and commit in logical slices.

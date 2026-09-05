@@ -51,12 +51,22 @@ sandbox or a limit on Windows applications, other users, or Docker's daemon.
 Linux `MemAvailable` does not measure Windows host memory pressure. Jobs that
 delegate work to another service need that service's own controls.
 
-Do not overlap builds/tests with image pulls or Gateway captures. Live Gateway
-capture is paused following the incident below, pending separate verification
-of capture admission, cleanup, and container memory/swap/CPU/PID limits. A
-killed capture process can leave its container running because the daemon is
-outside the scope. Container cleanup must verify the exact disposable
-container ID and ownership label; broad cleanup/prune commands are unsuitable.
+Do not overlap independent builds/tests with image pulls or Gateway captures.
+Compile the capture and lifecycle-test binaries in separate guarded jobs before
+running them. The contributor tool requires the validation scope and verifies
+separate container limits: 2 GiB RAM, no swap, two CPUs, and 256 tasks. An
+exclusive container name prevents concurrent captures; a unique ownership label
+protects cleanup. Its in-container deadline stops the workload after ten
+minutes (plus up to fifteen seconds for termination), even if the client dies.
+The tool removes the container before parsing the large document.
+
+The opt-in lifecycle probe in `docs/catalog.md` passed on the pinned 8.3.9 image:
+kernel limits and exclusive admission were verified, its shortened five-second
+lifetime stopped the container with exit 124 after 6.13 seconds, and exact-ID
+cleanup removed it. This permits resuming guarded captures for that image.
+An interrupted client can still leave a stopped container and data volumes.
+Leftovers block the next capture until ownership and cleanup are reviewed;
+broad cleanup/prune commands are unsuitable.
 
 Repository automation must not start, stop, restart, terminate, unregister, or
 repair WSL distributions or Docker Desktop. An unavailable engine blocks live

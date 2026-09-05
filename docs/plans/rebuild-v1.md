@@ -131,7 +131,8 @@ tests whose asserted behavior contradicts the accepted new contract.
 - [x] Active goal created with the full outcome and explicit acceptance gates.
 - [x] Baseline Go tests/build/race verification.
 - [x] Transport credential isolation and atomic-artifact regressions repaired.
-- [ ] Disposable Gateway capture and real-schema qualification.
+- [x] First disposable Gateway capture and real-schema qualification (8.3.9).
+- [ ] Complete minimum/latest version and module qualification matrix.
 - [x] New typed command/execution architecture introduced alongside legacy CLI.
 - [ ] Complete catalog lifecycle and discovery.
 - [ ] Validated task workflows and end-to-end verification.
@@ -183,6 +184,65 @@ dryRun query forwarding is rejected across call/batch/RPC execution. This
 prevents the older entrypoint from presenting mutations as diagnostics or
 previews while the new entrypoint is being qualified. Real previews are
 available through the development CLI.
+
+Docker's Linux engine is now reachable through docker.exe (29.1.2); the earlier
+engine blocker is resolved. A Go contributor capture tool now starts only
+uniquely labeled, digest-pinned official containers, commissions a fresh Gateway
+with privately copied random credentials, authenticates through the built-in
+IdP, captures a stable `/openapi.json`, records the real Gateway version, and
+removes its own container/volumes. Captures ran against 8.3.9 with image defaults
+and 8.3.0 with an OPC UA whitelist. Existing user containers/volumes were not
+modified.
+
+The 8.3.9 fixture is retained as exact gzip-compressed vendor bytes with capture
+provenance. It exposes 687 operations/587 paths. Real evidence drove fixes for
+SCIM properties named `$ref`, recursive required child arrays, duplicate JSON
+keys before normalization, and quadratic indexing of compact JSON. A reviewed
+adapter records 343 ignored path `allowReserved: false` annotations and seven
+undocumented response placeholders without altering original exports. These
+are model-compatibility adjustments, not proof of every workflow.
+
+Newly observed work before workflow qualification: duplicate schema `$id`
+values in configuration request bodies cause compilation failures; the CLI now
+classifies these as `catalog_schema` rather than invalid user input. Minimum
+8.3.0 needs additional parameter-contract review. Live source examples contain
+startup timestamps, so stable wire-contract hashing must be separated from
+documentation drift. Expanded-document inspection takes about two seconds and
+600 MiB peak RSS locally; lazy per-operation models and cancellation during
+parsing need investigation. Module inventory, full matrix capture, scheduled
+updates, API-token provisioning, and real mutation/verification tests remain
+unfinished. The active goal is still the full v1 outcome.
+
+Workstation recovery follow-up: the incident and protections are recorded in
+`docs/development-safety.md`. After the user approved an 8 GiB validation
+budget, the complete race suite passed with a measured 3.26 GiB cgroup peak.
+The real catalog fixture, compatibility rules, and a CLI regression that blocks
+uncompilable schemas before any mutation are committed. Both CLI builds and
+docs checks passed; the legacy smoke script still lacks a configured Gateway
+token and is not real workflow evidence.
+
+The capture helper now uses an exclusive engine-wide container name with a
+unique ownership label, verifies configured and kernel-applied memory/swap/
+CPU/PID limits, requires the guarded validation scope, and bounds individual
+Docker calls. It wraps the official entrypoint in an in-container deadline and
+removes the container before schema parsing. Unit/race tests cover admission,
+foreign-ID/owner refusal, canceled cleanup, and failed resource checks. A live
+lifecycle probe on the pinned 8.3.9 image verified exclusive admission, applied
+limits, lifetime termination (exit 124 after 6.13 seconds for a five-second
+probe), and removal. No WSL or Docker Desktop restart was used.
+
+The guarded 8.3.9 capture then completed against the same pinned image at
+2026-09-05T13:26:00Z, authenticated successfully, retained all 687 operations
+and the same 350 reviewed adjustments, and removed its container before parsing.
+Its raw SHA-256 is
+`94e537dab80f0c9ba93b8cfe8b9c93754fa6e7e6b2127e6dbbc03500f25e51b3`;
+the local receipt and exact bytes are in `bin/capture-8.3.9-bounded/`.
+The earlier committed fixture remains the reference. Comparing its JSON with
+the new capture found 56 reordered `oneOf` arrays, four reordered `enum` arrays,
+and the two example timestamps. This expands the stable-hashing work beyond
+ignoring documentation fields; reference semantics and ordered input arrays
+must remain intact. This is live capture/lifecycle evidence, not yet
+authenticated CLI workflow acceptance.
 
 ## References
 
