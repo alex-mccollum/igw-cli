@@ -12,6 +12,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/result"
+	"github.com/alex-mccollum/igw-cli/internal/tag"
 )
 
 func (i *invocation) apiCommands() *cobra.Command {
@@ -53,7 +54,27 @@ func (i *invocation) apiCommands() *cobra.Command {
 			return nil
 		}}
 	describe.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
-	group.AddCommand(list, describe, i.requestCommand(false), i.requestCommand(true))
+	capabilities := &cobra.Command{Use: "capabilities", Short: "Check catalog prerequisites for tag workflows", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, metadata, err := i.discovery(cmd)
+			if err != nil {
+				return err
+			}
+			defer c.Close()
+			assessments := make([]catalog.CapabilityAssessment, 0)
+			for _, requirement := range tag.Capabilities() {
+				assessment, err := c.Assess(requirement)
+				if err != nil {
+					return result.Usage(err.Error())
+				}
+				assessments = append(assessments, assessment)
+			}
+			i.output = result.Success(assessments)
+			i.output.Meta = metadata
+			return nil
+		}}
+	capabilities.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
+	group.AddCommand(list, describe, capabilities, i.requestCommand(false), i.requestCommand(true))
 	return group
 }
 

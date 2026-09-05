@@ -94,7 +94,7 @@ type referenceExport struct {
 	FileCount int    `json:"fileCount"`
 }
 
-// discovery is deliberately reachable only from API list/describe. References
+// discovery is deliberately reachable only from API discovery commands. References
 // are never installed in the target cache or passed to request execution.
 func (i *invocation) discovery(cmd *cobra.Command) (*catalog.Catalog, result.Metadata, error) {
 	if !cmd.Flags().Changed("reference") {

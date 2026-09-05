@@ -44,6 +44,30 @@ func (s *Scope) Close() {
 	s.snapshot, s.token = nil, ""
 }
 
+// Require checks every workflow prerequisite against this invocation's one
+// catalog before any operation runs. It performs no HTTP or filesystem I/O.
+func (s *Scope) Require(requirement catalog.Capability) result.Result {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.snapshot == nil {
+		return result.Failure(result.Usage("workflow scope is closed"))
+	}
+	if err := s.ctx.Err(); err != nil {
+		return result.Failure(err)
+	}
+	assessment, err := s.snapshot.Catalog.Assess(requirement)
+	if err != nil {
+		return result.Failure(result.Usage(err.Error()))
+	}
+	out := result.Success(assessment)
+	if assessment.Status != "advertised" {
+		out = result.Failure(&result.Problem{Kind: "capability", Code: 2, Message: "the selected Gateway catalog lacks required workflow operations; inspect api capabilities", Details: assessment})
+	}
+	target, metadata := s.target, s.snapshot.Metadata
+	out.Meta = result.Metadata{Target: &target, Catalog: &metadata, Stale: s.snapshot.Stale, Warnings: append([]string(nil), s.snapshot.Warnings...)}
+	return out
+}
+
 func (s *Scope) Run(input Request) result.Result {
 	s.mu.Lock()
 	defer s.mu.Unlock()

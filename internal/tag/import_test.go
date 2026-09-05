@@ -9,13 +9,15 @@ import (
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
+	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 )
 
 type runFunc func(execute.Request) result.Result
 
-func (f runFunc) Run(r execute.Request) result.Result { return f(r) }
+func (f runFunc) Run(r execute.Request) result.Result      { return f(r) }
+func (f runFunc) Require(catalog.Capability) result.Result { return result.Success(nil) }
 func tagSource(t *testing.T, body string) *artifact.Upload {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "input.json")

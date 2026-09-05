@@ -22,8 +22,10 @@ Examples for this entrypoint are maintained in the development section of
 - `spec sync`, `inspect`, `import`, `export`, and `diff` for full documents.
 - `spec references list`, `inspect`, and `export` for qualified offline bundles.
 - `api list`, `describe`, and `request` using a selected target's catalog.
-- `api list` and `describe --reference NAME_OR_DIRECTORY` for explicit offline
-  discovery without target configuration or credentials.
+- `api capabilities` for the advertised or missing routes required by tag
+  workflows.
+- `api list`, `describe`, and `capabilities --reference NAME_OR_DIRECTORY` for
+  explicit offline discovery without target configuration or credentials.
 - `api raw` for explicit requests without schema validation.
 - `gateway doctor`, which only reads Gateway information.
 - `resource types`, `describe`, `list`, `get`, and named-resource
@@ -31,7 +33,7 @@ Examples for this entrypoint are maintained in the development section of
 - `project list`, `get`, `inspect`, `export`, and verified ZIP `import`, with a
   reviewed content digest required for replacement.
 - `tag export` and `import`, with explicit collision policies, import-report
-  checks, and property readback for supported JSON imports.
+  checks, catalog prerequisites, and property readback for supported JSON imports.
 - `backup export`, filtered `logs list`, and `logs download` with bounded,
   atomic artifacts.
 - `diagnostics bundle status`, `collect`, and `download`, with bounded polling

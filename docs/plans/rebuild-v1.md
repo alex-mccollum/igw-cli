@@ -830,6 +830,44 @@ token are unconfigured; no live smoke success is claimed. Logs are in
 `bin/identity-policy-{docs,smoke}.log`. No containers or host-setting changes were
 needed for this identity slice.
 
+Tag workflow capability definitions now own the exact API prerequisites used
+by both discovery and typed execution. `api capabilities` reports `advertised`
+or `unavailable`, required/missing operation keys, and the selected catalog's
+provenance. It supports target-cache offline inspection and explicit qualified
+references without assigning them live authority. These first definitions cover
+tag export, acknowledgement-only import modes, and verified JSON import;
+availability reporting for other workflow families remains to be added.
+
+`execute.Scope.Require` checks prerequisites against the invocation's shared
+snapshot without an operation request. Missing operations return `capability`/2
+with structured guidance. Verified JSON imports and their previews require both
+import and export, preventing a write when the readback route is absent.
+XML/CSV and Rename/Ignore still require only import and report acknowledgement
+without independent verification. Tag export now uses a typed workflow with the
+same requirement check and existing atomic streaming behavior. Generic API
+requests retain their explicit method/path operation semantics.
+
+The qualifier still requires the original complete project/tag check set.
+It must next record actual supported scopes and verify refusal for unavailable
+tag workflows on 8.3.0, while retaining full tag round trips for 8.3.9. No missing
+API has been counted as a passing round trip, no undocumented fallback was
+introduced, and no new live acceptance is claimed for this slice.
+
+The full unit suite and focused catalog/scope/tag/CLI race checks passed under
+the bounded runner. Tests cover exact operation keys, closed/canceled scopes,
+all import format/collision-policy prerequisite choices, no dispatch or artifact
+on missing prerequisites, preserved opaque acknowledgement and streamed export,
+human guidance, target-cache offline discovery, and isolated reference selection.
+Both real captured Gateway documents yield the expected tag capabilities. The
+built development CLI also successfully inspected capabilities from the bundled
+8.3.9 reference. Logs are in `bin/capability-{unit,race,build-docs}.log`, with
+compiled-CLI output in `bin/capabilities-reference.json`.
+
+Both binaries built, and command-doc consistency and docs lint passed. Legacy
+smoke stopped at `doctor` with exit 2 because the default Gateway remains
+unconfigured (`bin/capability-smoke.log`). These local checks ran serially with
+the existing memory limits; no container or host-setting change was needed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

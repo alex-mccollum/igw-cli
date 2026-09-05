@@ -245,7 +245,8 @@ The development CLI embeds this complete bundle. `spec references list` exposes
 the available selectors; `inspect REFERENCE` checks every payload and reports
 the full manifest; `export REFERENCE --out NEW_DIRECTORY` preserves all ten
 original files. A selector can be a bundled name or an explicit local directory.
-`api list` and `api describe --reference REFERENCE` use the same current parser
+`api list`, `api describe`, and `api capabilities --reference REFERENCE` use the
+same current parser
 and operation model as Gateway discovery, after checksum and identity checks.
 All reference paths work without Gateway configuration, credentials, cache, or
 network. They return `meta.reference` with explicit source kind, origin, image,
@@ -262,6 +263,14 @@ inspection, export, and API discovery using the manifest's recorded contract
 hash and policy. A reference pin never becomes a live-target pin implicitly.
 Export verifies the reviewed identity
 again before publishing and refuses existing directories.
+
+`api capabilities` currently derives tag workflow prerequisites from exact
+operation keys in the selected document. It reports `advertised` or `unavailable`
+with required and missing operations, without inferring support from version
+labels. Typed tag workflows enforce these same definitions against their shared
+invocation snapshot before executing. A missing export route prevents a verified
+JSON import before any write. This is a catalog prerequisite check, not renewed
+workflow qualification or a claim about Gateway permissions and instance data.
 
 References never populate a target cache and the flag is unavailable on request
 commands, including previews. Invalid or unavailable references fail without

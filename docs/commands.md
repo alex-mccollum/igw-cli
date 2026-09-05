@@ -32,6 +32,7 @@ bin/igw-next spec references inspect ignition-8.3.9-defaults --json
 bin/igw-next spec references export ignition-8.3.9-defaults --out ./reference-8.3.9 --json
 bin/igw-next api list --reference ignition-8.3.9-defaults --search gateway --json
 bin/igw-next api describe 'GET /data/api/v1/gateway-info' --reference ./reference-8.3.9 --json
+bin/igw-next api capabilities --reference ignition-8.3.9-defaults --json
 ```
 
 `REFERENCE` accepts a bundled selector or a local bundle directory; prefix a
@@ -39,7 +40,8 @@ relative directory with `./` if it has the same name as a bundled selector.
 Export requires a new directory and preserves the complete evidence bundle,
 including exact compressed vendor JSON. It never replaces a previous bundle.
 `--spec-pin SHA256` checks the reference contract for inspection, export, and API
-discovery. `--reference` is available only on `api list` and `api describe`.
+discovery. `--reference` is available only on `api list`, `api describe`, and
+`api capabilities`.
 These commands report provenance in `meta.reference`, with no target or target
 catalog receipt. They do not populate the Gateway cache or establish authority
 for a request. An invalid reference fails explicitly. See `docs/catalog.md` for
@@ -154,12 +156,30 @@ Tag imports default to the `Abort` collision policy and verify supported JSON
 inputs through independent tag exports:
 
 ```bash
+bin/igw-next api capabilities --json
 bin/igw-next tag export --provider default --path Example --out tags.json --json
 bin/igw-next tag import --provider default --in tags.json --dry-run --json
 bin/igw-next tag import --provider default --in tags.json --yes --json
 bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --dry-run --json
 bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --yes --json
 ```
+
+`api capabilities` currently assesses tag workflow prerequisites from the
+selected catalog, including offline snapshots and explicit references. Each
+entry reports its required and missing operation keys with status `advertised`
+or `unavailable`. `advertised` means the routes exist in that document; request
+validation and Gateway permissions are still checked when the workflow runs.
+Discovery itself exits 0 even when a workflow is unavailable; inspect its status.
+No version label is used to infer support. The captured 8.3.0 Gateway lacks both
+tag transfer routes; the captured 8.3.9 Gateway advertises them.
+
+Tag workflows refuse missing prerequisites with `error.kind: "capability"`,
+exit 2, missing-operation details, and catalog provenance before sending an
+operation or creating a download. JSON imports with Abort, Overwrite, or
+MergeOverwrite require both import and export, including during preview, so a
+missing readback route is detected before a write. XML/CSV and Rename/Ignore
+retain their explicit acknowledgement-only behavior and require the import
+route. This check does not introduce a fallback to an undocumented API.
 
 Provider defaults to `default`; `--path` is relative to that provider. Export
 defaults to JSON, recursively including children and UDT definitions; use

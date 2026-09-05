@@ -89,7 +89,7 @@ func TestReferenceCommandsWorkWithoutGatewayAndPreserveEvidence(t *testing.T) {
 	}
 }
 
-// Two real-document parses qualify both embedded and independently exported
+// Real-document parses qualify both embedded and independently exported
 // selection. This is serial within the package to bound schema-model memory.
 func TestAPIDiscoveryUsesQualifiedReferenceWithoutTarget(t *testing.T) {
 	bundle := reference.Select(builtinReference)
@@ -104,6 +104,7 @@ func TestAPIDiscoveryUsesQualifiedReferenceWithoutTarget(t *testing.T) {
 	for _, args := range [][]string{
 		{"api", "list", "--reference", builtinReference, "--search", "gateway-info"},
 		{"api", "describe", "GET /data/api/v1/gateway-info", "--reference", dir},
+		{"api", "capabilities", "--reference", builtinReference},
 	} {
 		app, out, _ := testApp(t, nil)
 		forbidReferenceRuntime(t, &app)
@@ -134,6 +135,7 @@ func TestReferenceFailuresNeverFallBackToGateway(t *testing.T) {
 	for _, args := range [][]string{
 		{"api", "list", "--reference", ""},
 		{"api", "list", "--reference", "missing-reference"},
+		{"api", "capabilities", "--reference", "missing-reference"},
 		{"api", "list", "--reference", builtinReference, "--spec-pin", strings.Repeat("0", 64)},
 		{"api", "describe", "ignored", "--reference", builtinReference, "--spec-pin", "malformed"},
 		{"spec", "references", "inspect", builtinReference, "--spec-pin", strings.Repeat("0", 64)},
@@ -179,6 +181,7 @@ func TestReferenceCancellationAndHumanProvenance(t *testing.T) {
 		{"spec", "references", "inspect", builtinReference},
 		{"spec", "references", "export", builtinReference, "--out", filepath.Join(t.TempDir(), "canceled")},
 		{"api", "list", "--reference", builtinReference},
+		{"api", "capabilities", "--reference", builtinReference},
 	} {
 		app, out, _ := testApp(t, nil)
 		forbidReferenceRuntime(t, &app)

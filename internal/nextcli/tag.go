@@ -2,9 +2,7 @@ package nextcli
 
 import (
 	"context"
-	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,30 +15,24 @@ import (
 
 func (i *invocation) tagCommands() *cobra.Command {
 	group := &cobra.Command{Use: "tag", Short: "Export tags and import with explicit collision policies"}
-	var provider, path, format, out string
-	var recursive, udts, overwrite bool
+	var download tag.ExportRequest
 	export := &cobra.Command{Use: "export", Short: "Stream a complete tag export to an atomic file", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
-		if err := tag.ValidateTarget(provider, path); err != nil {
+		if err := download.Validate(); err != nil {
 			return err
 		}
-		if format != "json" && format != "xml" {
-			return result.Usage("tag export type must be json or xml")
-		}
-		query := url.Values{"provider": {provider}, "type": {format}, "recursive": {strconv.FormatBool(recursive)}, "includeUdts": {strconv.FormatBool(udts)}}
-		if path != "" {
-			query.Set("path", path)
-		}
-		return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/tags/export", Query: query, Out: out, Overwrite: overwrite})
+		return i.runWorkflow(cmd, false, func(ctx context.Context, scope *execute.Scope) result.Result {
+			return tag.Export(scope, download)
+		})
 	}}
 	f := export.Flags()
-	f.StringVar(&provider, "provider", "default", "Tag provider")
-	f.StringVar(&path, "path", "", "Root tag path within the provider")
-	f.StringVar(&format, "type", "json", "Export format: json or xml")
-	f.StringVar(&out, "out", "", "Destination file")
+	f.StringVar(&download.Provider, "provider", "default", "Tag provider")
+	f.StringVar(&download.Path, "path", "", "Root tag path within the provider")
+	f.StringVar(&download.Format, "type", "json", "Export format: json or xml")
+	f.StringVar(&download.Out, "out", "", "Destination file")
 	_ = export.MarkFlagRequired("out")
-	f.BoolVar(&recursive, "recursive", true, "Include child tags")
-	f.BoolVar(&udts, "include-udts", true, "Include user-defined types")
-	f.BoolVar(&overwrite, "overwrite", false, "Replace an existing output file after the complete download")
+	f.BoolVar(&download.Recursive, "recursive", true, "Include child tags")
+	f.BoolVar(&download.IncludeUDTs, "include-udts", true, "Include user-defined types")
+	f.BoolVar(&download.Overwrite, "overwrite", false, "Replace an existing output file after the complete download")
 	var input string
 	var change tag.ImportRequest
 	importCmd := &cobra.Command{Use: "import", Short: "Import tags and verify supported JSON workflows", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {

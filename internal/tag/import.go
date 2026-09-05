@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
+	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
 	"github.com/alex-mccollum/igw-cli/internal/result"
@@ -17,6 +18,7 @@ import (
 
 type Runner interface {
 	Run(execute.Request) result.Result
+	Require(catalog.Capability) result.Result
 }
 type ImportRequest struct {
 	Provider, Path, Format, CollisionPolicy string
@@ -96,6 +98,9 @@ func Import(ctx context.Context, runner Runner, input ImportRequest) result.Resu
 	if input.Source == nil || input.Source.Bytes() == 0 {
 		return result.Failure(result.Usage("a nonempty tag import file is required"))
 	}
+	if required := runner.Require(importCapability(input.verifiedJSON())); !required.OK {
+		return required
+	}
 	evidence := Evidence{Provider: input.Provider, Path: input.Path, Format: input.Format, CollisionPolicy: input.CollisionPolicy, UploadSHA256: input.Source.SHA256()}
 	var expected Document
 	if input.Format == "json" {
@@ -127,7 +132,7 @@ func Import(ctx context.Context, runner Runner, input ImportRequest) result.Resu
 	if input.Path != "" {
 		query.Set("path", input.Path)
 	}
-	written := runner.Run(execute.Request{Operation: "POST /data/api/v1/tags/import", Query: query, Upload: input.Source, ContentType: "application/octet-stream", DryRun: input.DryRun, Yes: input.Yes})
+	written := runner.Run(execute.Request{Operation: importOperation, Query: query, Upload: input.Source, ContentType: "application/octet-stream", DryRun: input.DryRun, Yes: input.Yes})
 	if input.DryRun {
 		if written.OK {
 			preview, ok := written.Data.(execute.Preview)
@@ -156,7 +161,7 @@ func Import(ctx context.Context, runner Runner, input ImportRequest) result.Resu
 		}
 		return failed(written, evidence, "tag_import", "Gateway reported tag import failures; inspect current tags before retrying", outcome)
 	}
-	if input.Format != "json" || input.CollisionPolicy == "Rename" || input.CollisionPolicy == "Ignore" {
+	if !input.verifiedJSON() {
 		written.Data = evidence
 		written.Outcome = "accepted"
 		written.Meta.Verification = "unavailable"
@@ -168,7 +173,7 @@ func Import(ctx context.Context, runner Runner, input ImportRequest) result.Resu
 		if input.Path != "" {
 			path = strings.TrimRight(input.Path, "/") + "/" + path
 		}
-		read := runner.Run(execute.Request{Operation: "GET /data/api/v1/tags/export", Query: url.Values{"provider": {input.Provider}, "type": {"json"}, "path": {path}, "recursive": {"true"}, "includeUdts": {"true"}}, MaxBodyBytes: MaxJSONBytes})
+		read := runner.Run(execute.Request{Operation: exportOperation, Query: url.Values{"provider": {input.Provider}, "type": {"json"}, "path": {path}, "recursive": {"true"}, "includeUdts": {"true"}}, MaxBodyBytes: MaxJSONBytes})
 		if !read.OK {
 			out := failed(written, evidence, "verification", "tag import was acknowledged but readback failed; inspect tags before retrying", "uncertain")
 			out.Error.Details = map[string]any{"readback": read.Error}

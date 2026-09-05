@@ -265,6 +265,19 @@ func human(out io.Writer, r result.Result) error {
 		}
 		return nil
 	}
+	if capabilities, ok := r.Data.([]catalog.CapabilityAssessment); ok {
+		for _, item := range capabilities {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n", item.ID, item.Status, item.Description); err != nil {
+				return err
+			}
+			for _, operation := range item.MissingOperations {
+				if _, err := fmt.Fprintf(out, "  missing: %s\n", operation); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 	if r.Outcome == "preview" {
 		if _, err := fmt.Fprintln(out, "Preview: no proposed request was sent."); err != nil {
 			return err
