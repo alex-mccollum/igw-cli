@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -17,15 +18,28 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "resolve" {
+	var command func(context.Context, []string, io.Writer, io.Writer) int
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "resolve":
+			command = runResolve
+		case "qualify":
+			command = runQualify
+		}
+	}
+	if command != nil {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		code := runResolve(ctx, os.Args[2:], os.Stdout, os.Stderr)
+		code := command(ctx, os.Args[2:], os.Stdout, os.Stderr)
 		stop()
 		os.Exit(code)
 	}
 	var cfg testgateway.Config
 	var out, modules string
 	var timeout time.Duration
+	flag.Usage = func() {
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: igw-capture --image DIGEST --out DIR [capture options]\n       igw-capture resolve --tag 8.3 --out DIR\n       igw-capture qualify --help\n\nCapture options:")
+		flag.PrintDefaults()
+	}
 	flag.StringVar(&cfg.Docker, "docker", "docker", "Docker executable")
 	flag.StringVar(&cfg.Image, "image", "", "Pre-pulled official image pinned by digest")
 	flag.StringVar(&modules, "modules", "", "Comma-separated first-party module whitelist; empty uses image defaults")

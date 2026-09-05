@@ -537,6 +537,33 @@ manifests, incomplete directories, non-regular files, and canceled reads; full
 unit checks, focused race checks, all builds, and docs checks passed. This gives
 the update packager a reusable check against the image ID observed by Docker.
 
+The contributor now assembles independently distributable `igw/reference/v1`
+bundles with `igw-capture qualify`. Its versioned policy requires matching image
+configuration, test-binary checksum, current parser/contract, observed module
+inventory, owned cleanup, and the complete named positive/negative workflow
+checks. It reparses exact capture/baseline documents, compares them through the
+catalog core, preserves exact compressed vendor data and original acceptance
+receipts, and publishes a checksummed manifest last into a new directory.
+The offline reader verifies fixed payload paths, checksums, gzip limits, and
+vendor identities. Qualified references cannot establish a live target's
+contract or authorize writes; checksums do not authenticate a publisher.
+
+Fresh acceptance on the same 8.3.9 image passed all four runs using binary
+`63aaa19c9a60f3872419f3cadbd75102e21f440b0863f72d32fb7f67c560a800`:
+10 lifecycle checks in 10.25 seconds, 27 resource checks in 135.40 seconds,
+38 project/tag checks in 171.56 seconds, and 23 operational checks in 115.90
+seconds. All three workflow inventories match the capture's 32-module hash,
+and all cleanup checks passed. The first reference is retained in
+`internal/reference/bundles/ignition-8.3.9-defaults` (about 792 KiB), with the
+same 687-operation contract and explicit workflow qualification scopes.
+The local assembly result is `bin/reference-qualification.json`. Full unit
+checks, focused reference/builder/contributor race tests, all builds, and docs
+checks passed. Tests reject mismatched/partial receipts, absent containment,
+false completion of a partial tag import, corrupt or substituted payloads,
+path traversal, incomplete publication, and replacement of a previous bundle.
+Scheduled execution, runtime reference-selection commands, and the complete
+minimum/latest/module matrix remain required for the full v1 goal.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

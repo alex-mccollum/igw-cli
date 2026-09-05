@@ -141,6 +141,64 @@ numbers and avoiding redundant full-document copies.
 
 ## Contributor capture
 
+### Qualified reference assembly
+
+`igw-capture qualify` assembles a local `igw/reference/v1` directory from a
+capture, saved registry resolution, lifecycle receipt, and the three dedicated
+workflow receipts. It hashes the supplied test executable and requires every
+receipt to identify that exact binary and image configuration. Workflow
+receipts must use the current parser, match the capture's contract and observed
+module inventory, come from a disposable loopback Gateway, and retain all
+required positive and negative checks. Failed/partial outcomes are necessary
+for tests such as stale-signature refusal and partial tag imports.
+
+```sh
+bash scripts/bounded-run.sh -- bin/igw-capture qualify \
+  --resolution bin/new-release-resolution \
+  --capture bin/new-8.3.9-capture \
+  --lifecycle bin/new-lifecycle-receipt.json \
+  --resources bin/api-acceptance.json \
+  --transfers bin/project-tag-workflows.json \
+  --operations bin/operational-workflows.json \
+  --test-binary bin/testgateway.test \
+  --baseline internal/catalog/testdata/ignition-8.3.9-defaults/openapi.json.gz \
+  --out bin/new-qualified-reference
+```
+
+Assembly performs no network calls or container operations. It reparses the
+exact captured and baseline documents, verifies capture identities, and uses
+the shared catalog comparison. Its versioned policy currently qualifies ACTIVE
+first-party modules that are enabled on startup without pending upgrades.
+Other deployment states require separate evidence and a reviewed policy change.
+
+The output preserves the exact vendor document in `openapi.json.gz`, original
+capture/workflow/lifecycle receipts, and exact registry manifests. The decoded
+resolution receipt is canonically re-encoded from the same validated input.
+`reference.json` records identities, image/module metadata, parser version,
+comparison, explicit qualification scopes, and each payload's size/SHA-256.
+All inputs must qualify before the new output directory is created. Payloads
+are published atomically and the manifest is last; incomplete directories have
+no usable manifest. Existing bundles are never replaced. The completed bundle
+is read back through its public loader before assembly reports success.
+
+`internal/reference.Read` verifies the complete fixed payload list and checksums
+offline. `OpenCatalog` also checks gzip integrity, the decompression bound, and
+the exact vendor identities after parsing with the current parser. Checksums
+establish integrity, not publisher authenticity; use a trusted repository or
+release channel. A reference never establishes a live target's contract or
+authorizes writes. Parser work retains the bounded-runner requirement.
+
+The first retained bundle is
+`internal/reference/bundles/ignition-8.3.9-defaults`. It contains 32 observed
+modules, the 687-operation contract, and 98 recorded checks from one binary:
+10 lifecycle, 27 resource, 38 project/tag, and 23 operational checks. It is about
+792 KiB. Qualification covers the recorded basic-schedule, disabled-project,
+memory-JSON-tag, and backup/log/diagnostics workflows; it does not qualify every
+request schema or prove general backward compatibility. The runtime commands
+for selecting bundled references and scheduled qualification remain pending.
+
+### Resolve and capture an image
+
 Resolve the official `8.3` channel or an explicit `8.3.<patch>` release before
 pulling an update candidate:
 

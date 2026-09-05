@@ -1,0 +1,462 @@
+{
+  "version": 2,
+  "kind": "resource-workflows",
+  "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+  "imageId": "sha256:f28a0c5a7a85dab32f0f0a04a80bc4dfd00a27de12f899bef979ffb9cce967fd",
+  "platform": "linux/amd64",
+  "moduleInventory": {
+    "version": 1,
+    "observedAt": "2026-09-05T16:11:27.345101038Z",
+    "sha256": "8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd",
+    "modules": [
+      {
+        "id": "com.inductiveautomation.alarm-notification",
+        "name": "Alarm Notification",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.connectors.kafka",
+        "name": "Kafka Connector",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.eam",
+        "name": "Enterprise Administration",
+        "version": "5.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.eventstream",
+        "name": "Event Streams",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.historian",
+        "name": "Historian Core",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.historian.sql",
+        "name": "SQL Historian",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.jdbc.mariadb",
+        "name": "MariaDB JDBC Driver",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.jdbc.mssql",
+        "name": "MSSQL JDBC Driver",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.jdbc.postgresql",
+        "name": "PostgreSQL JDBC Driver",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua",
+        "name": "OPC-UA",
+        "version": "10.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.ablegacy",
+        "name": "Allen-Bradley Driver",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.bacnet",
+        "name": "BACnet Driver",
+        "version": "3.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.dnp3",
+        "name": "Legacy DNP3 Driver",
+        "version": "5.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.dnp3v2",
+        "name": "DNP3 Driver",
+        "version": "2.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.iec61850",
+        "name": "IEC 61850 Driver",
+        "version": "2.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.logix",
+        "name": "Logix Driver",
+        "version": "6.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.micro800",
+        "name": "Micro800 Driver",
+        "version": "2.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.mitsubishi",
+        "name": "Mitsubishi Driver",
+        "version": "2.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.modbus",
+        "name": "Modbus Driver",
+        "version": "8.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.omron",
+        "name": "Omron Driver",
+        "version": "5.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.siemens",
+        "name": "Siemens Drivers",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.siemens-symbolic",
+        "name": "Siemens Enhanced Driver",
+        "version": "1.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.opcua.drivers.tcpudp",
+        "name": "UDP and TCP Drivers",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.perspective",
+        "name": "Perspective",
+        "version": "3.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.phone-notification",
+        "name": "Voice Notification",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.reporting",
+        "name": "Reporting",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.sfc",
+        "name": "SFC",
+        "version": "6.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.sms-notification",
+        "name": "SMS Notification",
+        "version": "7.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.sqlbridge",
+        "name": "SQL Bridge",
+        "version": "11.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.symbol-factory",
+        "name": "Symbol Factory",
+        "version": "8.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.vision",
+        "name": "Vision",
+        "version": "12.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      },
+      {
+        "id": "com.inductiveautomation.webdev",
+        "name": "WebDev",
+        "version": "6.3.9 (b2026082511)",
+        "collection": "healthy",
+        "state": "ACTIVE",
+        "onStartup": "enabled",
+        "shouldUpgrade": false
+      }
+    ]
+  },
+  "gatewayVersion": "8.3.9 (b2026082511)",
+  "testBinarySha256": "63aaa19c9a60f3872419f3cadbd75102e21f440b0863f72d32fb7f67c560a800",
+  "startedAt": "2026-09-05T16:10:22.69300492Z",
+  "finishedAt": "2026-09-05T16:12:38.073218018Z",
+  "catalog": {
+    "version": 2,
+    "target": {
+      "profile": "",
+      "url": "http://127.0.0.1:1749"
+    },
+    "source": "http://127.0.0.1:1749/openapi.json",
+    "sourceKind": "gateway",
+    "fetchedAt": "2026-09-05T16:11:29.746837768Z",
+    "verifiedAt": "2026-09-05T16:11:29.746837849Z",
+    "rawSha256": "c46b34406ae66ebd9a9823087c11d35599d9c745a1bebfe8ea249d478b496fda",
+    "documentSha256": "68ddfdf229236bc5af982d9276b2454585af8dc2dbbe9b9c53ae8a4fdc946b9d",
+    "contractSha256": "fce0593c41f1d0ae31c0647c34bb10ccebf6f44958c3c55913c887654ff9ccbc",
+    "contractPolicy": "igw-contract/1",
+    "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/8",
+    "compatibility": {
+      "policy": "ignition-openapi/2",
+      "adjustments": 638,
+      "rules": {
+        "empty-responses": 7,
+        "path-allow-reserved-false": 343,
+        "resource-unused-duplicate-id": 288
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "authenticated-catalog",
+      "outcome": "completed"
+    },
+    {
+      "name": "anonymous-denied",
+      "outcome": "failed",
+      "httpStatus": 403
+    },
+    {
+      "name": "bare-key-denied",
+      "outcome": "failed",
+      "httpStatus": 403
+    },
+    {
+      "name": "preview-create",
+      "outcome": "preview"
+    },
+    {
+      "name": "absence-after-preview",
+      "outcome": "failed",
+      "httpStatus": 404
+    },
+    {
+      "name": "create",
+      "outcome": "accepted",
+      "httpStatus": 200
+    },
+    {
+      "name": "verify-created",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "update",
+      "outcome": "accepted",
+      "httpStatus": 200
+    },
+    {
+      "name": "verify-updated",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "stale-signature",
+      "outcome": "failed",
+      "httpStatus": 500
+    },
+    {
+      "name": "verify-conflict-unchanged",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "delete",
+      "outcome": "accepted",
+      "httpStatus": 200
+    },
+    {
+      "name": "verify-deleted",
+      "outcome": "failed",
+      "httpStatus": 404
+    },
+    {
+      "name": "resource-types",
+      "outcome": "completed"
+    },
+    {
+      "name": "resource-describe",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-list",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-preview-create",
+      "outcome": "preview"
+    },
+    {
+      "name": "resource-preview-absence",
+      "outcome": "failed",
+      "httpStatus": 404
+    },
+    {
+      "name": "resource-create",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-get",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-duplicate-create",
+      "outcome": "failed"
+    },
+    {
+      "name": "resource-preview-update",
+      "outcome": "preview"
+    },
+    {
+      "name": "resource-update",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-stale-update",
+      "outcome": "failed"
+    },
+    {
+      "name": "resource-preview-delete",
+      "outcome": "preview"
+    },
+    {
+      "name": "resource-delete",
+      "outcome": "completed",
+      "httpStatus": 200
+    },
+    {
+      "name": "resource-verified-deleted",
+      "outcome": "failed",
+      "httpStatus": 404
+    }
+  ],
+  "cleanup": true,
+  "passed": true
+}
