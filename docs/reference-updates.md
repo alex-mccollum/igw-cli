@@ -154,10 +154,10 @@ release channel. Update the baseline intentionally. Preserve prior bundles;
 never replace an old manifest with newly generated evidence. Shipping bytes and
 promoting a new default are separate reviewed release actions.
 
-The coordinator supports both reviewed module profiles. Fresh complete
-core-profile workflow qualification remains required for the
-full v1 compatibility matrix; selecting a tag alone does not
-prove that release is supported. Read the progress evidence in
+The coordinator supports both reviewed module profiles. The initial minimum/
+latest matrix has complete local qualification for both profiles; selecting an
+additional tag alone does not prove that release is supported. Read the progress
+evidence in
 `docs/plans/rebuild-v1.md` before making compatibility or schedule-activation
 claims.
 
@@ -224,7 +224,25 @@ captures. All six scopes are qualified, with no unavailable scope. Cleanup and
 an independent empty-container query passed. Original evidence is retained in
 `internal/referencebuild/testdata/ignition-8.3.9-policy2/`.
 
-Both default-module cells now have current-policy evidence. Smaller module
-profiles and remote schedule activation remain unverified. The
-[compatibility matrix](compatibility-matrix.md) distinguishes these boundaries
+Both default-module cells have current-policy evidence. The subsequent core
+qualification completes the initial module matrix; remote schedule activation
+remains unverified. The [compatibility matrix](compatibility-matrix.md) distinguishes these boundaries
 from general API and version support.
+
+The `core-opcua` pipelines both passed from clean `28d7334` using acceptance
+executable SHA-256
+`9c1013b4c4afb5eca02a171c0ab4e02e979172b5c3005a0cb3121fff9cee6ded`.
+On 2026-09-05, 8.3.9 ran from 19:27:41 to 19:37:18 UTC (576.77 seconds),
+and 8.3.0 from 19:38:51 to 19:45:51 UTC (420.24 seconds). Each passed all
+18 stages and recorded the same whitelist in capture, lifecycle, and every
+workflow receipt. The inventories contain one active/enabled OPC UA module and
+31 inactive/disabled modules; all 32 observations remain in each reference.
+
+The core catalogs contain 454 operations on 8.3.9 and 446 on 8.3.0. Their
+10/27/39/23 and 10/27/27/23 check sets respectively qualify the same available
+workflow scopes as each version's default profile. The three absent-tag checks
+on 8.3.0 record `capability`/2 and zero operation requests. Both runs verified
+cleanup; independent Docker queries found no remaining qualification container.
+No host recovery or limit changes occurred. Exact original run receipts and
+complete candidates are retained under
+`internal/referencebuild/testdata/ignition-8.3.{0,9}-core/`.

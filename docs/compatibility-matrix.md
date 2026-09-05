@@ -5,12 +5,18 @@ policy, and set of exercised workflows. A version label alone does not establish
 support for every API or module combination. The target Gateway's current
 catalog determines which APIs the CLI can use.
 
-## Default first-party modules
+## Qualified version and module cells
 
-| Gateway | Observed modules | Operations | Current qualification | Tag transfer workflows |
-| --- | ---: | ---: | --- | --- |
-| 8.3.0 | 32 active | 672 | Policy 2 passed all 18 pipeline stages | APIs absent; import, preview, and export refuse before dispatch |
-| 8.3.9 | 32 active | 687 | Policy 2 passed all 18 pipeline stages | Advertised; all 39 project/tag checks passed |
+| Gateway | Profile | Observed modules | Operations | Tag transfer workflows |
+| --- | --- | --- | ---: | --- |
+| 8.3.0 | image-defaults | 32 active | 672 | APIs absent; import, preview, and export refuse before dispatch |
+| 8.3.9 | image-defaults | 32 active | 687 | Advertised; all 39 project/tag checks passed |
+| 8.3.0 | core-opcua | 1 active, 31 inactive | 446 | APIs absent; all 27 applicable project/tag checks passed |
+| 8.3.9 | core-opcua | 1 active, 31 inactive | 454 | Advertised; all 39 project/tag checks passed |
+
+All four cells passed all 18 pipeline stages under workflow qualification
+policy 2 on 2026-09-05. Each includes 10 lifecycle, 27 resource, and 23
+operational checks in addition to the applicable project/tag checks.
 
 The minimum reference covers catalog validation, containment, basic schedule
 resources, disabled projects, and backup/log/diagnostics workflows. It lists tag
@@ -30,15 +36,17 @@ directories; they are not yet embedded runtime selectors. The original bundled
 8.3.9 reference remains unchanged. Reopening historical evidence never renews
 its live verification timestamp.
 
-## Remaining module cells
+## Observed module profiles
 
-Both versions still require current qualification with the explicit
-`com.inductiveautomation.opcua` whitelist. A historical 8.3.0 capture of that
-profile parses with 446 operations. Fresh guarded captures now confirm 446
-operations on 8.3.0 and 454 on 8.3.9, each retaining one active OPC UA module
-and 31 inactive/disabled modules. Original receipts and documents are in
-`internal/moduleprofile/testdata/`. Complete workflow qualification is still
-required for these two cells.
+The core runs use the explicit `com.inductiveautomation.opcua` whitelist and
+retain all 32 installed module observations. The selected OPC UA module is
+active/enabled; the other 31 are inactive/disabled. Both complete pipelines ran
+from clean commit `28d7334`, with the same acceptance executable. Original
+receipts and qualified references are retained in
+`internal/referencebuild/testdata/ignition-8.3.0-core/` and
+`internal/referencebuild/testdata/ignition-8.3.9-core/`. Separate preceding
+capture-only fixtures remain in `internal/moduleprofile/testdata/` with their
+original observation times.
 
 The coordinator's `--module-profile core-opcua` passes the same selection to
 capture and every workflow suite. Module policy `igw-module-profile/1` verifies

@@ -133,7 +133,7 @@ tests whose asserted behavior contradicts the accepted new contract.
 - [x] Baseline Go tests/build/race verification.
 - [x] Transport credential isolation and atomic-artifact regressions repaired.
 - [x] First disposable Gateway capture and real-schema qualification (8.3.9).
-- [ ] Complete minimum/latest version and module qualification matrix.
+- [x] Complete initial minimum/latest version and module qualification matrix.
 - [x] New typed command/execution architecture introduced alongside legacy CLI.
 - [ ] Complete catalog lifecycle and discovery.
 - [ ] Validated task workflows and end-to-end verification.
@@ -1016,6 +1016,31 @@ before creating output or invoking Docker. Legacy smoke built successfully and
 stopped at `doctor` with exit 2 because the default Gateway remains unconfigured.
 Logs are in `bin/module-profile-{build-docs,cli-flags,smoke}.log`. No host settings
 or validation limits changed. A clean complete core-profile run is next.
+
+The initial four-cell qualification matrix is complete. Clean `28d7334` core
+pipelines passed all 18 stages on both images: 8.3.9 from 19:27:41 to 19:37:18
+UTC (576.77 seconds), and 8.3.0 from 19:38:51 to 19:45:51 UTC (420.24 seconds).
+The same test executable produced all four receipts in each run. Checks total
+99 and 87 respectively; absent 8.3.0 tag APIs yield three verified pre-dispatch
+refusals. Each inventory retains one active OPC UA module and 31 inactive
+modules. All containers were removed, independent queries were empty, and
+clean source worktrees were removed. No host recovery or limit changes ran.
+
+Exact run receipts and complete references are retained under
+`internal/referencebuild/testdata/ignition-8.3.{0,9}-core/`. Their current contract
+hashes match the preceding captures, while new raw/document hashes preserve the
+fresh observations. Offline regression qualification checks all four cells,
+including each inventory, image identity, catalog, lifecycle, workflow receipts,
+and capability scopes. The historical whitelist correction preserves old
+all-active inventories without restricting previously allowed whitelist values;
+new named profiles still require the exact selection and complete inventory.
+
+The scheduled workflow now serializes both profiles per tag with separate
+artifact names and failure cancellation of queued work. Workflow structure and
+source/permission isolation were checked locally; remote activation/execution
+remains unverified. Request encoding, batch outcomes, additional workflow
+capabilities, restart verification, performance, migration/cutover, and release
+qualification remain part of the active v1 goal.
 
 ## References
 

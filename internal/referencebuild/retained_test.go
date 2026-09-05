@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/imageref"
@@ -24,6 +25,15 @@ func TestRetainedFullTagCapabilityQualification(t *testing.T) {
 	verifyRetainedQualification(t, "ignition-8.3.9-policy2", 687, "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea", true)
 }
 
+func TestRetainedCoreQualification(t *testing.T) {
+	t.Run("minimum", func(t *testing.T) {
+		verifyRetainedQualification(t, "ignition-8.3.0-core", 446, "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75", false)
+	})
+	t.Run("latest", func(t *testing.T) {
+		verifyRetainedQualification(t, "ignition-8.3.9-core", 454, "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe", true)
+	})
+}
+
 func verifyRetainedQualification(t *testing.T, name string, operations int, contract string, tags bool) {
 	t.Helper()
 	ctx := context.Background()
@@ -35,6 +45,21 @@ func verifyRetainedQualification(t *testing.T, name string, operations int, cont
 	defer c.Close()
 	if c.OperationCount() != operations || len(m.Modules) != 32 || c.ContractHash() != contract {
 		t.Fatal("retained catalog identity changed")
+	}
+	active, wantActive := 0, 32
+	if strings.HasSuffix(name, "-core") {
+		wantActive = 1
+		if m.ModuleProfile == nil || m.ModuleProfile.Name != "core-opcua" {
+			t.Fatal("core qualification lost its observed module profile")
+		}
+	}
+	for _, module := range m.Modules {
+		if module.State == "ACTIVE" {
+			active++
+		}
+	}
+	if active != wantActive {
+		t.Fatal("retained active module count changed")
 	}
 	scopes := 6
 	var unavailable []string
