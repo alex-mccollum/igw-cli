@@ -12,19 +12,23 @@ bash scripts/bounded-run.sh -- bash scripts/lint-docs.sh
 
 Run each command to completion before starting the next. The runner requires
 Linux cgroup v2, a working user systemd manager, delegated memory/CPU/PID
-controllers, and at least 4 GiB available Linux memory. It refuses to execute
-the command if the required controls are unavailable or not applied.
+controllers, and at least 10 GiB available Linux memory (the job budget plus
+2 GiB headroom). It refuses to execute the command if the required controls
+are unavailable or not applied.
 
-The command and its Linux descendants share a 2 GiB hard memory limit, a
-1.5 GiB reclaim threshold, zero swap allowance, two CPUs of quota, and 256
+The command and its Linux descendants share an 8 GiB hard memory limit, a
+6 GiB reclaim threshold, zero swap allowance, two CPUs of quota, and 256
 tasks (threads count). A memory-limit failure kills the scope as a group.
 The default runtime limit is ten minutes with five seconds for termination;
 `--timeout SECONDS` can lower it. A per-user lock rejects overlapping guarded
 jobs across checkouts. No persistent systemd units or host settings are changed.
 
-Go uses `GOMAXPROCS=2`, `GOMEMLIMIT=768MiB`, and an appended `GOFLAGS=-p=1` to
+Go uses `GOMAXPROCS=2`, `GOMEMLIMIT=3GiB`, and an appended `GOFLAGS=-p=1` to
 reduce contention. `GOMEMLIMIT` is a soft runtime target; the cgroup provides
 the hard limit, including native allocations and race-detector overhead.
+The per-process Go target leaves room within the shared job budget for that
+overhead and child processes. These are usage ceilings, not upfront memory
+reservations. Changing this job budget does not require a WSL restart.
 Arguments, standard streams, current directory, and the caller's environment
 are preserved except for those Go settings. Normal command exit codes are
 preserved; admission, timeout, and resource failures return nonzero.

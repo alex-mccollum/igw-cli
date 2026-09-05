@@ -28,7 +28,7 @@ literal='two words $HOME $(false) `false`'
 expect_status 0 bash "$runner" -- bash -c '
   set -e
   [[ $PWD == "$1" && $2 == "two words \$HOME \$(false) \`false\`" ]]
-  [[ $GOMAXPROCS == 2 && $GOMEMLIMIT == 768MiB && $GOFLAGS == *-p=1 ]]
+  [[ $GOMAXPROCS == 2 && $GOMEMLIMIT == 3GiB && $GOFLAGS == *-p=1 ]]
   printf "%s" "$2"
 ' test "$PWD" "$literal"
 [[ $(<"$scratch/stdout") == "$literal" ]]
@@ -57,5 +57,12 @@ mkdir "$scratch/tools"
 printf '#!/usr/bin/env bash\nexit 77\n' > "$scratch/tools/systemd-run"
 chmod +x "$scratch/tools/systemd-run"
 expect_status 77 env PATH="$scratch/tools:$PATH" bash "$runner" -- touch "$scratch/escaped"
+[[ ! -e $scratch/escaped ]]
+
+# Reject insufficient headroom without allocating memory to simulate pressure.
+printf '#!/usr/bin/env bash\nprintf "10485759\\n"\n' > "$scratch/tools/awk"
+chmod +x "$scratch/tools/awk"
+expect_status 2 env PATH="$scratch/tools:$PATH" bash "$runner" -- touch "$scratch/escaped"
+[[ $(<"$scratch/stderr") == *'at least 10 GiB available Linux memory is required'* ]]
 [[ ! -e $scratch/escaped ]]
 printf 'ok: bounded runner admission, limits, arguments, status, deadline, and cleanup\n'

@@ -15,8 +15,8 @@ if [[ ${1:-} == --inside ]]; then
   for setting in memory.max memory.high memory.swap.max memory.oom.group cpu.max pids.max; do
     [[ -r $group/$setting ]] || fail "cannot verify $setting"
   done
-  [[ $(<"$group/memory.max") == 2147483648 ]] || fail 'memory limit not applied'
-  [[ $(<"$group/memory.high") == 1610612736 ]] || fail 'memory throttle not applied'
+  [[ $(<"$group/memory.max") == 8589934592 ]] || fail 'memory limit not applied'
+  [[ $(<"$group/memory.high") == 6442450944 ]] || fail 'memory throttle not applied'
   [[ $(<"$group/memory.swap.max") == 0 ]] || fail 'swap limit not applied'
   [[ $(<"$group/memory.oom.group") == 1 ]] || fail 'group OOM policy not applied'
   [[ $(<"$group/pids.max") == 256 ]] || fail 'task limit not applied'
@@ -27,9 +27,9 @@ if [[ ${1:-} == --inside ]]; then
   # The supervisor keeps this lock outside the workload's cgroup, including
   # while a failed workload is being cleaned up.
   flock --nonblock 9 || fail 'validation lock was not inherited'
-  export GOMAXPROCS=2 GOMEMLIMIT=768MiB
+  export GOMAXPROCS=2 GOMEMLIMIT=3GiB
   export GOFLAGS="${GOFLAGS:+$GOFLAGS }-p=1"
-  printf 'bounded-run: verified 2 GiB RAM, no swap, 2 CPUs, 256 tasks; Go packages serialized\n' >&2
+  printf 'bounded-run: verified 8 GiB RAM, no swap, 2 CPUs, 256 tasks; Go packages serialized\n' >&2
   (( $# > 0 )) || fail 'missing command'
   exec "$@"
 fi
@@ -65,7 +65,7 @@ for dependency in systemd-run systemctl flock awk realpath; do
 done
 systemctl --user show-environment >/dev/null 2>&1 || fail 'user systemd manager unavailable; no unbounded fallback'
 available=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
-[[ $available =~ ^[0-9]+$ ]] && (( available >= 4194304 )) || fail 'at least 4 GiB available Linux memory is required'
+[[ $available =~ ^[0-9]+$ ]] && (( available >= 10485760 )) || fail 'at least 10 GiB available Linux memory is required'
 
 script=$(realpath -- "${BASH_SOURCE[0]}")
 exec 9>"/run/user/$UID/igw-validation.lock"
@@ -82,7 +82,7 @@ trap 'exit 143' TERM
 status=0
 systemd-run --user --scope --quiet --expand-environment=no \
   --unit="$unit" --description='igw bounded local validation' \
-  --property=MemoryHigh=1536M --property=MemoryMax=2G --property=MemorySwapMax=0 \
+  --property=MemoryHigh=6G --property=MemoryMax=8G --property=MemorySwapMax=0 \
   --property=CPUQuota=200% --property=TasksMax=256 --property=OOMPolicy=kill \
   --property="RuntimeMaxSec=${seconds}s" --property=TimeoutStopSec=5s \
   -- bash "$script" --inside "$@" || status=$?
