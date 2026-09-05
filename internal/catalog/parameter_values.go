@@ -170,11 +170,7 @@ func parameterPrimitive(kind, text string) (any, string) {
 func (c *Catalog) validateQueryValue(name string, schema *base.Schema, value any) ([]Issue, error) {
 	v := schema_validation.NewSchemaValidatorWithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)), validatorconfig.WithSchemaCache(nil))
 	defer v.Release()
-	version := float32(3.1)
-	if strings.HasPrefix(c.model.Model.Version, "3.0.") {
-		version = 3.0
-	}
-	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, version)
+	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, c.schemaVersion())
 	if valid {
 		return nil, nil
 	}
@@ -188,6 +184,13 @@ func (c *Catalog) validateQueryValue(name string, schema *base.Schema, value any
 	return issues, nil
 }
 
+func (c *Catalog) schemaVersion() float32 {
+	if strings.HasPrefix(c.model.Model.Version, "3.0.") {
+		return 3.0
+	}
+	return 3.1
+}
+
 func queryValidationView(item *v3.PathItem, request *http.Request, removed map[string]bool, values url.Values) (*v3.PathItem, *http.Request) {
 	without := func(params []*v3.Parameter) []*v3.Parameter {
 		out := make([]*v3.Parameter, 0, len(params))
@@ -198,9 +201,19 @@ func queryValidationView(item *v3.PathItem, request *http.Request, removed map[s
 		}
 		return out
 	}
-	view, op := *item, *item.GetOperations().GetOrZero(strings.ToLower(request.Method))
+	view, op := operationValidationView(item, request.Method)
 	view.Parameters, op.Parameters = without(item.Parameters), without(op.Parameters)
-	switch request.Method {
+	req, u := *request, *request.URL
+	u.RawQuery = values.Encode()
+	req.URL = &u
+	return view, &req
+}
+
+// Callers have already resolved this operation. Copy only the selected path
+// and operation; shared schemas stay protected by Catalog.validationMu.
+func operationValidationView(item *v3.PathItem, method string) (*v3.PathItem, *v3.Operation) {
+	view, op := *item, *item.GetOperations().GetOrZero(strings.ToLower(method))
+	switch method {
 	case http.MethodGet:
 		view.Get = &op
 	case http.MethodPost:
@@ -218,8 +231,5 @@ func queryValidationView(item *v3.PathItem, request *http.Request, removed map[s
 	case http.MethodTrace:
 		view.Trace = &op
 	}
-	req, u := *request, *request.URL
-	u.RawQuery = values.Encode()
-	req.URL = &u
-	return &view, &req
+	return &view, &op
 }

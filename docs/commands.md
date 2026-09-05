@@ -91,6 +91,20 @@ types without an unambiguous text representation require additional encoding
 support; use `api raw` explicitly for those cases. Header/path encoding and
 multipart input have separate contracts and remaining implementation work.
 
+JSON request bodies are decoded without rounding numbers and validated against
+the selected request schema. The CLI sends the original bytes, including
+whitespace and numeric spelling; the preview digest covers those same bytes.
+Absent bodies, `null`, empty strings, `false`, and zero remain distinct.
+Integral JSON numbers such as `1.0` and `10e-1` satisfy an integer schema.
+Duplicate object keys, multiple JSON values, invalid UTF-8, unpaired Unicode
+escapes, and nesting beyond 256 levels are refused. JSON schema validation is
+bounded to 32 MiB and uses the same numeric text/exponent limits as query values.
+The most specific declared media type applies. A `+json` suffix selects JSON
+decoding but does not make that type interchangeable with `application/json`.
+This validation does not rewrite defaults or remove properties; Gateway-side
+validation and permission checks still apply. Non-JSON schema encodings,
+including multipart construction, remain unfinished.
+
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so
 preview metadata and transmission use the same bytes within an invocation.

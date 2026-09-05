@@ -1180,6 +1180,52 @@ input slice must preserve exact body values during request-specific schema
 validation, including explicit null and directionality constraints, before
 adding multipart construction and the remaining structured input encodings.
 
+The exact JSON body regression reproduced 13 failures before implementation:
+rounded constants/fractions, collapsed distinct numeric array elements,
+rejected finite large numbers, accepted duplicate keys, accepted whitespace as
+null, invalid UTF-8 replacement, and unbounded nesting. The failing result is
+preserved in `bin/body-values-before.log`. The adapter now bypasses both lossy
+upstream conversions, invokes request-specific schema compilation, and bounds
+input work while keeping outgoing bytes unchanged. It also selects the most
+specific JSON media range and refuses ambiguous declarations and malformed
+Unicode. Query/body adapters share the selected-operation view helper.
+
+Focused regressions and all four captured default Gateway contracts passed in
+`bin/body-values-{focused,captured}.log`. Coverage includes OpenAPI 3.0/3.1 null
+and required-field behavior, exact numeric constraints, duplicate-key and
+Unicode refusals, read errors, schema compilation errors, input limits, JSON
+suffixes, and media specificity. CLI wire/race and broad results are below.
+No new live qualification is claimed. The full input, workflow, performance,
+cutover, release-artifact, and current-source acceptance gates remain active.
+
+The initial catalog/CLI race checks passed (`bin/body-values-race.log`),
+including exact preview digests, unchanged transmitted bodies, twelve invalid
+preview/write refusals, and preservation of required header checks. Additional
+Boolean Schema boundaries then reproduced two acceptance errors and a
+conditional-schema compilation error. A private parser representation adapter
+now preserves Boolean Schema semantics using equivalent object forms after
+document validation. It leaves Boolean data/annotations and original document
+identities untouched. The final focused body suite passed in
+`bin/body-values-boolean-final.log`; earlier failing boundary logs are retained.
+The full unit suite passed with parser 15 and its updated capture expectations
+(`bin/body-values-unit.log`). Final catalog/CLI race checks also passed after
+the Boolean Schema fix (`bin/body-values-race-final.log`), including an added
+reference/inspection regression and refusal of Boolean Schemas in OpenAPI 3.0.
+Both CLI builds, command-doc consistency, and docs lint passed in
+`bin/body-values-build-docs.log`. Legacy smoke built successfully and stopped
+at the unconfigured default Gateway's `doctor` with exit 2
+(`bin/body-values-smoke.log`). Original live receipts remain unchanged; no new
+live acceptance is claimed. No containers, host control commands, host settings,
+or limit increases were needed for this slice. The development guide now
+reflects all four embedded references and their historical qualification.
+
+The next input slice must also address validation coverage: the upstream
+non-JSON body path can return success when no decoder is registered. A
+schema-bearing body needs a qualified decoder or an explicit refusal; missing
+schemas and opaque transport must not be labeled as complete value validation.
+Multipart/form construction and the remaining path/header/structured parameter
+encodings should build on that explicit coverage boundary.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

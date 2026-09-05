@@ -591,6 +591,46 @@ performed. OpenAPI defines that field's interaction with schemas as
 [implementation-defined](https://spec.openapis.org/oas/v3.1.1.html#parameter-object).
 These rules leave contract hashes and earlier qualification records unchanged.
 
+Parser 15 extends exact-value validation to JSON request bodies. Validator
+0.14.0's `content.JSONDecoder` and subsequent `content.Canonicalize` both round
+numbers through `float64`; installing a custom decoder alone does not fix that
+path. The catalog instead decodes once with `json.Number` and calls the exported
+`requests.ValidateRequestSchema` with `ValueDecoded`, `DecodedValue`, and the
+original `RawBody`. That preserves request-specific schema compilation,
+including read-only properties being excluded from request-required lists and
+write-only properties remaining required. It does not strip supplied fields,
+insert defaults, or enable the library's optional strict-property mode.
+
+The adapter selects exact JSON or JSON-suffix media types before validation,
+using the [most specific declared media range](https://spec.openapis.org/oas/v3.1.1.html#request-body-object).
+It validates an explicit null as a value and distinguishes an absent body from
+whitespace-only input. Duplicate keys, malformed Unicode, multiple JSON values,
+and excessive nesting fail before schema compilation. The Unicode policy also
+rejects unpaired surrogate escapes, whose interpretation otherwise differs
+between decoders; see [RFC 8259 sections 4 and 8.2](https://www.rfc-editor.org/rfc/rfc8259).
+The body limit is 32 MiB, depth is limited to 256, and numeric text/exponents use
+the same 4096-character/-4096..4096 bounds as query values. Original body bytes
+and vendor documents remain unchanged. Media with no schema still provide only
+transport/presence checks, not value validation. Non-JSON schema decoding and
+multipart construction remain separate work.
+
+Only the validated body declaration is removed from the private remaining
+validation view; path/header/query checks still apply. Schema compilation
+failures remain `catalog_schema`, input failures remain `validation`, and both
+stop before operation dispatch. Parser identity advances independently of
+contract identity; earlier reference and live qualification receipts retain
+their original parser versions.
+
+Boundary tests also found that the parser's object-backed schema positions
+lose Boolean Schema semantics: `false` could accept input, and Boolean
+conditionals could fail compilation. After validating the OpenAPI document,
+the private 3.1 model uses the equivalent object forms `{}` for `true` and
+`{"not":{}}` for `false`. The adapter visits schema positions, preserving
+Boolean instance data, annotations, and the parser's already-supported Boolean
+fields. It rebuilds the model only when a conversion is needed. This is a
+parser representation fix, independent of the IA generator-correction policy;
+original schema inspection, document identity, and contract pins do not change.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

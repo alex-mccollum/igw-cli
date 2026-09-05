@@ -27,7 +27,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/14"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/15"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -120,14 +120,7 @@ func Parse(raw []byte) (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	doc, err := libopenapi.NewDocumentWithConfiguration(modelBytes, &datamodel.DocumentConfiguration{
-		AllowFileReferences: false, AllowRemoteReferences: false,
-		SkipExternalRefResolution: true,
-		// Recursive arrays can terminate with an empty array, including IA's
-		// required SecurityLevelRuleNode.children. Validate actual values later.
-		IgnoreArrayCircularReferences: true,
-		Logger:                        slog.New(slog.NewTextHandler(io.Discard, nil)),
-	})
+	doc, err := newParserDocument(modelBytes)
 	if err != nil {
 		return nil, errors.New("invalid OpenAPI document structure")
 	}
@@ -135,6 +128,23 @@ func Parse(raw []byte) (*Catalog, error) {
 	if !valid {
 		doc.Release()
 		return nil, errors.New("document does not satisfy its OpenAPI version schema")
+	}
+	if strings.HasPrefix(version, "3.1.") {
+		// Validate the document before adapting valid boolean schemas into
+		// equivalent object forms for the upstream high-level renderer.
+		_, changed := normalizeBooleanSchemas(value, "document")
+		if changed {
+			adapted, err := json.MarshalIndent(value, "", "  ")
+			if err != nil {
+				doc.Release()
+				return nil, errors.New("could not prepare OpenAPI model")
+			}
+			doc.Release()
+			doc, err = newParserDocument(adapted)
+			if err != nil {
+				return nil, errors.New("could not prepare OpenAPI model")
+			}
+		}
 	}
 	model, err := doc.BuildV3Model()
 	if err != nil {
@@ -173,6 +183,17 @@ func Parse(raw []byte) (*Catalog, error) {
 		}
 	}
 	return c, nil
+}
+
+func newParserDocument(raw []byte) (libopenapi.Document, error) {
+	return libopenapi.NewDocumentWithConfiguration(raw, &datamodel.DocumentConfiguration{
+		AllowFileReferences: false, AllowRemoteReferences: false,
+		SkipExternalRefResolution: true,
+		// Recursive arrays can terminate with an empty array, including IA's
+		// required SecurityLevelRuleNode.children. Validate actual values later.
+		IgnoreArrayCircularReferences: true,
+		Logger:                        slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
 }
 
 func (c *Catalog) pathDefinitions(path string) (map[string]json.RawMessage, error) {
@@ -388,6 +409,10 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 		return bindingIssues, err
 	}
 	item, request, bindingIssues, err = c.namedQueryValidationView(item, request)
+	if err != nil || len(bindingIssues) != 0 {
+		return bindingIssues, err
+	}
+	item, request, bindingIssues, err = c.jsonBodyValidationView(item, request)
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, err
 	}

@@ -68,12 +68,17 @@ In-memory response bodies default to a 16 MiB limit. `--out` streams directly
 to atomic artifact storage; existing files require `--overwrite`. Request
 bodies using `--body` have a 32 MiB limit. `--upload` snapshots a regular file
 to private disk storage and streams it once, with a default 1 GiB limit.
+Schema-assisted JSON bodies retain exact numbers and transmitted bytes;
+duplicate keys, malformed Unicode, excessive nesting, and excessive numeric
+work are refused before dispatch. Named query primitives and repeated exploded
+arrays also receive complete value validation without changing wire text.
+See `docs/commands.md` for the accepted input spellings and limits.
 Schema-assisted streaming requires a declared media type without a body schema
 and reports `declared_transport` validation. Multipart/form
 encoding, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, broader tag format/policy verification,
-profile migration, remote update-schedule activation, and the complete container
-qualification matrix remain on the rebuild roadmap.
+profile migration, remote update-schedule activation, and final qualification
+of the completed implementation remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local
@@ -86,8 +91,9 @@ counts. `spec diff` distinguishes document changes from contract changes under
 the reported policy; it does not certify backward compatibility. See
 `docs/catalog.md` for storage and authority details.
 
-The development binary embeds the qualified 8.3.9 default-module reference.
-`spec references list` shows its exact image, module count, contract identity,
+The development binary embeds qualified 8.3.0 and 8.3.9 references with both
+default modules and the minimal OPC UA profile. `spec references list` shows
+each reference's exact image, module counts, contract identity,
 assembly time, and qualification scope. Inspection reports individual module
 versions and original acceptance evidence checksums. Export preserves a complete
 standalone bundle; the same API discovery commands can use that directory on an
@@ -96,8 +102,9 @@ target freshness. `parserVersion` identifies the recorded qualification;
 `inspectionParserVersion` appears only after API discovery reparses the document
 using the current parser. References are explicit and are never substituted for
 a Gateway during request execution. The local reference updater has passed
-default-module acceptance on 8.3.0 and 8.3.9; the minimum reference explicitly
-records missing tag APIs. Both versions now have fresh evidence under the
-current qualification policy. Remote schedule activation and additional module
-profiles remain unfinished. See `docs/reference-updates.md` for retained
+default-module and minimal-profile acceptance on 8.3.0 and 8.3.9; the minimum
+references explicitly record missing tag APIs. The initial four-cell matrix
+has evidence under the current qualification policy, with each receipt retaining
+its original source/parser identity. Remote schedule activation and final
+current-source acceptance remain unfinished. See `docs/reference-updates.md` for retained
 evidence and `docs/compatibility-matrix.md` for coverage boundaries.
