@@ -648,11 +648,23 @@ octet-stream schema and legacy string/binary schema also permit streaming with
 transport-only coverage; any additional value assertion requires support
 before acceptance. This follows the distinction between
 [raw binary and JSON instances](https://spec.openapis.org/oas/v3.1.1.html#working-with-binary-data).
-Binary schema length/content constraints and multipart/form value encoding
+Binary schema length/content constraints and multipart/form value validation
 remain further work. The Gateway's invalid `binary stream` declarations remain
 unchanged and are reported as unsupported instead of receiving an invented MIME
 type. Wildcard datafile declarations now permit explicit concrete media types
 for streamed uploads, using the same selection rules as bounded requests.
+
+Multipart construction uses the standard library's
+[multipart writer](https://pkg.go.dev/mime/multipart#Writer) and a private
+bounded upload snapshot. Ordered manifests preserve repeated names and explicit
+per-part headers under [RFC 7578](https://www.rfc-editor.org/rfc/rfc7578.html).
+The generated outer media type and boundary belong to that snapshot. Preview
+part identities omit local paths and values; the outer hash identifies the
+complete encoded bytes for the invocation. Construction and transport checks
+do not establish schema validation of fields or files. All seven captured 8.3.9
+multipart declarations omit their part schema; this is a vendor contract gap.
+The builder accepts explicit user-supplied names without inventing a schema,
+and additional schema-bearing encodings still require a qualified decoder.
 
 ## Project and tag transfer evidence
 

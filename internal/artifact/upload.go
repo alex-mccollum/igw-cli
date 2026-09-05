@@ -17,10 +17,12 @@ const DefaultUploadLimit int64 = 1 << 30
 // and digest describe the same content used for validation and transmission,
 // even if the original pathname changes afterwards. Close removes the spool.
 type Upload struct {
-	mu     sync.Mutex
-	file   *os.File
-	bytes  int64
-	sha256 string
+	mu          sync.Mutex
+	file        *os.File
+	bytes       int64
+	sha256      string
+	contentType string
+	parts       []MultipartPartInfo
 }
 
 func SnapshotUpload(ctx context.Context, path string, limit int64) (*Upload, error) {
@@ -78,8 +80,10 @@ func SnapshotUpload(ctx context.Context, path string, limit int64) (*Upload, err
 	return u, nil
 }
 
-func (u *Upload) Bytes() int64   { return u.bytes }
-func (u *Upload) SHA256() string { return u.sha256 }
+func (u *Upload) Bytes() int64               { return u.bytes }
+func (u *Upload) SHA256() string             { return u.sha256 }
+func (u *Upload) ContentType() string        { return u.contentType }
+func (u *Upload) Parts() []MultipartPartInfo { return append([]MultipartPartInfo(nil), u.parts...) }
 
 type UploadReader interface {
 	io.ReadCloser

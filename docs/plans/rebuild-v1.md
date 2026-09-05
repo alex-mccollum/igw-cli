@@ -1263,6 +1263,32 @@ at `doctor` with exit 2 because the default Gateway remains unconfigured
 documents remain unchanged. No containers, host control commands, host settings,
 or validation-limit changes were needed for this slice.
 
+Multipart construction now uses the existing typed upload/execution path.
+Shorthand text/file flags and an ordered JSON manifest feed one bounded private
+MIME snapshot. Per-part preview identities, concrete media types, source-file
+immutability, framing limits, cancellation, and cleanup are explicit. Manifest
+parsing rejects duplicate or unknown selectors, null/non-string values, and
+lossy Unicode. JSON bodies and manifests share the existing Unicode guard
+without changing parser semantics or source identities. Schema-bearing multipart
+decoding, URL-encoded forms, and real-Gateway multipart acceptance remain open.
+The focused artifact, CLI, and JSON-body regression checks passed in
+`bin/multipart-focused.log`, including a 40 MiB file, repeated and empty text,
+per-part media/filename overrides, raw requests, pre-dispatch refusals, and
+snapshot cleanup. The offline command schema now includes the manifest's JSON
+input shape, and the execution regression binds the entire encoded-body hash
+and boundary to the prepared upload. Focused artifact/execution/CLI/catalog race
+checks and the full unit suite passed in `bin/multipart-{race,unit}.log`.
+No live acceptance is claimed for this construction slice.
+
+Both CLI builds, command-doc consistency, and docs lint passed in
+`bin/multipart-build-docs.log`. Legacy smoke built successfully, then stopped
+at the unconfigured default Gateway's `doctor` with exit 2
+(`bin/multipart-smoke.log`). No container or host-service operations ran, and
+the resource guard and original OpenAPI/reference evidence remain unchanged.
+Explicit empty-body inputs, binary assertions, structured parameter encodings,
+multipart schema decoding, and the full workflow/cutover/release gates remain
+within the active goal.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

@@ -122,8 +122,8 @@ Generic request results report actual coverage in `meta.validation`; previews
 also retain `data.validation`. `declared_schema` means the supported declared
 schema checks passed. `declared_transport` means the body received media-type
 and presence checks, with no validation of its contents. Raw requests report
-`not_requested`. Multipart/form construction and additional schema encodings
-remain unfinished.
+`not_requested`. Multipart schema decoding, URL-encoded form construction, and
+additional schema encodings remain unfinished.
 
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so
@@ -141,6 +141,61 @@ Additional binary value constraints are refused until supported. Use bounded
 ```bash
 bin/igw-next api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
 ```
+
+For multipart uploads, use repeatable `--form-field name=value` and
+`--form-file name=path`. Text values are literal UTF-8, so `@file`, `-`, commas,
+and equals signs inside a value are not interpreted as input selectors. Empty
+text values and repeated names are supported. Shorthand fields are emitted
+first in their supplied order, followed by files in their supplied order.
+
+Use `--multipart @parts.json` when part order, transmitted filenames, or media
+types need explicit control. The manifest is an ordered JSON array:
+
+```json
+[
+  {"name": "note", "text": "Reviewed input"},
+  {"name": "files", "file": "./payload.bin", "filename": "payload.bin", "contentType": "application/octet-stream"},
+  {"name": "note", "text": ""}
+]
+```
+
+Set `operation` to the operation key selected from your Gateway. Use the part
+names and file formats required by that endpoint's documentation; the names
+above illustrate a manifest, not a vendor endpoint contract.
+
+```bash
+bin/igw-next api request "$operation" --multipart @parts.json --dry-run --json
+```
+
+`--multipart` also accepts inline JSON or `-` for stdin. The manifest is limited
+to 1 MiB and 256 parts. Offline `schema --json` includes its JSON `inputSchema`
+on the flag definition. Each part needs `name` and exactly one of `text` or
+`file`. Optional `filename` applies only to files; its default is the local
+basename. Relative file paths resolve from the working directory. Text defaults
+to `text/plain; charset=utf-8`; files default to `application/octet-stream`.
+`contentType` can set an explicit concrete media type. Files are sent as raw
+bytes; text is not coerced, base64-encoded, or parsed as another format.
+
+Multipart options cannot be combined with `--body`, `--upload`, or
+`--content-type`; the CLI owns the boundary and outer content type. The JSON
+manifest cannot be mixed with shorthand fields/files. `--max-upload-bytes`
+limits the complete encoded body, including MIME framing. The CLI keeps the
+final private snapshot and at most one temporary source-file snapshot at a time;
+temporary disk use can approach twice the configured upload limit. All owned
+snapshots are removed after the invocation.
+
+Previews include ordered `parts` with names, transmitted filenames, content
+types, sizes, and SHA-256 hashes. They omit local paths and field values. The
+outer body hash includes a generated boundary and can differ across invocations;
+compare part hashes when reviewing the same inputs again. Within an invocation,
+the preview and transmission use one immutable encoded snapshot.
+
+Schema-assisted multipart construction currently requires a selected media type
+without a body schema and reports `declared_transport`. The captured 8.3.9 bulk
+datafile routes declare multipart without part schemas; 8.3.0 lacks those bulk
+routes. No part names or value constraints are inferred from those gaps.
+Schema-bearing multipart requests are refused until their decoder is supported.
+Explicit `api raw` supports the same multipart options without catalog claims.
 
 Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:

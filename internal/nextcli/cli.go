@@ -306,12 +306,16 @@ func human(out io.Writer, r result.Result) error {
 }
 
 type flagSchema struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Default     string `json:"default"`
-	Description string `json:"description"`
-	Required    bool   `json:"required"`
+	Name        string          `json:"name"`
+	Type        string          `json:"type"`
+	Default     string          `json:"default"`
+	Description string          `json:"description"`
+	Required    bool            `json:"required"`
+	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
 }
+
+const inputSchemaAnnotation = "igw.inputSchema"
+
 type commandInfo struct {
 	Name        string        `json:"name"`
 	Usage       string        `json:"usage"`
@@ -332,7 +336,11 @@ func commandSchema(cmd *cobra.Command) commandInfo {
 		})
 	}
 	for _, flag := range flags {
-		info.Flags = append(info.Flags, flagSchema{Name: flag.Name, Type: flag.Value.Type(), Default: flag.DefValue, Description: flag.Usage, Required: len(flag.Annotations[cobra.BashCompOneRequiredFlag]) > 0})
+		entry := flagSchema{Name: flag.Name, Type: flag.Value.Type(), Default: flag.DefValue, Description: flag.Usage, Required: len(flag.Annotations[cobra.BashCompOneRequiredFlag]) > 0}
+		if schema := flag.Annotations[inputSchemaAnnotation]; len(schema) == 1 {
+			entry.InputSchema = json.RawMessage(schema[0])
+		}
+		info.Flags = append(info.Flags, entry)
 	}
 	sort.Slice(info.Flags, func(a, b int) bool { return info.Flags[a].Name < info.Flags[b].Name })
 	for _, child := range cmd.Commands() {

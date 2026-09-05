@@ -46,15 +46,16 @@ type Request struct {
 }
 
 type Preview struct {
-	Method      string   `json:"method"`
-	Path        string   `json:"path"`
-	Mutating    bool     `json:"mutating"`
-	QueryKeys   []string `json:"queryKeys,omitempty"`
-	HeaderKeys  []string `json:"headerKeys,omitempty"`
-	ContentType string   `json:"contentType,omitempty"`
-	BodyBytes   int64    `json:"bodyBytes"`
-	BodySHA256  string   `json:"bodySha256,omitempty"`
-	Validation  string   `json:"validation"`
+	Method      string                       `json:"method"`
+	Path        string                       `json:"path"`
+	Mutating    bool                         `json:"mutating"`
+	QueryKeys   []string                     `json:"queryKeys,omitempty"`
+	HeaderKeys  []string                     `json:"headerKeys,omitempty"`
+	ContentType string                       `json:"contentType,omitempty"`
+	BodyBytes   int64                        `json:"bodyBytes"`
+	BodySHA256  string                       `json:"bodySha256,omitempty"`
+	Validation  string                       `json:"validation"`
+	Parts       []artifact.MultipartPartInfo `json:"parts,omitempty"`
 }
 
 type Prepared struct {
@@ -86,6 +87,12 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	}
 	if input.MaxBodyBytes < 0 {
 		return nil, result.Usage("--max-body-bytes must be nonnegative")
+	}
+	if input.Upload != nil && input.Upload.ContentType() != "" {
+		if input.ContentType != "" && input.ContentType != input.Upload.ContentType() {
+			return nil, result.Usage("multipart content type and boundary belong to the prepared upload")
+		}
+		input.ContentType = input.Upload.ContentType()
 	}
 	if input.Upload != nil && (len(input.Body) != 0 || input.ContentType == "") {
 		return nil, result.Usage("upload requires an explicit content type and cannot be combined with an inline body")
@@ -236,6 +243,7 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	preview := Preview{Method: method, Path: path, Mutating: mutating(method), ContentType: input.ContentType, BodyBytes: int64(len(input.Body)), Validation: validation}
 	if input.Upload != nil {
 		preview.BodyBytes, preview.BodySHA256 = input.Upload.Bytes(), input.Upload.SHA256()
+		preview.Parts = input.Upload.Parts()
 	}
 	if len(input.Body) > 0 {
 		sum := sha256.Sum256(input.Body)

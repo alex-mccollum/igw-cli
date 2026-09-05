@@ -77,8 +77,10 @@ Schema-assisted streaming requires a declared opaque or unconstrained binary
 body and reports `declared_transport` validation. Plain text has exact UTF-8
 schema validation; unsupported body decoders are refused before dispatch.
 `api describe.bodyInputs` exposes these support boundaries, and generic request
-metadata reports the checks actually performed. Multipart/form
-encoding, parameter serialization beyond explicit path/query/header values,
+metadata reports the checks actually performed. Multipart construction supports
+literal text fields, streamed files, and ordered JSON part manifests with
+transport-only coverage for schema-less declarations. Multipart schema decoding,
+URL-encoded forms, parameter serialization beyond explicit path/query/header values,
 bounded batch, singleton resources, broader tag format/policy verification,
 profile migration, remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.
