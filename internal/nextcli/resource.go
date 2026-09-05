@@ -45,6 +45,7 @@ func (i *invocation) resourceCommands() *cobra.Command {
 	get.Flags().StringVar(&collection, "collection", "core", "Configuration collection to read")
 	var limit, offset int
 	var search string
+	var filters []string
 	list := &cobra.Command{Use: "list TYPE", Short: "Read one page of resources from the active collection", Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := resource.ValidateType(args[0]); err != nil {
@@ -57,11 +58,15 @@ func (i *invocation) resourceCommands() *cobra.Command {
 			if search != "" {
 				query.Set("search", search)
 			}
+			if err := addFilters(query, filters); err != nil {
+				return err
+			}
 			return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/resources/list/" + args[0], Query: query})
 		}}
 	list.Flags().IntVar(&limit, "limit", 50, "Maximum items in this page (1..1000)")
 	list.Flags().IntVar(&offset, "offset", 0, "Items to skip")
 	list.Flags().StringVar(&search, "search", "", "Filter resources by search terms")
+	list.Flags().StringArrayVar(&filters, "filter", nil, "Filter field[operator]=value; repeat for different keys")
 	group.AddCommand(types, describe, get, list)
 	for _, action := range []string{"create", "update", "delete"} {
 		group.AddCommand(i.resourceChangeCommand(action))

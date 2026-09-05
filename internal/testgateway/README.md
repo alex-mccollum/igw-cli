@@ -50,3 +50,25 @@ assertion passes and the owned container has been removed. It contains the
 image/version, test-binary hash, catalog provenance, and check outcomes, never
 credentials or resource configuration values. Each receipt qualifies only the
 checks present in that run; earlier generic-only receipts remain historical.
+
+`TestLiveQueryFilters` separately qualifies list filter encoding. Compile one
+test executable from a clean source commit and first run the lifecycle probe
+with that same executable and pinned image. Run the query test alone under the
+bounded runner with `IGW_ACCEPTANCE_TEST_IMAGE`, `IGW_CAPTURE_TEST_DOCKER`,
+`IGW_TEST_MODULE_PROFILE`, and a new `IGW_QUERY_EVIDENCE_DIR`. Serialize images
+and invocations; never overlap compilation, lifecycle checks, or live suites.
+
+The suite creates two schedules and two disabled projects in its disposable
+Gateway. It verifies actual resource, project, and log filtering, exact special
+characters, combined filters, pagination, nonmatches, generic API parity,
+preview without dispatch, and invalid/duplicate-key refusal before dispatch.
+The observed module profile is checked before API credentials are provisioned.
+The evidence directory retains the exact compressed OpenAPI document and a
+receipt with catalog/image identities, executable checksum, per-check HTTP
+request counts, and cleanup status. A failed run also writes a failed receipt
+when possible; retain it without retrying host failures. Success requires both
+a passing test process and the completed receipt, followed by an independent
+empty qualification-container query. Record the clean source commit and its
+before/after Git status alongside the run. This evidence supplements the
+reference matrix; it does not rewrite older workflow receipts or expand their
+qualification claims.

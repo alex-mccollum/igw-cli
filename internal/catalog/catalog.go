@@ -4,6 +4,7 @@ package catalog
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,13 +20,14 @@ import (
 	"github.com/pb33f/libopenapi"
 	validator "github.com/pb33f/libopenapi-validator"
 	validatorconfig "github.com/pb33f/libopenapi-validator/config"
+	validatorerrors "github.com/pb33f/libopenapi-validator/errors"
 	"github.com/pb33f/libopenapi-validator/schema_validation"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/12"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/13"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -70,6 +72,7 @@ type Catalog struct {
 	document     libopenapi.Document
 	model        *libopenapi.DocumentModel[v3.Document]
 	once         sync.Once
+	validationMu sync.Mutex
 	validator    validator.Validator
 	rawHash      string
 	documentHash string
@@ -356,6 +359,8 @@ func (c *Catalog) gaps(op Operation) []string {
 // Validate checks a credential-free request. The caller retains responsibility
 // for target selection, authorization, workflow effects, and server validation.
 // Request bodies must be independent readers: the validator may consume them.
+// Concurrent calls are supported; schema compilation within one catalog is
+// serialized because the upstream renderer mutates shared schema nodes.
 func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	op, err := c.Resolve(key)
 	if err != nil {
@@ -369,6 +374,8 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 			return nil, ErrIncompleteContract
 		}
 	}
+	c.validationMu.Lock()
+	defer c.validationMu.Unlock()
 	c.once.Do(func() {
 		// The default eagerly compiles every request/response schema. A CLI
 		// invocation needs only the selected contract, and unrelated vendor
@@ -376,17 +383,24 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 		c.validator = validator.NewValidatorFromV3Model(&c.model.Model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
 	})
 	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
-	item, bindingIssue := listValidationView(item, request, op.Path)
-	if bindingIssue != nil {
-		return []Issue{*bindingIssue}, nil
+	item, request, bindingIssues, err := c.filterValidationView(item, request)
+	if err != nil || len(bindingIssues) != 0 {
+		return bindingIssues, err
 	}
 	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(request, item, op.Path)
 	if valid {
 		return nil, nil
 	}
+	if len(failures) == 0 {
+		return nil, ErrSchemaCompilation
+	}
+	return validationIssues(failures)
+}
+
+func validationIssues(failures []*validatorerrors.ValidationError) ([]Issue, error) {
 	issues := make([]Issue, 0, len(failures))
 	for _, failure := range failures {
-		if len(failure.SchemaValidationErrors) == 0 && strings.Contains(failure.Message, "failed schema compilation") {
+		if len(failure.SchemaValidationErrors) == 0 && (strings.Contains(failure.Message, "failed schema compilation") || failure.Message == "schema compilation failed") {
 			return nil, ErrSchemaCompilation
 		}
 		issue := Issue{Kind: failure.ValidationType, Rule: failure.ValidationSubType, Parameter: failure.ParameterName}
@@ -399,6 +413,10 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 			issues = append(issues, copy)
 		}
 	}
+	sort.Slice(issues, func(i, j int) bool {
+		a, b := issues[i], issues[j]
+		return cmp.Or(cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Rule, b.Rule), cmp.Compare(a.Parameter, b.Parameter), cmp.Compare(a.Field, b.Field), cmp.Compare(a.Schema, b.Schema)) < 0
+	})
 	return issues, nil
 }
 

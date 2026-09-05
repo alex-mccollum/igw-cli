@@ -1061,6 +1061,40 @@ remain unconfigured (`bin/reference-matrix-smoke.log`). Separate disposable
 Gateway qualification above provides the live evidence. No host settings or
 validation limits changed.
 
+The next request-contract slice adds repeatable `--filter field[operator]=value`
+to resource, project, and log lists. Generic API queries share the same typed
+executor and catalog validation. The parser binds exploded filter properties
+separately from named scalar parameters, validates the complete object schema,
+and preserves exact text on the wire. Required/inherited parameters, overrides,
+headers, and request bodies remain validated. Unknown operators, duplicate
+properties, malformed query encoding, and ambiguous ownership refuse execution.
+Other parameter serialization and multipart inputs remain unfinished.
+
+Parser identity advances to 13 without changing compatibility/contract policies
+or hashes. Current-parser fixture expectations advance separately from original
+capture and workflow evidence. Historical cross-file checks retain each
+capture's recorded parser; new reference assembly rejects historical parser
+evidence even if internally consistent. No reference payload or original live
+receipt was rewritten.
+
+Focused regressions reproduced the prior filter failures before the fix. The
+initial race run exposed shared schema-renderer writes under concurrent
+validation; each catalog now serializes its validation calls. A separate live
+filter suite was added to verify actual resource/project/log selection and
+pre-dispatch refusals on fresh disposable Gateways, retaining exact OpenAPI
+bytes, executable provenance, request counts, and cleanup evidence. Compilation
+or skipped opt-in tests do not establish live qualification.
+
+The final full unit suite, both CLI builds, command/docs checks, and focused
+catalog/CLI filter race regressions passed under serialized bounded validation.
+The earlier broad race run also passed the reference and retained-qualification
+packages; its catalog failure was the reproduced renderer race repaired above.
+Logs are in `bin/query-filter-{race,race-fixed,final-checks}.log`. Legacy smoke
+built successfully and stopped at `doctor` with exit 2 because the default
+Gateway remains unconfigured (`bin/query-filter-smoke.log`). The new live
+harness compiled and its non-live helper tests passed; real filter acceptance
+on both pinned images is the next gate. No host settings or limits changed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

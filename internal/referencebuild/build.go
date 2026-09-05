@@ -260,8 +260,17 @@ func readBaseline(ctx context.Context, path string) ([]byte, error) {
 var gatewayVersion = regexp.MustCompile(`^8\.3\.(0|[1-9][0-9]{0,4})( \(b[0-9]{1,32}\))?$`)
 
 func validateCapture(c testgateway.Evidence, r imageref.Resolution, imageID string) error {
-	if c.Version != 3 || !c.Validated || !c.Cleanup || c.ValidationError != "" || c.Image != r.Image || c.ImageID != imageID || c.Platform != r.Platform || !gatewayVersion.MatchString(c.GatewayVersion) || c.Source != "/openapi.json" || c.ParserVersion != catalog.ParserVersion || c.ContractPolicy != catalog.ContractPolicy || c.CapturedAt.IsZero() || c.Operations <= 0 {
+	if c.ParserVersion != catalog.ParserVersion {
 		return errors.New("capture is incomplete or does not qualify the resolved image with the current parser")
+	}
+	return validateCaptureEvidence(c, r, imageID)
+}
+
+// Historical receipt checks preserve their recorded parser identity. Assembly
+// must enter through validateCapture, which additionally requires today's parser.
+func validateCaptureEvidence(c testgateway.Evidence, r imageref.Resolution, imageID string) error {
+	if c.Version != 3 || !c.Validated || !c.Cleanup || c.ValidationError != "" || c.Image != r.Image || c.ImageID != imageID || c.Platform != r.Platform || !gatewayVersion.MatchString(c.GatewayVersion) || c.Source != "/openapi.json" || c.ParserVersion == "" || c.ContractPolicy != catalog.ContractPolicy || c.CapturedAt.IsZero() || c.Operations <= 0 {
+		return errors.New("capture is incomplete or does not match the resolved image")
 	}
 	if r.Tag != "8.3" && strings.Fields(c.GatewayVersion)[0] != r.Tag {
 		return errors.New("observed Gateway version does not match the resolved patch tag")

@@ -115,8 +115,8 @@ func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, bin
 		return errors.New("workflow module inventory does not match the capture or observation window")
 	}
 	c := r.Catalog
-	if c == nil || c.Version != catalog.SnapshotVersion || c.SourceKind != "gateway" || c.ParserVersion != catalog.ParserVersion || c.ContractPolicy != catalog.ContractPolicy || c.ContractSHA256 != capture.ContractSHA256 || c.FetchedAt.Before(r.StartedAt) || c.VerifiedAt.Before(c.FetchedAt) || c.VerifiedAt.After(r.FinishedAt) {
-		return errors.New("workflow did not validate the captured contract with the current parser")
+	if c == nil || c.Version != catalog.SnapshotVersion || c.SourceKind != "gateway" || capture.ParserVersion == "" || c.ParserVersion != capture.ParserVersion || c.ContractPolicy != catalog.ContractPolicy || c.ContractSHA256 != capture.ContractSHA256 || c.FetchedAt.Before(r.StartedAt) || c.VerifiedAt.Before(c.FetchedAt) || c.VerifiedAt.After(r.FinishedAt) {
+		return errors.New("workflow did not validate the captured contract with the capture's parser")
 	}
 	u, err := url.Parse(c.Target.URL)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.Port() == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || c.Source != c.Target.URL+"/openapi.json" {

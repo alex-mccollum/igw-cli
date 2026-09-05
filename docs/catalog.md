@@ -535,16 +535,31 @@ the required Gateway permissions; API keys do not impersonate a user's built-in
 Administrator role. See the [vendor's credential example](https://forum.inductiveautomation.com/t/ign-13978-x-ignition-api-token-is-being-sent-lowercase-from-browsers/109911/2)
 and [Gateway permission settings](https://docs.inductiveautomation.com/docs/8.3/platform/security/gateway-general-security-settings).
 
-The resource list regression exposed an input-binding defect in validator
-0.14.0: an absent optional exploded `filter` object receives scalar `limit`,
-`offset`, or `search` values and rejects their names. Parser adapter version 6
-introduced a private validation view; version 7 added project listing and
-version 8 adds log listing. It omits this filter only when every supplied
-query key names another scalar parameter and cannot match the filter's key
-pattern. Supplied/ambiguous filters return `unsupported_serialization` until
-their binding is qualified; explicit generic raw requests remain available.
-Scalar constraints still run. Raw documents, contract identities, and stored model
-parameters remain unchanged. Both captured catalogs exercise this behavior.
+Validator 0.14.0 incorrectly binds all query parameters to an absent exploded
+object, interprets bracketed property names as nested names, and stops checking
+later parameters. Earlier adapters omitted only provably absent list filters.
+Parser version 13 instead binds and validates the advertised filter object
+separately, then validates the remaining request through private model and
+request views. This follows the property-key representation of exploded form
+objects in [OpenAPI parameter serialization](https://spec.openapis.org/oas/v3.1.1.html#style-examples).
+
+The adapter supports the observed string-compatible filter schema, with a
+property-name pattern that separates its keys from named scalar parameters.
+It preserves exact decoded strings and validates the complete object schema,
+including property constraints. Duplicate keys, malformed encoding, overlapping
+ownership, and unsupported serialization fail explicitly. Required parameters,
+inheritance/overrides, headers, and request-body validation remain active.
+Neither the outgoing query, stored model, nor raw document is changed.
+Validation calls against one catalog are serialized because the upstream
+schema renderer writes shared compilation state. Concurrent callers remain
+supported; closing a catalog requires all callers to have finished.
+
+Current-parser fixture expectations are recorded separately in
+`qualification.json`; original captures, reference manifests, and live receipts
+retain their recorded parser versions. Historical receipt checks compare each
+workflow with its capture's parser identity. New reference assembly still
+requires the current parser and refuses even internally consistent older
+receipts. Contract identities and pins do not change for this validation fix.
 
 ## Project and tag transfer evidence
 

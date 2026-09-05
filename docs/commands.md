@@ -86,6 +86,7 @@ catalog and verify successful changes with an independent read:
 bin/igw-next resource types --offline --json
 bin/igw-next resource describe ignition/schedule --json
 bin/igw-next resource list ignition/schedule --limit 50 --offset 0 --json
+bin/igw-next resource list ignition/schedule --filter 'name[eq]=Example' --json
 bin/igw-next resource get ignition/schedule Example --collection core --json
 bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --dry-run --json
 bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --yes --json
@@ -94,6 +95,20 @@ bin/igw-next resource update ignition/schedule Example --body '{"description":"D
 bin/igw-next resource delete ignition/schedule Example --dry-run --json
 bin/igw-next resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes --json
 ```
+
+`resource list`, `project list`, and `logs list` accept repeatable
+`--filter 'field[operator]=value'`. Quote the complete expression for your shell.
+For example, combine `--filter 'name[sw]=Line'` with
+`--filter 'enabled[eq]=true'`. The selected Gateway's schema validates operator
+spelling and value constraints. Each field/operator key can appear once; values
+remain exact text, including `+`, `&`, `=`, Unicode, and large numeric strings.
+The existing pagination and search options remain separate parameters.
+
+Generic requests use the same validation with
+`--query 'name[eq]=Example'`. An exploded filter uses its property keys directly;
+`--query 'filter={...}'` is not that wire format. Invalid or ambiguous filters
+fail before an operation request. Other object serializations and nested filter
+values still need explicit encoding support; `api raw` remains available.
 
 Replace `REVIEWED_SIGNATURE` with the `data.signature` from `get` or the
 `data.beforeSignature` from the corresponding preview. A changed signature

@@ -21,6 +21,28 @@ import (
 
 const syntheticDocument = `{"openapi":"3.1.0","info":{"title":"Synthetic reference fixture","version":"1.0.0"},"paths":{"/health":{"get":{"responses":{"200":{"description":"OK"}}}},"/data/api/v1/tags/import":{"post":{"responses":{"200":{"description":"OK"}}}},"/data/api/v1/tags/export":{"get":{"responses":{"200":{"description":"OK"}}}}}}`
 
+func TestBuildRejectsHistoricalParserEvidence(t *testing.T) {
+	in := fixtureInputs(t)
+	const recordedParser = "libopenapi/0.38.7+validator/0.14.0;igw/12"
+	if recordedParser == catalog.ParserVersion {
+		t.Fatal("test requires a prior parser identity")
+	}
+	mutateReceipt(t, filepath.Join(in.CaptureDir, "capture.json"), func(c map[string]any) {
+		c["parserVersion"] = recordedParser
+	})
+	for _, path := range []string{in.Resources, in.Transfers, in.Operations} {
+		mutateReceipt(t, path, func(r map[string]any) {
+			r["catalog"].(map[string]any)["parserVersion"] = recordedParser
+		})
+	}
+	if _, err := Build(context.Background(), in); err == nil {
+		t.Fatal("consistent historical receipts were promoted to current qualification")
+	}
+	if _, err := os.Stat(in.Out); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("stale qualification created an output directory")
+	}
+}
+
 // Synthetic receipts exercise cross-file validation; only the opt-in Gateway
 // runs provide runtime qualification evidence.
 func fixtureInputs(t *testing.T) Inputs {

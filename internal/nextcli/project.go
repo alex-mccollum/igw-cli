@@ -16,14 +16,20 @@ import (
 func (i *invocation) projectCommands() *cobra.Command {
 	group := &cobra.Command{Use: "project", Short: "Inspect, export, and import complete project archives"}
 	var limit, offset int
+	var filters []string
 	list := &cobra.Command{Use: "list", Short: "List one page of project metadata", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
 		if limit < 1 || limit > 1000 || offset < 0 {
 			return result.Usage("limit must be 1..1000 and offset must be nonnegative")
 		}
-		return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/projects/list", Query: url.Values{"limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}})
+		query := url.Values{"limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}
+		if err := addFilters(query, filters); err != nil {
+			return err
+		}
+		return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/projects/list", Query: query})
 	}}
 	list.Flags().IntVar(&limit, "limit", 50, "Maximum projects in this page (1..1000)")
 	list.Flags().IntVar(&offset, "offset", 0, "Projects to skip")
+	list.Flags().StringArrayVar(&filters, "filter", nil, "Filter field[operator]=value; repeat for different keys")
 	get := &cobra.Command{Use: "get NAME", Short: "Read a project's metadata", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		if err := project.ValidateName(args[0]); err != nil {
 			return err

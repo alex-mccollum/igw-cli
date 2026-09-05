@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/imageref"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
@@ -90,8 +91,14 @@ func verifyRetainedQualification(t *testing.T, name string, operations int, cont
 	if err := json.Unmarshal(read("capture.json"), &capture); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCapture(capture, image.Resolution, imageID); err != nil {
+	if capture.ParserVersion != m.ParserVersion {
+		t.Fatal("manifest changed the original capture's parser identity")
+	}
+	if err := validateCaptureEvidence(capture, image.Resolution, imageID); err != nil {
 		t.Fatal(err)
+	}
+	if capture.ParserVersion != catalog.ParserVersion && validateCapture(capture, image.Resolution, imageID) == nil {
+		t.Fatal("historical capture was promoted to current-parser qualification")
 	}
 	if c.RawHash() != capture.RawSHA256 || c.DocumentHash() != capture.DocumentSHA256 || c.ContractHash() != capture.ContractSHA256 {
 		t.Fatal("capture receipt differs from retained vendor bytes")

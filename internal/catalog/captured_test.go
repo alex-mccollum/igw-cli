@@ -114,6 +114,10 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 			}{
 				{"limit=10&offset=0", true},
 				{"search=Example", true},
+				{"limit=10&name%5Beq%5D=Example", true},
+				{"name%5Beq%5D=A%2BB%26C%23D%25", true},
+				{"name%5Beq%5D=Example&name%5Beq%5D=Other", false},
+				{"name%5Bunknown%5D=Example", false},
 				{"limit=invalid", false},
 				{"unexpected=invalid", false},
 				{"filter=invalid", false},
