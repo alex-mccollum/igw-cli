@@ -24,19 +24,26 @@ func (i *invocation) specCommands() *cobra.Command {
 				return err
 			}
 			defer snapshot.Close()
-			i.withSnapshot(snapshot, map[string]any{"operationCount": len(snapshot.Catalog.Operations()), "rawSha256": snapshot.Catalog.RawHash(), "contractSha256": snapshot.Catalog.ContractHash()})
+			i.withSnapshot(snapshot, map[string]any{"operationCount": snapshot.Catalog.OperationCount(), "documentSha256": snapshot.Catalog.DocumentHash(), "contractPolicy": catalog.ContractPolicy, "rawSha256": snapshot.Catalog.RawHash(), "contractSha256": snapshot.Catalog.ContractHash()})
 			return nil
 		}})
-	group.AddCommand(&cobra.Command{Use: "inspect FILE", Short: "Inspect a local OpenAPI file without configuration or network", Args: cobra.ExactArgs(1),
+	var summary bool
+	inspect := &cobra.Command{Use: "inspect FILE", Short: "Inspect a local OpenAPI file without configuration or network", Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := i.readCatalog(args[0])
 			if err != nil {
 				return err
 			}
 			defer c.Close()
-			i.output = result.Success(map[string]any{"operationCount": len(c.Operations()), "operations": c.Operations(), "rawSha256": c.RawHash(), "contractSha256": c.ContractHash(), "compatibility": c.Compatibility(), "adjustments": c.Adjustments()})
+			data := map[string]any{"operationCount": c.OperationCount(), "documentSha256": c.DocumentHash(), "contractPolicy": catalog.ContractPolicy, "parserVersion": catalog.ParserVersion, "rawSha256": c.RawHash(), "contractSha256": c.ContractHash(), "compatibility": c.Compatibility()}
+			if !summary {
+				data["operations"], data["adjustments"] = c.Operations(), c.Adjustments()
+			}
+			i.output = result.Success(data)
 			return nil
-		}})
+		}}
+	inspect.Flags().BoolVar(&summary, "summary", false, "Show identities, counts, and compatibility totals without operation definitions")
+	group.AddCommand(inspect)
 	group.AddCommand(&cobra.Command{Use: "import FILE", Short: "Store an explicit local reference for this target's offline inspection", Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target, _, err := i.runtime()
@@ -56,7 +63,7 @@ func (i *invocation) specCommands() *cobra.Command {
 			if i.app.Now != nil {
 				now = i.app.Now().UTC()
 			}
-			snapshot := &catalog.Snapshot{Metadata: catalog.Metadata{Version: 1, Target: target, Source: args[0], SourceKind: "import", VerifiedAt: now, RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(), ParserVersion: catalog.ParserVersion}, Catalog: c, Stale: true}
+			snapshot := &catalog.Snapshot{Metadata: catalog.Metadata{Version: catalog.SnapshotVersion, Target: target, Source: args[0], SourceKind: "import", VerifiedAt: now, RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(), ParserVersion: catalog.ParserVersion}, Catalog: c, Stale: true}
 			if err := svc.Store.Save(snapshot); err != nil {
 				return sourceProblem(err)
 			}
@@ -127,7 +134,17 @@ func (i *invocation) specCommands() *cobra.Command {
 			_ = json.Unmarshal(before.Raw(), &oldDoc)
 			_ = json.Unmarshal(after.Raw(), &newDoc)
 			sharedChanged := !jsonEqual(oldDoc["components"], newDoc["components"]) || !jsonEqual(oldDoc["security"], newDoc["security"]) || !jsonEqual(oldDoc["paths"], newDoc["paths"])
-			i.output = result.Success(map[string]any{"before": before.ContractHash(), "after": after.ContractHash(), "equal": before.ContractHash() == after.ContractHash(), "added": added, "removed": removed, "changed": changed, "sharedOrPathContractChanged": sharedChanged, "compatibility": "requires_review"})
+			contractEqual := before.ContractHash() == after.ContractHash()
+			compatibility := "requires_review"
+			if contractEqual {
+				compatibility = "unchanged_under_policy"
+			}
+			i.output = result.Success(map[string]any{
+				"beforeIdentity": before.Identity(), "afterIdentity": after.Identity(),
+				"contractEqual": contractEqual, "documentEqual": before.DocumentHash() == after.DocumentHash(),
+				"added": added, "removed": removed, "changedOperationDocuments": changed,
+				"sharedOrPathDocumentChanged": sharedChanged, "compatibility": compatibility,
+			})
 			return nil
 		}})
 	return group

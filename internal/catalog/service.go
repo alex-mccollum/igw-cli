@@ -112,7 +112,7 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 		metadata.VerifiedAt = s.now()
 	} else if err == nil {
 		parsed, err = Parse(resp.Body)
-		metadata = Metadata{Version: 1, Target: target, Source: endpoint, SourceKind: "gateway",
+		metadata = Metadata{Version: SnapshotVersion, Target: target, Source: endpoint, SourceKind: "gateway",
 			FetchedAt: s.now(), VerifiedAt: s.now(), ETag: resp.Headers.Get("ETag"), LastModified: resp.Headers.Get("Last-Modified")}
 	}
 	if err != nil {

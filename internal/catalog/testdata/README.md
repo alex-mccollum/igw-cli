@@ -3,7 +3,7 @@
 These fixtures contain the original, vendor-generated `/openapi.json` from
 disposable official Ignition images. `capture.json` identifies the pinned image,
 running Gateway version, module whitelist (omitted means image defaults), raw
-and canonical hashes, and parser qualification. Gzip preserves the exact JSON
+and capture-time hashes, and parser qualification. Gzip preserves the exact JSON
 bytes while avoiding large repetitive files in Git.
 
 The JSON retains Inductive Automation's license and attribution metadata.
@@ -16,6 +16,17 @@ original document is fully compliant with OpenAPI.
 parameters with `allowReserved: false` and seven empty response objects.
 The adapter omits that inapplicable path annotation and represents an unknown
 response internally without inventing status codes or payload constraints.
+
+`ignition-8.3.9-defaults-repeat` retains a second capture from a fresh container
+using the same image and modules. Its 56 reordered `oneOf` arrays, four reordered
+`enum` arrays, and two changing example timestamps must not change the contract
+hash. Raw and canonical document hashes still expose these differences.
+
+Historical version 1 `capture.json` receipts used the canonical document hash
+as `contractSha256`. Keep those receipts unchanged. A separate
+`qualification.json` records current parser/policy versions, all three
+identities, operation count, and compatibility totals for each capture. New
+captures use version 2 receipts with distinct document and contract hashes.
 
 Fixture updates must retain the original bytes, image/version provenance, and
 checksums. Review new captures before replacing a fixture; see the qualification

@@ -8,7 +8,7 @@ release. The accepted completion gates are in `docs/plans/rebuild-v1.md`.
 Build and inspect the command tree:
 
 ```bash
-go build -o bin/igw-next ./cmd/igw-next
+bash scripts/bounded-run.sh -- go build -o bin/igw-next ./cmd/igw-next
 bin/igw-next --help
 bin/igw-next schema --json
 bin/igw-next completion bash
@@ -53,6 +53,10 @@ reference bundles, and container qualification remain on the rebuild roadmap.
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local
 imports are marked as references for offline inspection; they do not count as
-fresh Gateway verification. `spec diff` lists changed operation definitions
-and reports shared/path contract changes conservatively; it does not certify
-backward compatibility. See `docs/catalog.md` for storage and authority details.
+fresh Gateway verification. Version 2 receipts distinguish original bytes,
+canonical document identity, and the stable contract used for pins. Old receipts
+are verified and requalified locally with a warning; old pins need explicit
+replacement. `spec inspect FILE --summary --json` returns compact identities and
+counts. `spec diff` distinguishes document changes from contract changes under
+the reported policy; it does not certify backward compatibility. See
+`docs/catalog.md` for storage and authority details.

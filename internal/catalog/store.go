@@ -17,21 +17,31 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 )
 
+const SnapshotVersion = 2
+
+type LegacyIdentity struct {
+	ParserVersion  string `json:"parserVersion"`
+	ContractSHA256 string `json:"contractSha256"`
+}
+
 type Metadata struct {
-	Version        int            `json:"version"`
-	Target         Target         `json:"target"`
-	Source         string         `json:"source"`
-	SourceKind     string         `json:"sourceKind"`
-	FetchedAt      time.Time      `json:"fetchedAt"`
-	VerifiedAt     time.Time      `json:"verifiedAt"`
-	RawSHA256      string         `json:"rawSha256"`
-	ContractSHA256 string         `json:"contractSha256"`
-	ParserVersion  string         `json:"parserVersion"`
-	ETag           string         `json:"etag,omitempty"`
-	LastModified   string         `json:"lastModified,omitempty"`
-	GatewayVersion string         `json:"gatewayVersion,omitempty"`
-	Modules        []string       `json:"modules,omitempty"`
-	Compatibility  *Compatibility `json:"compatibility,omitempty"`
+	Version        int             `json:"version"`
+	Target         Target          `json:"target"`
+	Source         string          `json:"source"`
+	SourceKind     string          `json:"sourceKind"`
+	FetchedAt      time.Time       `json:"fetchedAt"`
+	VerifiedAt     time.Time       `json:"verifiedAt"`
+	RawSHA256      string          `json:"rawSha256"`
+	DocumentSHA256 string          `json:"documentSha256"`
+	ContractSHA256 string          `json:"contractSha256"`
+	ContractPolicy string          `json:"contractPolicy"`
+	ParserVersion  string          `json:"parserVersion"`
+	ETag           string          `json:"etag,omitempty"`
+	LastModified   string          `json:"lastModified,omitempty"`
+	GatewayVersion string          `json:"gatewayVersion,omitempty"`
+	Modules        []string        `json:"modules,omitempty"`
+	Compatibility  *Compatibility  `json:"compatibility,omitempty"`
+	LegacyIdentity *LegacyIdentity `json:"legacyIdentity,omitempty"`
 }
 
 type Snapshot struct {
@@ -57,13 +67,16 @@ func (s Store) Save(snapshot *Snapshot) error {
 		return errors.New("catalog store directory is required")
 	}
 	m := &snapshot.Metadata
-	if m.Version != 1 || m.VerifiedAt.IsZero() || snapshot.Catalog == nil {
+	if m.Version != SnapshotVersion || m.VerifiedAt.IsZero() || snapshot.Catalog == nil {
 		return errors.New("invalid snapshot metadata")
 	}
 	if m.RawSHA256 != snapshot.Catalog.RawHash() || m.ContractSHA256 != snapshot.Catalog.ContractHash() {
 		return errors.New("snapshot hashes do not match document")
 	}
 	m.Compatibility = snapshot.Catalog.Compatibility()
+	m.DocumentSHA256 = snapshot.Catalog.DocumentHash()
+	m.ContractPolicy = ContractPolicy
+	m.ParserVersion = ParserVersion
 	if target, err := NewTarget(m.Target.Profile, m.Target.URL); err != nil || target != m.Target {
 		return errors.New("snapshot target must be normalized")
 	}
@@ -147,7 +160,7 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
-	if m.Version != 1 || m.Target != target || m.VerifiedAt.IsZero() || !validDigest(m.RawSHA256) {
+	if (m.Version != 1 && m.Version != SnapshotVersion) || m.Target != target || m.VerifiedAt.IsZero() || !validDigest(m.RawSHA256) {
 		return nil, errors.New("invalid snapshot receipt")
 	}
 	if m.SourceKind == "gateway" {
@@ -167,12 +180,24 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.ContractHash() != m.ContractSHA256 {
+	var warnings []string
+	if m.Version == 1 {
+		// Verify the old identity before deriving the new one. The original
+		// immutable receipt is left untouched and its pin remains inspectable.
+		if c.DocumentHash() != m.ContractSHA256 {
+			c.Close()
+			return nil, errors.New("legacy catalog document checksum mismatch")
+		}
+		m.LegacyIdentity = &LegacyIdentity{ParserVersion: m.ParserVersion, ContractSHA256: m.ContractSHA256}
+		m.Version, m.DocumentSHA256, m.ContractSHA256, m.ContractPolicy = SnapshotVersion, c.DocumentHash(), c.ContractHash(), ContractPolicy
+		warnings = append(warnings, "Loaded a legacy snapshot with a new contract hash policy; review and replace old pins. Gateway verification time is unchanged.")
+	} else if c.ContractHash() != m.ContractSHA256 || c.DocumentHash() != m.DocumentSHA256 || m.ContractPolicy != ContractPolicy {
 		c.Close()
 		return nil, errors.New("catalog contract checksum mismatch")
 	}
 	m.Compatibility = c.Compatibility()
-	return &Snapshot{Metadata: m, Catalog: c}, nil
+	m.ParserVersion = ParserVersion
+	return &Snapshot{Metadata: m, Catalog: c, Warnings: warnings}, nil
 }
 
 func validDigest(value string) bool {

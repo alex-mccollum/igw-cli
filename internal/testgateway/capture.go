@@ -25,7 +25,9 @@ type Evidence struct {
 	Source          string                 `json:"source"`
 	CapturedAt      time.Time              `json:"capturedAt"`
 	RawSHA256       string                 `json:"rawSha256"`
+	DocumentSHA256  string                 `json:"documentSha256,omitempty"`
 	ContractSHA256  string                 `json:"contractSha256,omitempty"`
+	ContractPolicy  string                 `json:"contractPolicy,omitempty"`
 	Operations      int                    `json:"operations,omitempty"`
 	ParserVersion   string                 `json:"parserVersion"`
 	Validated       bool                   `json:"validated"`
@@ -134,7 +136,7 @@ func readURL(ctx context.Context, client *http.Client, url string, limit int64) 
 // a qualified catalog until the incompatibility has been reviewed and repaired.
 func (s *Session) Save(dir string, raw []byte) (Evidence, error) {
 	sum := sha256.Sum256(raw)
-	evidence := Evidence{Version: 1, Image: s.Image, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
+	evidence := Evidence{Version: 2, Image: s.Image, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
 	if err := saveFile(filepath.Join(dir, "openapi.json"), raw); err != nil {
 		return evidence, err
 	}
@@ -146,6 +148,7 @@ func (s *Session) Save(dir string, raw []byte) (Evidence, error) {
 		evidence.Validated = true
 		evidence.Compatibility = c.Compatibility()
 		evidence.ContractSHA256 = c.ContractHash()
+		evidence.DocumentSHA256, evidence.ContractPolicy = c.DocumentHash(), catalog.ContractPolicy
 		evidence.Operations = len(c.Operations())
 	}
 	manifest, err := json.MarshalIndent(evidence, "", "  ")

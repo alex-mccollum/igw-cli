@@ -25,7 +25,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/3"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/4"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 
@@ -71,6 +71,7 @@ type Catalog struct {
 	once         sync.Once
 	validator    validator.Validator
 	rawHash      string
+	documentHash string
 	contractHash string
 	adjustments  []Adjustment
 }
@@ -92,6 +93,10 @@ func Parse(raw []byte) (*Catalog, error) {
 		return nil, err
 	}
 	canonical, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	contractHash, err := contractDigest(value)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +140,7 @@ func Parse(raw []byte) (*Catalog, error) {
 	c := &Catalog{
 		raw: bytes.Clone(raw), root: root, document: doc, model: model,
 		ops: make(map[string]Operation), aliases: make(map[string][]string),
-		rawHash: digest(raw), contractHash: digest(canonical),
+		rawHash: digest(raw), documentHash: digest(canonical), contractHash: contractHash,
 		adjustments: adjustments,
 	}
 	if err := json.Unmarshal(root["paths"], &c.paths); err != nil {
@@ -260,10 +265,11 @@ func digest(b []byte) string { sum := sha256.Sum256(b); return hex.EncodeToStrin
 func (c *Catalog) Raw() []byte     { return bytes.Clone(c.raw) }
 func (c *Catalog) RawHash() string { return c.rawHash }
 
-// ContractHash hashes sorted JSON object keys with exact JSON number spellings.
-// It ignores formatting/key order; it is deliberately conservative about all
-// document fields and does not claim full semantic JSON Schema equivalence.
+// ContractHash hashes the versioned, reference-preserving contract projection.
+// DocumentHash retains every field for documentation/representation drift.
 func (c *Catalog) ContractHash() string { return c.contractHash }
+
+func (c *Catalog) OperationCount() int { return len(c.ops) }
 
 func (c *Catalog) Operations() []Operation {
 	out := make([]Operation, 0, len(c.ops))

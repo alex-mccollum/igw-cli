@@ -50,6 +50,39 @@ func decodeResult(t *testing.T, out *bytes.Buffer) result.Result {
 	return r
 }
 
+func TestSpecDiffSeparatesDocumentAndContractChanges(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, after string
+		equal       bool
+	}{
+		{"documentation", strings.ReplaceAll(fixtureSpec, `"description":"OK"`, `"description":"Updated help"`), true},
+		{"constraint", strings.ReplaceAll(fixtureSpec, `"type":"boolean"`, `"type":"string"`), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			before, after := filepath.Join(dir, "before.json"), filepath.Join(dir, "after.json")
+			if err := os.WriteFile(before, []byte(fixtureSpec), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(after, []byte(tc.after), 0600); err != nil {
+				t.Fatal(err)
+			}
+			app, out, _ := testApp(t, nil)
+			if err := app.Run(context.Background(), []string{"spec", "diff", before, after, "--json"}); err != nil {
+				t.Fatal(err)
+			}
+			data := decodeResult(t, out).Data.(map[string]any)
+			if data["contractEqual"] != tc.equal || data["documentEqual"] != false || data["sharedOrPathDocumentChanged"] != true || len(data["changedOperationDocuments"].([]any)) == 0 {
+				t.Fatalf("incorrect drift classification: %+v", data)
+			}
+			if (data["compatibility"] == "unchanged_under_policy") != tc.equal {
+				t.Fatal("compatibility assessment disagrees with policy")
+			}
+		})
+	}
+}
+
 func TestJSONIncludesParseErrorsAndOfflineCommandSchema(t *testing.T) {
 	t.Parallel()
 	for _, args := range [][]string{{"--unknown", "--json"}, {"api", "request", "--json"}, {"schema", "--json"}, {"--help", "--json"}, {"completion", "bash", "--json"}} {
@@ -271,5 +304,34 @@ func TestOfflineImportInspectAndPin(t *testing.T) {
 	r = decodeResult(t, out)
 	if !r.Meta.Stale || r.Meta.Catalog.SourceKind != "import" {
 		t.Fatalf("reference looked verified: %+v", r.Meta)
+	}
+}
+
+func TestSpecSummaryProvidesIdentitiesWithoutOperationPayloads(t *testing.T) {
+	t.Parallel()
+	app, out, _ := testApp(t, nil)
+	app.ReadConfig = func() (config.File, error) {
+		t.Fatal("local inspection loaded configuration")
+		return config.File{}, nil
+	}
+	path := filepath.Join(t.TempDir(), "openapi.json")
+	if err := os.WriteFile(path, []byte(fixtureSpec), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Run(context.Background(), []string{"spec", "inspect", path, "--summary", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	r := decodeResult(t, out)
+	data := r.Data.(map[string]any)
+	for _, key := range []string{"rawSha256", "documentSha256", "contractSha256", "contractPolicy", "parserVersion", "operationCount"} {
+		if data[key] == nil {
+			t.Fatalf("summary omitted %s", key)
+		}
+	}
+	if _, ok := data["operations"]; ok {
+		t.Fatal("summary emitted all operation definitions")
+	}
+	if _, ok := data["adjustments"]; ok {
+		t.Fatal("summary emitted detailed adjustments")
 	}
 }

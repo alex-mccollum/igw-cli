@@ -67,7 +67,7 @@ policy supplies effects, retry eligibility, and completion checks.
 - Partition snapshots by profile and normalized effective URL, including proxy
   base paths. Never implicitly use an unrelated working-directory spec.
 - Record source URL, fetch/validation times, Gateway version, available module
-  metadata, raw SHA-256, canonical contract hash, and parser/policy versions.
+  metadata, raw/document/contract SHA-256, and parser/policy versions.
 - Preserve raw vendor documents. Keep narrow reviewed corrections separately,
   scoped to affected versions/hashes. Report schema gaps explicitly.
 - Disable automatic external-reference retrieval. Spec server URLs cannot
@@ -243,6 +243,23 @@ and the two example timestamps. This expands the stable-hashing work beyond
 ignoring documentation fields; reference semantics and ordered input arrays
 must remain intact. This is live capture/lifecycle evidence, not yet
 authenticated CLI workflow acceptance.
+
+Stable identity follow-up: the second 8.3.9 capture is now retained alongside
+the first. Versioned `igw-contract/1` projection gives both the same contract
+hash while separate raw and document hashes expose all original differences.
+It preserves constraints, exact number spellings, duplicate alternatives,
+ordered instance/tuple arrays, extensions, and reference targets. Version 2
+receipts retain provenance; version 1 receipts are checksum-verified and
+requalified without changing historical bytes or Gateway verification times.
+Legacy pins require explicit review and replacement. The development CLI adds
+compact `spec inspect --summary` and separates document drift from contract
+changes in `spec diff`. Regression tests cover fresh-write pins across benign
+drift, rejection of changed constraints, reference positions, and corrupt or
+unrecognized identity receipts.
+Full unit and race suites, all three contributor/CLI builds, command-doc
+consistency, and docs lint passed with the bounded runner. The race run's
+observed cgroup peak was 2.62 GiB. Resource schema qualification, task workflows,
+and the remaining full v1 gates are still pending.
 
 ## References
 

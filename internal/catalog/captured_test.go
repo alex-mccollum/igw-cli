@@ -19,6 +19,7 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 		t.Fatal("captured Gateway contracts are missing")
 	}
 	// Large vendor schemas are deliberately tested sequentially to bound memory.
+	identicalImages := make(map[string]string)
 	for _, path := range paths {
 		t.Run(filepath.Base(filepath.Dir(path)), func(t *testing.T) {
 			b, err := os.ReadFile(path)
@@ -26,6 +27,9 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				t.Fatal(err)
 			}
 			var receipt struct {
+				Version        int            `json:"version"`
+				Image          string         `json:"image"`
+				Modules        []string       `json:"moduleWhitelist"`
 				RawSHA256      string         `json:"rawSha256"`
 				ContractSHA256 string         `json:"contractSha256"`
 				Operations     int            `json:"operations"`
@@ -54,9 +58,32 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			if c.RawHash() != receipt.RawSHA256 || c.ContractHash() != receipt.ContractSHA256 || len(c.Operations()) != receipt.Operations || !reflect.DeepEqual(c.Compatibility(), receipt.Compatibility) {
+			capturedHash := c.ContractHash()
+			if receipt.Version == 1 {
+				capturedHash = c.DocumentHash()
+			}
+			if c.RawHash() != receipt.RawSHA256 || capturedHash != receipt.ContractSHA256 || c.OperationCount() != receipt.Operations {
 				t.Fatal("capture checksum or qualification drift")
 			}
+			b, err = os.ReadFile(filepath.Join(filepath.Dir(path), "qualification.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var qualified struct {
+				Identity
+				ParserVersion  string         `json:"parserVersion"`
+				OperationCount int            `json:"operationCount"`
+				Compatibility  *Compatibility `json:"compatibility"`
+			}
+			if json.Unmarshal(b, &qualified) != nil || qualified.Identity != c.Identity() || qualified.ParserVersion != ParserVersion || qualified.OperationCount != c.OperationCount() || !reflect.DeepEqual(qualified.Compatibility, c.Compatibility()) {
+				t.Fatal("current parser qualification drift")
+			}
+			modules, _ := json.Marshal(receipt.Modules)
+			group := receipt.Image + string(modules)
+			if previous, ok := identicalImages[group]; ok && previous != c.ContractHash() {
+				t.Fatal("identical image/module captures have unstable contract identities")
+			}
+			identicalImages[group] = c.ContractHash()
 			for _, tc := range []struct {
 				body  string
 				valid bool

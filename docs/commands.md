@@ -17,6 +17,7 @@ bin/igw-next gateway doctor --json
 bin/igw-next api raw --method POST --path /data/api/v1/scan/projects --dry-run --json
 bin/igw-next spec export --out gateway-openapi.json --json
 bin/igw-next spec inspect gateway-openapi.json --json
+bin/igw-next spec inspect gateway-openapi.json --summary --json
 bin/igw-next spec import gateway-openapi.json --json
 bin/igw-next api list --offline --json
 bin/igw-next spec diff before-openapi.json after-openapi.json --json

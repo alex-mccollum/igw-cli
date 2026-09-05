@@ -101,6 +101,44 @@ func TestPinsAndTargetIsolation(t *testing.T) {
 	}
 }
 
+func TestWritePinAcceptsDocumentDriftAndRejectsConstraintDrift(t *testing.T) {
+	t.Parallel()
+	const original = `{"openapi":"3.1.0","info":{"title":"Fixture","version":"test"},"paths":{"/items":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"string","enum":["a","b"],"examples":["a"]}}}},"responses":{"200":{"description":"OK"}}}}}}`
+	var document atomic.Value
+	document.Store(original)
+	var gets atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gets.Add(1)
+		_, _ = w.Write([]byte(document.Load().(string)))
+	}))
+	defer srv.Close()
+	svc := Service{Store: Store{Dir: t.TempDir()}, HTTP: srv.Client()}
+	target, _ := NewTarget("dev", srv.URL)
+	first, err := svc.Acquire(context.Background(), target, "secret", Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	pin := first.Metadata.ContractSHA256
+	document.Store(strings.ReplaceAll(strings.ReplaceAll(original, `["a","b"]`, `["b","a"]`), `"examples":["a"]`, `"examples":["b"]`))
+	refreshed, err := svc.Acquire(context.Background(), target, "secret", Policy{ForWrite: true, Pin: pin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer refreshed.Close()
+	if refreshed.Stale || gets.Load() != 2 || refreshed.Metadata.RawSHA256 == first.Metadata.RawSHA256 || refreshed.Metadata.DocumentSHA256 == first.Metadata.DocumentSHA256 || refreshed.Metadata.ContractPolicy != ContractPolicy || refreshed.Metadata.Version != SnapshotVersion {
+		t.Fatalf("document drift lost identity or fresh-write evidence: %+v", refreshed.Metadata)
+	}
+	document.Store(strings.ReplaceAll(original, `["a","b"]`, `["a"]`))
+	if snapshot, err := svc.Acquire(context.Background(), target, "secret", Policy{ForWrite: true, Pin: pin}); err == nil || igwerr.ExitCode(err) != 2 {
+		snapshot.Close()
+		t.Fatalf("changed constraint accepted with previous pin: %v", err)
+	}
+	if gets.Load() != 3 {
+		t.Fatal("write pin was checked without fresh discovery")
+	}
+}
+
 func TestInvalidRefreshRetainsLastValidSnapshot(t *testing.T) {
 	t.Parallel()
 	var invalid atomic.Bool
@@ -157,7 +195,7 @@ func TestConcurrentStorePublicationNeverRollsBackNewerReceipt(t *testing.T) {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			m := Metadata{Version: 1, Target: target, SourceKind: "gateway", Source: "http://gateway.test/openapi.json",
+			m := Metadata{Version: SnapshotVersion, Target: target, SourceKind: "gateway", Source: "http://gateway.test/openapi.json",
 				FetchedAt: now, VerifiedAt: now.Add(time.Duration(index) * time.Second), RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(), ParserVersion: ParserVersion}
 			if err := store.Save(&Snapshot{Metadata: m, Catalog: c}); err != nil {
 				t.Error(err)

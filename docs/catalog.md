@@ -24,15 +24,36 @@ Snapshots are partitioned by profile and normalized effective Gateway URL,
 including a reverse-proxy base path. Credentials are never stored in a snapshot.
 Raw documents are immutable SHA-256-addressed blobs; immutable validation
 receipts record the target, source, fetch and verification times, HTTP validators,
-parser version, and two hashes. Atomic file publication coordinates concurrent
+parser version, and three hashes. Atomic file publication coordinates concurrent
 writers. The newest complete valid receipt wins, so a slower older refresh
 cannot replace a newer one through a shared latest pointer. A corrupt newer
 receipt produces a warning and falls back to a valid older snapshot.
 
-The raw hash checks byte integrity. The contract hash normalizes object key
-order and JSON whitespace while retaining number precision. It conservatively
-includes all document fields; it does not claim that equivalent schema syntax
-always has an equal hash. Pins use this contract hash.
+The identities have distinct purposes:
+
+- `rawSha256` checks the exact vendor bytes, including formatting.
+- `documentSha256` normalizes object key order and JSON whitespace while
+  retaining all fields, array order, and exact JSON number spellings.
+- `contractSha256` applies versioned policy `igw-contract/1` before hashing.
+  It omits recognized documentation annotations in their OpenAPI/Schema
+  contexts and sorts schema `allOf`, `anyOf`, `oneOf`, `enum`, `required`, and
+  union `type` arrays. Defaults, constraints, duplicates, unknown keywords,
+  extensions, ordered tuples, and arrays inside instance data remain intact.
+
+Pins use the contract hash. The policy name is part of the hash input. Reference
+targets and array/annotation ancestors are preserved; unresolved, anchor, and
+dynamic references conservatively preserve their containing resource. Local
+schema resources respect `$id` boundaries. This is a reviewed projection, not a
+general proof of JSON Schema equivalence or runtime behavior. A changed hash
+requires review; it is not automatically a breaking change. The rules follow
+the [JSON Schema validation vocabulary](https://json-schema.org/draft/2020-12/json-schema-validation)
+and [reference semantics](https://json-schema.org/draft/2020-12/json-schema-core).
+
+New snapshot receipts use version 2. Version 1 receipts remain readable: the
+loader verifies their original canonical checksum, derives current identities,
+retains `legacyIdentity`, and emits a migration warning. It does not rewrite
+history or advance Gateway verification time. Old pins are not accepted as new
+contract identities; inspect the document and explicitly replace those pins.
 
 Discovery and reads refresh after 24 hours. A write revalidates during each
 invocation, using ETag or Last-Modified when supplied. A failed refresh retains
@@ -49,8 +70,8 @@ CLI and workflow contracts.
 
 ## Real Gateway qualification
 
-The test suite includes the exact compressed document captured from an official
-Ignition 8.3.9 container with its default modules. It contains 687 operations
+The test suite includes exact compressed documents from two fresh official
+Ignition 8.3.9 containers with their default modules. Each contains 687 operations
 across 587 paths and is about 12.7 MB uncompressed. Its receipt records the
 image digest, observed `ignitionVersion`, capture time, raw/contract hashes,
 parser version, and compatibility policy. `info.version` is `1.0.0` in that
@@ -88,14 +109,20 @@ not a claim that the user's payload is invalid. Explicit raw requests remain
 available. A separate reviewed solution and real mutation tests are required
 before those resource workflows are qualified.
 
-Two fresh instances also produced different example timestamps in scan-lock
-responses. The current conservative contract hash includes examples, so a pin
-can change after restart even when input constraints do not. Separating stable
-wire-contract identity from documentation/example drift is still required.
-A later comparison of the guarded capture with the committed fixture found
-56 reordered `oneOf` arrays and four reordered `enum` arrays, in addition to
-the two example timestamps. Stable pinning must account for these set-like
-schema arrays without changing ordered data arrays or reference semantics.
+The two captures differ at 56 reordered `oneOf` arrays, four reordered `enum`
+arrays, and two scan-lock example timestamps. Their raw and document identities
+differ, but both produce contract hash
+`fce0593c41f1d0ae31c0647c34bb10ccebf6f44958c3c55913c887654ff9ccbc`.
+Tests retain both captures and require that stability. Separate
+`qualification.json` files bind the current parser and policies to each raw
+document while preserving the original `capture.json` history.
+
+Use `spec inspect FILE --summary --json` for identities, operation count, and
+compatibility totals without thousands of operation definitions. `spec diff`
+reports `contractEqual` separately from `documentEqual`; its operation change
+list describes document differences. Equal contracts report
+`unchanged_under_policy`; different contracts require review. Neither result
+certifies Gateway runtime behavior or backward compatibility.
 
 ## Contributor capture
 
