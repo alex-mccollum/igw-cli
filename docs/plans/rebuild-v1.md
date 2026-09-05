@@ -718,6 +718,52 @@ are in `bin/keyboard-{unit,race}.log`. Legacy live smoke still lacks a configure
 default Gateway; the fresh guarded coordinator run will provide separate
 minimum-version acceptance evidence.
 
+The first fresh default-module minimum pipeline ran from clean commit
+`3d390e8f49eb97a8616701dc44e1c184fce06e9b`, using Go 1.27.1 and pinned image
+`inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb`.
+Image config is `sha256:3ccb0dd03f8237048a0cc8554abd29a25429d684be85bbbe0c8bd1c42a95be85`.
+The lifecycle probe passed ten checks in 6.151273834 seconds, including no OOM
+and independent cleanup. Its test binary SHA-256 is
+`479374537118a769d5435cc9f8f478068bf21d5514883aa4df86db2f1272590d`.
+Capture observed Gateway `8.3.0 (b2025091510)` and 32 healthy active first-party
+modules, inventory hash
+`f8205842deae9087a570d3c30f54f8ed1d414f65d429bd4eefd3040493ae256f`.
+
+The coordinator stopped at capture-time OAS validation, before any workflow
+suite. EAM marked its boolean `running` path parameter optional; SFC omitted
+both chart path parameter schemas. The complete 672-operation document and
+failed receipt were retained; cleanup passed and an independent Docker query
+found no qualification containers. The run was terminal and its source checkout
+clean before that owned worktree was removed. No retry, host recovery, or
+resource-limit change occurred. Original run logs remain in
+`bin/reference-minimum-20260905/`.
+
+Parser version 11 / policy `ignition-openapi/5` now handles those exact module
+parameters. EAM retains its boolean constraint and requires the selected path
+placeholder. SFC discovery reports the missing schemas, and reads/previews fail
+with `catalog_schema`/2 before sending an operation; no type is inferred from
+8.3.9. Updated parameter schemas resume normal validation when supplied. The
+new fixture's full catalog and resource/project/log request regressions pass.
+
+The exact compressed document, original failed capture/coordinator/lifecycle
+receipts, and separate current qualification are retained under
+`internal/catalog/testdata/ignition-8.3.0-defaults/`. Original raw SHA-256 is
+`ca661fb27a4f27dc262d53164676e11429d33f74dfabc95e196f3c61b712f765`,
+document SHA-256 is
+`224a230ee101293e1cd6f05db54dd825420c5dd6cf94bca677066a3114b28cde`,
+and contract SHA-256 is
+`a87917c8a2ff264ab77def23e9fa619af23cd8027e525b7d42ff2bdfe933b644`.
+Current inspection reports 672 operations and 648 adjustments. Existing 8.3.9
+fixtures retain their identities and counts. The minimum fixture remains
+parser evidence, not a qualified offline reference: a current-binary clean
+pipeline and real workflow acceptance remain required.
+
+Full unit tests, focused legacy catalog/CLI race tests, the development CLI
+build, complete captured-document checks, and docs checks passed under the
+bounded runner. Logs are in `bin/minimum-module-{unit,race}.log` and
+`bin/minimum-default-captured-test.log`. Legacy smoke's default Gateway remains
+unconfigured; real minimum-version workflow acceptance is still pending.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

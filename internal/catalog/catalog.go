@@ -25,7 +25,7 @@ import (
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/10"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/11"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -327,6 +327,8 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 				description.Gaps = append(description.Gaps, "Supply every placeholder in the selected path; the vendor's optional path form requires a separate explicit request.")
 			case "script-cancel-undocumented-id":
 				description.Gaps = append(description.Gaps, "The Gateway omits the id parameter's schema; schema-assisted requests and previews are unavailable for this operation.")
+			case "sfc-undocumented-path":
+				description.Gaps = append(description.Gaps, "The Gateway omits the SFC path parameter schemas; schema-assisted requests and previews are unavailable for this operation.")
 			case "keyboard-local-definitions":
 				description.Gaps = append(description.Gaps, "The Gateway's keyboard reference paths do not resolve; validation expands its embedded definitions without changing their value constraints.")
 			}
@@ -363,7 +365,7 @@ func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 		return nil, errors.New("request method differs from selected operation")
 	}
 	for _, adjustment := range c.adjustments {
-		if adjustment.Operation == op.Key && adjustment.Rule == "script-cancel-undocumented-id" {
+		if adjustment.Operation == op.Key && (adjustment.Rule == "script-cancel-undocumented-id" || adjustment.Rule == "sfc-undocumented-path") {
 			return nil, ErrIncompleteContract
 		}
 	}

@@ -27,17 +27,25 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				t.Fatal(err)
 			}
 			var receipt struct {
-				Version        int            `json:"version"`
-				Image          string         `json:"image"`
-				Modules        []string       `json:"moduleWhitelist"`
-				RawSHA256      string         `json:"rawSha256"`
-				ContractSHA256 string         `json:"contractSha256"`
-				Operations     int            `json:"operations"`
-				Validated      bool           `json:"validated"`
-				Compatibility  *Compatibility `json:"compatibility"`
+				Version         int            `json:"version"`
+				Image           string         `json:"image"`
+				Modules         []string       `json:"moduleWhitelist"`
+				RawSHA256       string         `json:"rawSha256"`
+				ContractSHA256  string         `json:"contractSha256"`
+				Operations      int            `json:"operations"`
+				Validated       bool           `json:"validated"`
+				Cleanup         bool           `json:"cleanup"`
+				ValidationError string         `json:"validationError"`
+				Compatibility   *Compatibility `json:"compatibility"`
 			}
-			if json.Unmarshal(b, &receipt) != nil || !receipt.Validated {
-				t.Fatal("fixture must have qualified capture evidence")
+			if json.Unmarshal(b, &receipt) != nil {
+				t.Fatal("invalid capture evidence")
+			}
+			// A captured document can predate its reviewed parser adapter. Keep
+			// the failed capture receipt intact; qualification.json below must
+			// independently match every current parser identity and adjustment.
+			if !receipt.Validated && (receipt.Version != 3 || !receipt.Cleanup || receipt.ValidationError == "" || receipt.Operations != 0 || receipt.ContractSHA256 != "") {
+				t.Fatal("invalid historical capture failure")
 			}
 			f, err := os.Open(filepath.Join(filepath.Dir(path), "openapi.json.gz"))
 			if err != nil {
@@ -62,7 +70,7 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 			if receipt.Version == 1 {
 				capturedHash = c.DocumentHash()
 			}
-			if c.RawHash() != receipt.RawSHA256 || capturedHash != receipt.ContractSHA256 || c.OperationCount() != receipt.Operations {
+			if c.RawHash() != receipt.RawSHA256 || (receipt.Validated && (capturedHash != receipt.ContractSHA256 || c.OperationCount() != receipt.Operations)) {
 				t.Fatal("capture checksum or qualification drift")
 			}
 			b, err = os.ReadFile(filepath.Join(filepath.Dir(path), "qualification.json"))

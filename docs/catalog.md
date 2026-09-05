@@ -90,7 +90,7 @@ The vendor document needs a narrowly scoped adapter before OAS validation:
   shape and every variant is free of references, anchors, nested identifiers,
   and dialect changes. All pairs must qualify before an operation is adapted.
 
-Policy `ignition-openapi/4` matches the observed generator identity and those
+Policy `ignition-openapi/5` matches the observed generator identity and those
 exact structural shapes, recognizing both the current IA license URL and the
 8.3.0 Gateway-relative `/res/sys/license.html` EULA. Each snapshot binds the
 policy to its original raw SHA-256. It does not grant trust based on the
@@ -114,6 +114,15 @@ sending the operation. `api raw` remains available with explicit `--yes` for
 the DELETE request. These adjustments match only the reviewed route, method,
 and parameter shapes; unknown defects remain errors. The corresponding fields
 are already corrected in the retained 8.3.9 document.
+
+The default-module 8.3.0 capture adds an EAM `running` path parameter marked
+optional despite its selected template. Its supplied boolean schema remains
+unchanged while the selected placeholder becomes required. The SFC chart GET
+omits both `projectName` and `chartPath` schemas. Discovery reports that gap;
+schema-assisted reads and previews return `catalog_schema`/2 before sending
+the operation. Explicit raw reads remain available. These module-specific
+corrections also match only the observed method, route, and parameter shapes;
+the corresponding 8.3.9 parameters have complete schemas.
 
 8.3.0 also embeds keyboard-layout `$defs` without rebasing 24 local references.
 The private model expands the supplied definitions at eight config/backupConfig
@@ -409,6 +418,14 @@ evidence are still required for that image. The complete version/module matrix a
 remain tracked in the [execution plan](plans/rebuild-v1.md). The serialized
 [reference updater](reference-updates.md) has passed local 8.3.9 acceptance;
 remote scheduling still requires a provisioned runner and explicit activation.
+
+A fresh 8.3.0 default-module capture subsequently passed containment and recorded
+32 healthy active first-party modules. Its capture-time parser rejected the EAM
+and SFC defects above, and the coordinator stopped before workflow tests. The
+exact document, original failed receipt, lifecycle evidence, and separate
+current-parser qualification are retained as a parser fixture. It now parses
+with 672 operations and 648 adjustments. This is reproducible parser evidence;
+it is not yet a qualified offline reference or live workflow acceptance.
 
 ## Authenticated API acceptance
 

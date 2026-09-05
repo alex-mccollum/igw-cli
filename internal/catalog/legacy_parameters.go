@@ -15,9 +15,9 @@ func normalizeLegacyParameters(op map[string]any, key, pointer string) []Adjustm
 		}
 		name, _ := param["name"].(string)
 		base := pointer + "/parameters/" + strconv.Itoa(index)
-		if param["required"] == false && legacyOptionalPath(key, name) {
+		if kind := legacyPathType(key, name); kind != "" && param["required"] == false {
 			schema, _ := param["schema"].(map[string]any)
-			if schema["type"] == "string" {
+			if schema["type"] == kind {
 				// A selected path template requires a value at every placeholder.
 				// No alternate path is inferred, and all value constraints remain.
 				param["required"] = true
@@ -25,12 +25,12 @@ func normalizeLegacyParameters(op map[string]any, key, pointer string) []Adjustm
 			}
 		}
 		_, hasSchema := param["schema"]
-		if key == "DELETE /data/api/v1/scripts/cancel-script/{id}" && name == "id" && param["required"] == true && param["description"] == "n/a" && !hasSchema {
+		if rule := legacyUndocumentedPath(key, name); rule != "" && param["required"] == true && param["description"] == "n/a" && !hasSchema {
 			// Empty schema is solely a model placeholder. Validate rejects this
 			// operation before reaching the validator; never infer string/UUID
 			// assertions from a newer Gateway or from the parameter's name.
 			param["schema"] = map[string]any{}
-			adjustments = append(adjustments, Adjustment{Operation: key, Pointer: base + "/schema", Rule: "script-cancel-undocumented-id"})
+			adjustments = append(adjustments, Adjustment{Operation: key, Pointer: base + "/schema", Rule: rule})
 		}
 	}
 	return adjustments
@@ -50,12 +50,25 @@ func legacyParameterShape(param map[string]any) bool {
 	return true
 }
 
-func legacyOptionalPath(key, name string) bool {
-	if key == "GET /data/api/v1/entity/section/{section}" {
-		return name == "section"
+func legacyUndocumentedPath(key, name string) string {
+	if key == "DELETE /data/api/v1/scripts/cancel-script/{id}" && name == "id" {
+		return "script-cancel-undocumented-id"
+	}
+	if key == "GET /data/sfc/api/v1/charts/{projectName}/{chartPath}" && (name == "projectName" || name == "chartPath") {
+		return "sfc-undocumented-path"
+	}
+	return ""
+}
+
+func legacyPathType(key, name string) string {
+	if key == "GET /data/eam/api/v1/eam-tasks/scheduled/{running}" && name == "running" {
+		return "boolean"
+	}
+	if key == "GET /data/api/v1/entity/section/{section}" && name == "section" {
+		return "string"
 	}
 	if name != "scim-version" {
-		return false
+		return ""
 	}
 	switch key {
 	case "GET /data/api/v1/scim/{profile-name}/{scim-version}/Groups",
@@ -73,7 +86,7 @@ func legacyOptionalPath(key, name string) bool {
 		"GET /data/api/v1/scim/{profile-name}/{scim-version}/Users/{user-id}",
 		"PUT /data/api/v1/scim/{profile-name}/{scim-version}/Users/{user-id}",
 		"DELETE /data/api/v1/scim/{profile-name}/{scim-version}/Users/{user-id}":
-		return true
+		return "string"
 	}
-	return false
+	return ""
 }

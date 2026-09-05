@@ -1,0 +1,112 @@
+{
+  "version": "igw/reference-update/v1",
+  "startedAt": "2026-09-05T17:35:33.531473Z",
+  "status": "failed",
+  "tag": "8.3.0",
+  "moduleProfile": "image-defaults",
+  "pull": true,
+  "requireClean": true,
+  "steps": [
+    {
+      "name": "admission",
+      "startedAt": "2026-09-05T17:35:33.534517Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:34.663290Z",
+      "exitCode": 0
+    },
+    {
+      "name": "engine",
+      "startedAt": "2026-09-05T17:35:34.670964Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:35.095431Z",
+      "exitCode": 0
+    },
+    {
+      "name": "exclusive-slot",
+      "startedAt": "2026-09-05T17:35:35.104116Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:35.326605Z",
+      "exitCode": 0
+    },
+    {
+      "name": "source-commit",
+      "startedAt": "2026-09-05T17:35:35.343638Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:35.465039Z",
+      "exitCode": 0
+    },
+    {
+      "name": "source-status",
+      "startedAt": "2026-09-05T17:35:35.471782Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:35.643492Z",
+      "exitCode": 0
+    },
+    {
+      "name": "toolchain",
+      "startedAt": "2026-09-05T17:35:35.654930Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:35:35.878860Z",
+      "exitCode": 0
+    },
+    {
+      "name": "build-capture",
+      "startedAt": "2026-09-05T17:35:35.887160Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:36:06.637604Z",
+      "exitCode": 0
+    },
+    {
+      "name": "build-tests",
+      "startedAt": "2026-09-05T17:36:06.645061Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:36:37.753036Z",
+      "exitCode": 0
+    },
+    {
+      "name": "resolve",
+      "startedAt": "2026-09-05T17:36:37.762724Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:36:38.843060Z",
+      "exitCode": 0
+    },
+    {
+      "name": "pull",
+      "startedAt": "2026-09-05T17:36:38.859056Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:36:39.634523Z",
+      "exitCode": 0
+    },
+    {
+      "name": "lifecycle",
+      "startedAt": "2026-09-05T17:36:39.641672Z",
+      "status": "passed",
+      "finishedAt": "2026-09-05T17:36:47.842417Z",
+      "exitCode": 0
+    },
+    {
+      "name": "capture",
+      "startedAt": "2026-09-05T17:36:47.850139Z",
+      "status": "failed",
+      "finishedAt": "2026-09-05T17:37:55.505134Z",
+      "exitCode": 1
+    }
+  ],
+  "source": {
+    "commit": "3d390e8f49eb97a8616701dc44e1c184fce06e9b",
+    "dirty": false
+  },
+  "coordinatorSha256": "0c6d59930494c22674abe4825dfb41a91a4197d690602a3032251413f08f4be8",
+  "toolchain": {
+    "CGO_ENABLED": "1",
+    "GOARCH": "amd64",
+    "GOOS": "linux",
+    "GOVERSION": "go1.27.1"
+  },
+  "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+  "failure": {
+    "kind": "StageFailure",
+    "message": "stage failed: capture; inspect retained logs"
+  },
+  "finishedAt": "2026-09-05T17:37:55.514652Z"
+}

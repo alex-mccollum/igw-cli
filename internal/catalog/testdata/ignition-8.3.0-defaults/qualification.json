@@ -1,0 +1,21 @@
+{
+  "compatibility": {
+    "adjustments": 648,
+    "policy": "ignition-openapi/5",
+    "rules": {
+      "empty-responses": 7,
+      "keyboard-local-definitions": 8,
+      "path-allow-reserved-false": 333,
+      "resource-unused-duplicate-id": 280,
+      "script-cancel-undocumented-id": 1,
+      "selected-path-required": 17,
+      "sfc-undocumented-path": 2
+    }
+  },
+  "contractPolicy": "igw-contract/1",
+  "contractSha256": "a87917c8a2ff264ab77def23e9fa619af23cd8027e525b7d42ff2bdfe933b644",
+  "documentSha256": "224a230ee101293e1cd6f05db54dd825420c5dd6cf94bca677066a3114b28cde",
+  "operationCount": 672,
+  "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/11",
+  "rawSha256": "ca661fb27a4f27dc262d53164676e11429d33f74dfabc95e196f3c61b712f765"
+}

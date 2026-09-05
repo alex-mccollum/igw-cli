@@ -2,11 +2,77 @@ package catalog
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"testing"
 )
+
+const legacySFCFixture = `{"openapi":"3.1.0","info":{"title":"Ignition HTTP API","version":"1.0.0","license":{"url":"/res/sys/license.html","name":"Inductive Automation EULA"}},"paths":{"/data/sfc/api/v1/charts/{projectName}/{chartPath}":{"get":{"parameters":[{"name":"projectName","in":"path","description":"n/a","required":true,"deprecated":false,"style":"simple","explode":false,"allowReserved":false},{"name":"chartPath","in":"path","description":"n/a","required":true,"deprecated":false,"style":"simple","explode":false,"allowReserved":false}],"responses":{"200":{"description":"OK"}}}}}}`
+
+func TestLegacyEAMBooleanPathContract(t *testing.T) {
+	t.Parallel()
+	raw := strings.NewReplacer("/data/api/v1/entity/section/{section}", "/data/eam/api/v1/eam-tasks/scheduled/{running}", `"name":"section"`, `"name":"running"`, `"type":"string","pattern":"^[A-Z][a-z]+$"`, `"type":"boolean","example":false`).Replace(legacyPathFixture)
+	c, err := Parse([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if !bytes.Equal(c.Raw(), []byte(raw)) || c.Compatibility().Rules["selected-path-required"] != 1 {
+		t.Fatal("EAM path correction or vendor evidence lost")
+	}
+	for _, value := range []string{"true", "false", "invalid"} {
+		req, _ := http.NewRequest("GET", "http://gateway.test/data/eam/api/v1/eam-tasks/scheduled/"+value, nil)
+		issues, err := c.Validate(c.Operations()[0].Key, req)
+		if err != nil || (len(issues) == 0) != (value != "invalid") {
+			t.Fatalf("boolean path constraint changed: %v %v", issues, err)
+		}
+	}
+}
+
+func TestLegacySFCMissingSchemasStayUnavailable(t *testing.T) {
+	t.Parallel()
+	c, err := Parse([]byte(legacySFCFixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	const key = "GET /data/sfc/api/v1/charts/{projectName}/{chartPath}"
+	d, err := c.Describe(key)
+	if err != nil || len(d.Gaps) != 1 || c.Compatibility().Rules["sfc-undocumented-path"] != 2 || bytes.Contains(d.Operation.Definition, []byte(`"schema"`)) {
+		t.Fatalf("missing SFC schema not exposed: %+v %v", d, err)
+	}
+	req, _ := http.NewRequest("GET", "http://gateway.test/data/sfc/api/v1/charts/project/chart", nil)
+	if _, err := c.Validate(key, req); !errors.Is(err, ErrIncompleteContract) {
+		t.Fatalf("missing SFC schemas validated: %v", err)
+	}
+	var root map[string]any
+	_ = json.Unmarshal([]byte(legacySFCFixture), &root)
+	op := object(object(object(root["paths"])["/data/sfc/api/v1/charts/{projectName}/{chartPath}"])["get"])
+	for _, p := range op["parameters"].([]any) {
+		object(p)["schema"] = map[string]any{"type": "string"}
+	}
+	raw, _ := json.Marshal(root)
+	fixed, err := Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fixed.Close()
+	if issues, err := fixed.Validate(key, req); err != nil || len(issues) != 0 || fixed.Compatibility().Rules["sfc-undocumented-path"] != 0 {
+		t.Fatalf("corrected SFC schema stayed unavailable: %v %v", issues, err)
+	}
+	for _, raw := range []string{
+		strings.Replace(legacySFCFixture, `"get":`, `"post":`, 1),
+		strings.Replace(legacySFCFixture, `"description":"n/a"`, `"description":"unreviewed"`, 1),
+		strings.Replace(legacySFCFixture, `"allowReserved":false`, `"allowReserved":false,"schema":null`, 1),
+	} {
+		if got, err := Parse([]byte(raw)); err == nil {
+			got.Close()
+			t.Fatal("unreviewed SFC parameter adapted")
+		}
+	}
+}
 
 // Reduced from 8.3.0. The pattern is an added constraint to prove that the
 // path-presence adapter preserves value validation as the vendor evolves.

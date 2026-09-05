@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const compatibilityPolicy = "ignition-openapi/4"
+const compatibilityPolicy = "ignition-openapi/5"
 
 // Compatibility describes the model adapter, not a claim that original vendor
 // bytes satisfy the OAS schema. Receipts bind this policy to the raw SHA-256.

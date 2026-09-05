@@ -74,3 +74,35 @@ func TestLegacySelectedPathRequiresEveryPlaceholder(t *testing.T) {
 		t.Fatalf("selected template sent without its placeholder: %v", err)
 	}
 }
+
+func TestLegacySFCMissingSchemasBlockReadAndPreview(t *testing.T) {
+	t.Parallel()
+	const spec = `{"openapi":"3.1.0","info":{"title":"Ignition HTTP API","version":"1.0.0","license":{"url":"/res/sys/license.html","name":"Inductive Automation EULA"}},"paths":{"/data/sfc/api/v1/charts/{projectName}/{chartPath}":{"get":{"parameters":[{"name":"projectName","in":"path","description":"n/a","required":true,"deprecated":false,"style":"simple","explode":false,"allowReserved":false},{"name":"chartPath","in":"path","description":"n/a","required":true,"deprecated":false,"style":"simple","explode":false,"allowReserved":false}],"responses":{"200":{"description":"OK"}}}}}}`
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/proxy/openapi.json" {
+			_, _ = io.WriteString(w, spec)
+			return
+		}
+		calls.Add(1)
+	}))
+	defer srv.Close()
+	for _, preview := range []bool{false, true} {
+		app, out, _ := testApp(t, srv)
+		args := []string{"api", "request", "GET /data/sfc/api/v1/charts/{projectName}/{chartPath}", "--path-param", "projectName=private-project", "--path-param", "chartPath=private-chart", "--json"}
+		if preview {
+			args = append(args, "--dry-run")
+		}
+		err := app.Run(context.Background(), args)
+		if igwerr.ExitCode(err) != 2 || strings.Contains(out.String(), "private-project") || strings.Contains(out.String(), "private-chart") {
+			t.Fatalf("SFC schema failure contract changed: %v", err)
+		}
+		r := decodeResult(t, out)
+		if r.OK || r.Error == nil || r.Error.Kind != "catalog_schema" {
+			t.Fatalf("SFC schema gap not reported: %+v", r)
+		}
+	}
+	if calls.Load() != 0 {
+		t.Fatal("undocumented SFC operation reached the Gateway")
+	}
+}

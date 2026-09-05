@@ -16,7 +16,7 @@ original document is fully compliant with OpenAPI.
 parameters with `allowReserved: false` and seven empty response objects.
 The adapter omits that inapplicable path annotation and represents an unknown
 response internally without inventing status codes or payload constraints.
-Current policy `ignition-openapi/4` also qualifies 288 duplicate unused settings
+Current policy `ignition-openapi/5` also qualifies 288 duplicate unused settings
 identifiers across mirrored resource request variants. Reference-bearing or
 otherwise unreviewed variants remain schema errors. The current qualification
 records 638 total adjustments without changing the historical capture receipt.
@@ -48,3 +48,13 @@ operations to verify the four observed embedding positions, strict expansion
 of local definitions, preserved key constraints, and rejection of unreviewed
 reference scopes. Expanding this schema matches the corresponding retained
 8.3.9 schema exactly. This extraction does not establish live 8.3.0 acceptance.
+
+`ignition-8.3.0-defaults` retains the exact fresh default-module document captured
+on 2026-09-05, with 32 observed modules and successful owned-container cleanup.
+The original `capture.json` records parser version 10's validation failure;
+`capture-run.json` records the stopped coordinator, and `lifecycle.json` records
+the passing containment probe. These are immutable historical receipts. Current
+`qualification.json` records version 11's successful 672-operation parser result
+after review of EAM/SFC parameter defects. Tests check both the original raw hash
+and all current-parser identities and adjustments. The failed capture must not
+be relabeled as live workflow acceptance or shipped as a qualified reference.
