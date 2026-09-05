@@ -20,6 +20,8 @@ import (
 type Evidence struct {
 	Version         int                    `json:"version"`
 	Image           string                 `json:"image"`
+	ImageID         string                 `json:"imageId,omitempty"`
+	Platform        string                 `json:"platform,omitempty"`
 	GatewayVersion  string                 `json:"gatewayVersion,omitempty"`
 	ModuleWhitelist []string               `json:"moduleWhitelist,omitempty"`
 	Source          string                 `json:"source"`
@@ -31,6 +33,7 @@ type Evidence struct {
 	Operations      int                    `json:"operations,omitempty"`
 	ParserVersion   string                 `json:"parserVersion"`
 	Validated       bool                   `json:"validated"`
+	Cleanup         bool                   `json:"cleanup"`
 	Compatibility   *catalog.Compatibility `json:"compatibility,omitempty"`
 	ValidationError string                 `json:"validationError,omitempty"`
 }
@@ -136,7 +139,10 @@ func readURL(ctx context.Context, client *http.Client, url string, limit int64) 
 // a qualified catalog until the incompatibility has been reviewed and repaired.
 func (s *Session) Save(dir string, raw []byte) (Evidence, error) {
 	sum := sha256.Sum256(raw)
-	evidence := Evidence{Version: 2, Image: s.Image, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
+	evidence := Evidence{Version: 3, Image: s.Image, ImageID: s.ImageID, Platform: s.Platform, GatewayVersion: s.GatewayVersion, ModuleWhitelist: s.Modules, Source: "/openapi.json", CapturedAt: time.Now().UTC(), RawSHA256: hex.EncodeToString(sum[:]), ParserVersion: catalog.ParserVersion}
+	s.closeMu.Lock()
+	evidence.Cleanup = s.created && s.closed
+	s.closeMu.Unlock()
 	if err := saveFile(filepath.Join(dir, "openapi.json"), raw); err != nil {
 		return evidence, err
 	}

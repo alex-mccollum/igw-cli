@@ -246,6 +246,8 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 			Version          int               `json:"version"`
 			Kind             string            `json:"kind"`
 			Image            string            `json:"image"`
+			ImageID          string            `json:"imageId"`
+			Platform         string            `json:"platform"`
 			GatewayVersion   string            `json:"gatewayVersion"`
 			TestBinarySHA256 string            `json:"testBinarySha256"`
 			StartedAt        time.Time         `json:"startedAt"`
@@ -255,7 +257,7 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 			ProjectFiles     []string          `json:"projectFiles"`
 			Cleanup          bool              `json:"cleanup"`
 			Passed           bool              `json:"passed"`
-		}{1, "project-tag-contract", image, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, sortedKeys(sourceFiles), true, true}
+		}{2, "project-tag-contract", image, s.ImageID, s.Platform, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, sortedKeys(sourceFiles), true, true}
 		if workflows {
 			receipt.Kind = "project-tag-workflows"
 		}

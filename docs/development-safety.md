@@ -68,6 +68,13 @@ An interrupted client can still leave a stopped container and data volumes.
 Leftovers block the next capture until ownership and cleanup are reviewed;
 broad cleanup/prune commands are unsuitable.
 
+The platform-verifying guard passed a second lifecycle probe on the same image:
+exit 124 after 6.7344 seconds, no OOM, and independent removal verification.
+The retained receipt is
+`internal/testgateway/testdata/ignition-8.3.9-lifecycle.json`. A subsequent full
+capture with image/platform provenance passed and removed its container before
+parsing. These receipts do not qualify a different image or revised guard.
+
 Repository automation must not start, stop, restart, terminate, unregister, or
 repair WSL distributions or Docker Desktop. An unavailable engine blocks live
 checks. Read existing logs and report the problem; host recovery requires a

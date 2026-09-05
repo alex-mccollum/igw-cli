@@ -13,7 +13,7 @@ import (
 
 func TestCaptureRetainsRejectedVendorDocumentAsUnvalidated(t *testing.T) {
 	t.Parallel()
-	s := &Session{Image: "inductiveautomation/ignition@sha256:test"}
+	s := &Session{Image: fixtureImage, ImageID: fixtureImageID, Platform: "linux/amd64"}
 	dir := t.TempDir()
 	raw := []byte(`{"openapi":"3.1.0","paths":{"/health":{}}}`)
 	evidence, err := s.Save(dir, raw)
@@ -32,8 +32,11 @@ func TestCaptureRetainsRejectedVendorDocumentAsUnvalidated(t *testing.T) {
 	if err := json.Unmarshal(b, &receipt); err != nil {
 		t.Fatal(err)
 	}
-	if receipt.Validated || receipt.RawSHA256 == "" {
+	if receipt.Validated || receipt.RawSHA256 == "" || receipt.Cleanup {
 		t.Fatal("unqualified capture was misrepresented")
+	}
+	if receipt.Version != 3 || receipt.Platform != s.Platform || receipt.ImageID != s.ImageID {
+		t.Fatal("unvalidated capture lost its image provenance")
 	}
 }
 

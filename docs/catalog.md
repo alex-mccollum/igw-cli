@@ -189,6 +189,16 @@ It uses random temporary admin credentials, copied privately with the image's
 numeric user ownership. Passwords never enter Docker arguments or environment
 values. It neither connects to nor reconfigures an existing Gateway.
 
+Reference qualification currently supports `linux/amd64`. Preflight inspects
+the local image's OS, architecture, and SHA-256 configuration ID; creation
+specifies that platform and verifies the container's image ID before startup.
+New capture receipts use version 3 and record `platform`, `imageId`, and the
+owned-container `cleanup` result. New workflow receipts use version 2 with the
+same image provenance. Existing historical receipts remain unchanged. Bundle
+qualification must match the observed image ID to the selected registry
+manifest's config digest; a resolved index alone does not establish the image
+configuration that actually ran.
+
 After `StatusPing` reports RUNNING, the tool authenticates to the disposable
 Gateway's built-in IdP and waits for three identical OpenAPI responses. This
 private browser-login adapter is confined to test infrastructure; the released
@@ -203,11 +213,12 @@ first so builds and Gateway startup do not overlap. Ordinary test runs skip
 this live test unless the image environment variable is explicitly supplied.
 
 ```sh
-docker pull inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2
+docker pull --platform linux/amd64 inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2
 mkdir -p bin
 bash scripts/bounded-run.sh -- go test -c -o bin/testgateway.test ./internal/testgateway
 bash scripts/bounded-run.sh -- env \
   IGW_CAPTURE_TEST_IMAGE=inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2 \
+  IGW_LIFECYCLE_EVIDENCE=bin/new-lifecycle-receipt.json \
   bin/testgateway.test -test.run '^TestLiveCaptureLifetime$' -test.v -test.timeout=90s
 bash scripts/bounded-run.sh -- go build -o bin/igw-capture ./cmd/igw-capture
 bash scripts/bounded-run.sh -- bin/igw-capture \
@@ -227,6 +238,13 @@ termination grace. Missing limit support or a missing timeout executable fails
 the check; there is no unlimited fallback. A stopped leftover container blocks
 new captures until its ownership and cleanup are reviewed. See
 [local validation safety](development-safety.md).
+
+The optional `IGW_LIFECYCLE_EVIDENCE` path must be new. The probe publishes this
+receipt only after all containment checks and independent cleanup verification
+pass. It records the image/platform/configuration, test-binary checksum,
+timestamps, configured lifetime, observed duration/exit code, and the checks
+performed. A lifecycle receipt establishes containment for that image and
+binary; it does not establish Gateway startup or API compatibility.
 
 The invocation timeout is at most eight minutes and covers startup and HTTP
 acquisition; parser work is size/depth bounded but is not yet interruptible.

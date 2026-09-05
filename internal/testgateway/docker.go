@@ -46,6 +46,8 @@ type Session struct {
 	Name           string
 	URL            string
 	Image          string
+	ImageID        string
+	Platform       string
 	Modules        []string
 	GatewayVersion string
 	run            commandRunner
@@ -97,13 +99,14 @@ func start(ctx context.Context, cfg Config, run commandRunner, admit func() erro
 	if err != nil {
 		return nil, err
 	}
+	s.ImageID, s.Platform = image.ID, image.OS+"/"+image.Architecture
 	uid, gid, err := numericOwner(image.User)
 	if err != nil {
 		return nil, err
 	}
 	// The fixed name is an engine-wide exclusive slot. Its unique ownership
 	// label prevents a losing/concurrent invocation from removing the winner.
-	args := []string{"create", "--pull=never", "--name", s.Name, "--label", ownerLabel + "=" + s.owner, "--publish", "127.0.0.1::8088", "--memory", "2g", "--memory-swap", "2g", "--cpus", "2", "--pids-limit", "256", "--restart", "no", "--stop-timeout", "15", "--entrypoint", "/usr/bin/timeout", "--log-opt", "max-size=10m", "--log-opt", "max-file=2",
+	args := []string{"create", "--pull=never", "--platform", s.Platform, "--name", s.Name, "--label", ownerLabel + "=" + s.owner, "--publish", "127.0.0.1::8088", "--memory", "2g", "--memory-swap", "2g", "--cpus", "2", "--pids-limit", "256", "--restart", "no", "--stop-timeout", "15", "--entrypoint", "/usr/bin/timeout", "--log-opt", "max-size=10m", "--log-opt", "max-file=2",
 		"--env", "ACCEPT_IGNITION_EULA=Y", "--env", "IGNITION_EDITION=standard", "--env", "GATEWAY_ADMIN_USERNAME=admin", "--env", "GATEWAY_ADMIN_PASSWORD_FILE=/run/igw-admin-password", "--env", "DISABLE_QUICKSTART=true", "--env", "GATEWAY_NETWORK_ENABLED=false"}
 	if len(cfg.Modules) > 0 {
 		args = append(args, "--env", "GATEWAY_MODULES_ENABLED="+strings.Join(cfg.Modules, ","))

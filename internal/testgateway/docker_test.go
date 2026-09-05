@@ -13,11 +13,13 @@ import (
 
 const fixtureImage = "inductiveautomation/ignition@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const fixtureID = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+const fixtureImageID = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 
 type fakeDocker struct {
 	t                                                       *testing.T
 	calls                                                   [][]string
 	owner, password, existing, kernel                       string
+	imageOS, imageArch, imageIdentity, containerImage       string
 	unsafeConfig, collide, wrongID, foreignOwner, cpFailure bool
 	starts, removals                                        int
 }
@@ -35,7 +37,17 @@ func (f *fakeDocker) run(ctx context.Context, input io.Reader, args ...string) (
 	case "ps":
 		return []byte(f.existing), nil
 	case "image":
-		return []byte(`{"entrypoint":["docker-entrypoint.sh"],"user":"2003:2003"}`), nil
+		osName, arch, identity := f.imageOS, f.imageArch, f.imageIdentity
+		if osName == "" {
+			osName = "linux"
+		}
+		if arch == "" {
+			arch = "amd64"
+		}
+		if identity == "" {
+			identity = fixtureImageID
+		}
+		return encode(map[string]any{"entrypoint": []string{"docker-entrypoint.sh"}, "user": "2003:2003", "os": osName, "architecture": arch, "id": identity})
 	case "create":
 		for n, arg := range args {
 			if arg == "--label" {
@@ -47,6 +59,12 @@ func (f *fakeDocker) run(ctx context.Context, input io.Reader, args ...string) (
 		}
 		return []byte(fixtureID), nil
 	case "inspect":
+		if args[2] == "{{.Image}}" {
+			if f.containerImage != "" {
+				return []byte(f.containerImage), nil
+			}
+			return []byte(fixtureImageID), nil
+		}
 		if args[2] == "{{json .HostConfig}}" {
 			swap := int64(2 << 30)
 			if f.unsafeConfig {
@@ -117,6 +135,9 @@ func TestCaptureLimitsCredentialsAndCanceledCleanup(t *testing.T) {
 	if s.URL != "http://127.0.0.1:32888" {
 		t.Fatal("wrong capture target")
 	}
+	if s.Platform != "linux/amd64" || s.ImageID != fixtureImageID {
+		t.Fatal("observed image provenance missing")
+	}
 	var create []string
 	for _, call := range f.calls {
 		if call[0] == "create" {
@@ -127,7 +148,7 @@ func TestCaptureLimitsCredentialsAndCanceledCleanup(t *testing.T) {
 		}
 	}
 	joined := strings.Join(create, " ")
-	for _, required := range []string{"--name " + captureName, "--memory 2g --memory-swap 2g", "--cpus 2 --pids-limit 256", "--restart no", "--entrypoint /usr/bin/timeout", "--signal=TERM --kill-after=15s 600s docker-entrypoint.sh"} {
+	for _, required := range []string{"--platform linux/amd64", "--name " + captureName, "--memory 2g --memory-swap 2g", "--cpus 2 --pids-limit 256", "--restart no", "--entrypoint /usr/bin/timeout", "--signal=TERM --kill-after=15s 600s docker-entrypoint.sh"} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("missing capture containment: %s", required)
 		}
@@ -170,6 +191,29 @@ func TestCaptureAdmissionAndCleanupRefuseForeignContainers(t *testing.T) {
 		if err := s.Close(); err == nil || f.removals != 0 {
 			t.Fatal("ownership mismatch did not stop cleanup")
 		}
+	}
+}
+
+func TestCaptureRejectsUnverifiedPlatformBeforeStartup(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		configure func(*fakeDocker)
+		removals  int
+	}{
+		{"architecture", func(f *fakeDocker) { f.imageArch = "arm64" }, 0},
+		{"operating system", func(f *fakeDocker) { f.imageOS = "windows" }, 0},
+		{"image digest", func(f *fakeDocker) { f.imageIdentity = "sha256:invalid" }, 0},
+		{"container image", func(f *fakeDocker) { f.containerImage = "sha256:" + strings.Repeat("d", 64) }, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fakeDocker{t: t}
+			tc.configure(f)
+			s, cancel, err := fakeStart(t, f)
+			defer cancel()
+			if err == nil || s != nil || f.starts != 0 || f.removals != tc.removals {
+				t.Fatalf("unverified image started or cleanup lost: starts=%d removals=%d err=%v", f.starts, f.removals, err)
+			}
+		})
 	}
 }
 

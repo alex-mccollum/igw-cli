@@ -241,7 +241,10 @@ func TestLiveAPIResourceContract(t *testing.T) {
 		}
 		evidence := struct {
 			Version          int               `json:"version"`
+			Kind             string            `json:"kind"`
 			Image            string            `json:"image"`
+			ImageID          string            `json:"imageId"`
+			Platform         string            `json:"platform"`
 			GatewayVersion   string            `json:"gatewayVersion"`
 			TestBinarySHA256 string            `json:"testBinarySha256"`
 			StartedAt        time.Time         `json:"startedAt"`
@@ -250,7 +253,7 @@ func TestLiveAPIResourceContract(t *testing.T) {
 			Checks           []check           `json:"checks"`
 			Cleanup          bool              `json:"cleanup"`
 			Passed           bool              `json:"passed"`
-		}{1, image, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), sync.Meta.Catalog, checks, true, true}
+		}{2, "resource-workflows", image, s.ImageID, s.Platform, s.GatewayVersion, hex.EncodeToString(hash.Sum(nil)), started, time.Now().UTC(), sync.Meta.Catalog, checks, true, true}
 		b, err := json.MarshalIndent(evidence, "", "  ")
 		if err != nil {
 			t.Fatal(err)

@@ -473,6 +473,30 @@ The full unit suite, focused resolver/contributor race tests, all three builds,
 command-doc consistency, and docs lint passed for this slice. The read-only
 registry checks started no container and changed no host settings.
 
+The capture guard now verifies a local `linux/amd64` image configuration digest,
+specifies that platform at creation, and checks the container's image identity
+before startup. Capture v3 receipts record the observed image ID/platform and
+cleanup; workflow v2 receipts add the same provenance. Historical receipts stay
+unchanged. The lifecycle test can now publish an atomic checksum-bound receipt
+after all containment and independent removal checks pass.
+
+The updated guard passed its real 8.3.9 lifecycle probe in 8.52 seconds, with
+timeout exit 124 after 6.7344 seconds, no OOM, and verified removal. The receipt
+is `internal/testgateway/testdata/ignition-8.3.9-lifecycle.json`, for test binary
+`04c96f08dc988cac3bd05a661c8f05d9ba3edf2497e813c9486a624bdcee7e13`.
+Its observed image ID
+`sha256:f28a0c5a7a85dab32f0f0a04a80bc4dfd00a27de12f899bef979ffb9cce967fd`
+matches the config digest in the earlier registry resolution's selected
+`linux/amd64` manifest. A fresh full capture then passed at
+2026-09-05T15:51:56Z, recorded in `bin/capture-8.3.9-platform-20260905/`:
+687 operations, current parser version 8, 638 reviewed adjustments, and the
+same contract hash as both qualified reference fixtures. Raw SHA-256 is
+`89dd607e3b7738ef865188fa1de1172dc338c7005d2143ffcc6d42b245127ec5`.
+Capture cleanup and an independent no-leftover-container check passed.
+Full unit/race suites, all three builds, command-doc consistency, and docs lint
+passed. The validation scope's observed memory peak was 4.39 GiB within its
+8 GiB cap. No host settings or WSL/Docker Desktop lifecycle actions changed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

@@ -222,6 +222,8 @@ func testLiveOperations(t *testing.T, workflows bool) {
 			Version        int                      `json:"version"`
 			Kind           string                   `json:"kind"`
 			Image          string                   `json:"image"`
+			ImageID        string                   `json:"imageId"`
+			Platform       string                   `json:"platform"`
 			GatewayVersion string                   `json:"gatewayVersion"`
 			BinarySHA256   string                   `json:"testBinarySha256"`
 			StartedAt      time.Time                `json:"startedAt"`
@@ -231,7 +233,7 @@ func testLiveOperations(t *testing.T, workflows bool) {
 			Artifacts      []operationalArtifact    `json:"artifacts"`
 			Cleanup        bool                     `json:"cleanup"`
 			Passed         bool                     `json:"passed"`
-		}{1, "operations-contract", image, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
+		}{2, "operations-contract", image, s.ImageID, s.Platform, s.GatewayVersion, hex.EncodeToString(h.Sum(nil)), started, time.Now().UTC(), synced.Meta.Catalog, checks, artifacts, true, true}
 		if workflows {
 			receipt.Kind = "operational-workflows"
 		}

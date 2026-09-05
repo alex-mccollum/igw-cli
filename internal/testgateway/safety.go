@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -28,9 +29,14 @@ func requireValidationBudget(read func(string) ([]byte, error)) error {
 }
 
 type imageConfiguration struct {
-	Entrypoint []string
-	User       string
+	Entrypoint   []string
+	User         string
+	ID           string
+	OS           string
+	Architecture string
 }
+
+var imageID = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
 
 func (s *Session) preflight(ctx context.Context) (imageConfiguration, error) {
 	var image imageConfiguration
@@ -52,12 +58,15 @@ func (s *Session) preflight(ctx context.Context) (imageConfiguration, error) {
 	if strings.TrimSpace(string(b)) != "" {
 		return image, errors.New("a qualification container already exists; finish or inspect its owned cleanup before another capture")
 	}
-	b, err = s.command(ctx, nil, "image", "inspect", "--format", `{"entrypoint":{{json .Config.Entrypoint}},"user":{{json .Config.User}}}`, s.Image)
+	b, err = s.command(ctx, nil, "image", "inspect", "--format", `{"entrypoint":{{json .Config.Entrypoint}},"user":{{json .Config.User}},"id":{{json .Id}},"os":{{json .Os}},"architecture":{{json .Architecture}}}`, s.Image)
 	if err != nil {
 		return image, err
 	}
 	if json.Unmarshal(b, &image) != nil || len(image.Entrypoint) == 0 || len(image.Entrypoint) > 16 || image.Entrypoint[0] == "" {
 		return image, errors.New("capture image has no supported entrypoint")
+	}
+	if !imageID.MatchString(image.ID) || image.OS != "linux" || image.Architecture != "amd64" {
+		return image, errors.New("capture requires a verified linux/amd64 image configuration digest")
 	}
 	return image, nil
 }
@@ -78,6 +87,13 @@ func (s *Session) verifyConfiguration(ctx context.Context) error {
 	bindings := cfg.PortBindings["8088/tcp"]
 	if len(cfg.PortBindings) != 1 || len(bindings) != 1 || bindings[0].HostIP != "127.0.0.1" {
 		return errors.New("Docker did not retain loopback-only capture networking")
+	}
+	b, err = s.command(ctx, nil, "inspect", "--format", "{{.Image}}", s.ID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(b)) != s.ImageID {
+		return errors.New("capture container does not use the inspected image configuration")
 	}
 	return nil
 }

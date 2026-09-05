@@ -21,6 +21,15 @@ run that test alone in a separate guarded invocation. It verifies applied
 limits, exclusive admission, a shortened lifetime, and exact-ID cleanup.
 Normal tests use fake Docker responses and never provide live Gateway evidence.
 
+Image qualification currently supports `linux/amd64`. The runner inspects the
+image platform/configuration digest, specifies that platform at creation, and
+checks the container's image ID before it starts. Capture v3 and workflow v2
+receipts retain that observed provenance; historical receipts are not rewritten.
+Use `IGW_LIFECYCLE_EVIDENCE` with a new file path to retain a lifecycle receipt
+after successful containment, lifetime, and independent cleanup checks. It also
+records the exact test-binary checksum. The resolved registry manifest's config
+digest must match this image ID when preparing a qualified reference bundle.
+
 `TestLiveAPIResourceContract` is separately enabled with
 `IGW_ACCEPTANCE_TEST_IMAGE`. It commissions a fresh Gateway, creates a dedicated
 test security level, and adds that level to the observed read/write AnyOf
