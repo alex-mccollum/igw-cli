@@ -93,7 +93,10 @@ func (c *Client) Call(ctx context.Context, req CallRequest) (*CallResponse, erro
 		return nil, &igwerr.UsageError{Msg: fmt.Sprintf("parse request url: %v", err)}
 	}
 
-	values := parsedURL.Query()
+	values, err := url.ParseQuery(parsedURL.RawQuery)
+	if err != nil {
+		return nil, &igwerr.UsageError{Msg: "invalid query encoding in request path"}
+	}
 	if err := addQuery(values, req.Query); err != nil {
 		return nil, err
 	}
@@ -357,11 +360,11 @@ func readLimited(body io.Reader, maxBytes int64) ([]byte, int64, bool, error) {
 func addQuery(values url.Values, pairs []string) error {
 	for _, pair := range pairs {
 		key, value, ok := strings.Cut(pair, "=")
-		if !ok || strings.TrimSpace(key) == "" {
-			return &igwerr.UsageError{Msg: fmt.Sprintf("invalid --query value %q (expected key=value)", pair)}
+		if !ok || key == "" {
+			return &igwerr.UsageError{Msg: "query requires key=value"}
 		}
 
-		values.Add(strings.TrimSpace(key), value)
+		values.Add(key, value)
 	}
 
 	return nil

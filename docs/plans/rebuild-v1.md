@@ -1427,6 +1427,37 @@ memory settings and resource guard limits remain unchanged. Structured
 parameter encodings, form/binary schema work, current-source Gateway acceptance,
 and the workflow/cutover/release gates remain within the active goal.
 
+The next transport regression exposed query-name trimming after schema
+validation, sensitive pair text in usage errors, and typed names containing
+`=` being split when converted back to legacy flag strings. The complete
+baseline in `bin/query-input-baseline-complete.log` also reproduces unsent
+nil/empty query slices appearing in previews and empty typed names passing
+preparation or reaching discovery. The first baseline's whitespace-only name
+stopped transport before its equals-sign assertion; the complete baseline uses
+a nonempty Unicode name and independently observes that misbinding on the wire.
+
+The typed core now snapshots query values before discovery, omits unsent slices,
+and binds their encoded representation directly into the prepared URL. It no
+longer converts typed names into flag strings. Legacy pairs preserve literal
+names and values, and invalid pair/URL encodings return usage errors without
+echoing input. Parser identity, vendor documents, and historical qualification
+receipts are unchanged by this transport change.
+Focused transport/execution/CLI checks passed in `bin/query-input-focused.log`;
+the matching race checks passed in `bin/query-input-race.log`, including the
+header, empty-body, and multipart/binary regressions. Wire assertions cover
+literal whitespace/Unicode/reserved characters, equals signs in typed names,
+repeated order, and empty values. Preparation retains an independent snapshot
+and previews list only keys that will be sent. Invalid encoded legacy queries
+fail before dispatch instead of silently retaining a partial query.
+The full unit suite passed in `bin/query-input-unit.log`. Both CLI builds,
+command-doc consistency, and docs lint passed in
+`bin/query-input-build-docs.log`. Legacy smoke built, then stopped at the
+unconfigured default Gateway's `doctor` with exit 2
+(`bin/query-input-smoke.log`). No live Gateway acceptance is claimed for these
+input changes. No containers, host-service operations, or memory/guard-limit
+changes were needed. The full rebuild goal remains active, including remaining
+structured encodings, current-source live acceptance, and cutover/release gates.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

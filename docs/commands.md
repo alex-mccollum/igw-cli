@@ -123,6 +123,13 @@ supported encoding, validation coverage, and streaming support. `selected_media`
 means that an actual content type is needed to resolve support for a media range.
 Malformed vendor media types remain visible as `unsupported`.
 
+`--query key=value` separates on the first `=`. Names and values are literal:
+whitespace is preserved, percent escapes are not decoded, and the CLI performs
+URL encoding. An empty name fails with exit 2 before discovery or dispatch;
+an empty value remains present. Malformed encoded queries in legacy request
+paths fail rather than silently discarding part of the input. Errors do not
+echo the supplied query text.
+
 For named query parameters, supply one value for a primitive, or repeat the
 same key for each item in an exploded form array. A comma inside an array item
 remains part of that item. For example, this previews two session IDs:

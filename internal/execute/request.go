@@ -90,6 +90,16 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	if input.MaxBodyBytes < 0 {
 		return nil, result.Usage("--max-body-bytes must be nonnegative")
 	}
+	query := make(url.Values, len(input.Query))
+	for key, values := range input.Query {
+		if key == "" {
+			return nil, result.Usage("query requires a nonempty name")
+		}
+		if len(values) != 0 {
+			query[key] = append([]string(nil), values...)
+		}
+	}
+	input.Query = query
 	if input.Upload != nil && input.Upload.ContentType() != "" {
 		if input.ContentType != "" && input.ContentType != input.Upload.ContentType() {
 			return nil, result.Usage("multipart content type and boundary belong to the prepared upload")
@@ -244,6 +254,12 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	if err != nil {
 		return nil, result.Usage(err.Error())
 	}
+	// Endpoint has already validated the URL. Bind typed query values directly
+	// to it; converting names back into key=value flag strings loses '=' and
+	// allows transport parsing to differ from the validated input.
+	encoded, _ := url.Parse(endpoint)
+	encoded.RawQuery = input.Query.Encode()
+	endpoint = encoded.String()
 	if input.Body != nil && input.ContentType == "" {
 		input.ContentType = "application/json"
 	}
@@ -268,11 +284,6 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	sort.Strings(preview.HeaderKeys)
 	input.Body = bytes.Clone(input.Body)
 	input.Headers = input.Headers.Clone()
-	query := make(url.Values, len(input.Query))
-	for key, values := range input.Query {
-		query[key] = append([]string(nil), values...)
-	}
-	input.Query = query
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -341,11 +352,6 @@ func (e Engine) Execute(ctx context.Context, prepared *Prepared, token string) r
 	}
 	if download != nil {
 		request.Stream = download
-	}
-	for key, values := range p.input.Query {
-		for _, value := range values {
-			request.Query = append(request.Query, key+"="+value)
-		}
 	}
 	for key, values := range p.input.Headers {
 		for _, value := range values {
