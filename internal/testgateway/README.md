@@ -72,3 +72,30 @@ empty qualification-container query. Record the clean source commit and its
 before/after Git status alongside the run. This evidence supplements the
 reference matrix; it does not rewrite older workflow receipts or expand their
 qualification claims.
+
+`TestLiveBodyInputs` qualifies the generic request body boundary against the
+actual captured contract. Use the same clean-build/lifecycle procedure with a
+new `IGW_INPUT_EVIDENCE_DIR`; all other image, Docker, and module-profile
+variables match the query suite. The test exercises literal/file/stdin text,
+explicit empty representations, opaque binary bodies and uploads, zero-request
+previews, and invalid-input refusal. Encryption responses are checked as
+structural flattened JWE envelopes; no decryption or cryptographic validation
+is claimed. Payload observers hash consumed bytes without buffering, changing
+empty-body framing, or recording credentials/query values.
+
+On 8.3.9, the suite also exercises the advertised translations bulk-datafile
+route with repeated `files` parts and explicit filenames. The field name is a
+candidate for controlled qualification because the vendor document omits its
+part schema. Success requires independent downloads matching every supplied
+byte (including an empty file), a rejected stale signature, a verified opaque
+overwrite, and file deletion. It creates a core translations singleton only if
+absent, then removes it; otherwise its original configuration is compared after
+file cleanup. The 8.3.0 contract lacks the bulk route and must refuse it before
+dispatch. These version-specific expectations are not claims about other
+Gateway/module configurations.
+
+The new evidence directory receives the exact compressed OpenAPI document and
+`body-inputs.json`, including failed-run receipts when possible. Record the
+clean source commit, executable checksum, lifecycle and process exit results,
+and an independent empty-container check alongside it. A compiled or skipped
+test is not live acceptance; both process and complete receipt must pass.

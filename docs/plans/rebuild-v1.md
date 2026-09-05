@@ -1458,6 +1458,35 @@ input changes. No containers, host-service operations, or memory/guard-limit
 changes were needed. The full rebuild goal remains active, including remaining
 structured encodings, current-source live acceptance, and cutover/release gates.
 
+Current-source live body acceptance is the next qualification slice. The
+guarded inventory `bin/body-acceptance-contracts-parser19.json` confirms both
+retained default contracts advertise text and unconstrained octet-stream
+encryption. The translations bulk route is present only in 8.3.9 and declares
+multipart without a part schema. Current Context7/vendor searches did not
+establish its field names; the harness therefore treats repeated `files` parts
+as a controlled candidate and requires independent byte-for-byte downloads.
+The vendor's [secrets documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/security/secrets-management)
+confirms the encryption endpoint produces flattened JWE data.
+
+The new opt-in body suite covers text/literal/file/stdin/empty/binary inputs,
+coverage metadata, zero-write previews, pre-dispatch refusals, multipart file
+creation/readback, stale signatures, opaque overwrite, and cleanup. It retains
+exact catalog bytes and per-call payload identities alongside image/parser/
+executable provenance, without retaining credentials or ciphertext responses.
+The observer's first empty-body test reproduced a qualification-harness defect:
+wrapping Go's `http.NoBody` changed HTTP framing
+(`bin/body-inputs-observer-empty-before.log`). Preserving that sentinel fixes
+the observer without changing product code. This construction work is separate
+from live acceptance; a clean committed build and lifecycle probe must precede
+the live runs. A read-only engine preflight succeeded with no leftover owned
+containers. Host settings and resource limits remain unchanged.
+The final harness observer/JWE race tests, full repository suite, both CLI
+builds, command-doc consistency, and docs lint passed in
+`bin/body-inputs-harness-gates.log`. Preview identities and downloaded artifact
+checksums are retained alongside observed request hashes. Live tests remain
+opt-in and were skipped by this construction gate; no live success is claimed
+until the separately built executable and its receipts pass against each image.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
