@@ -131,6 +131,8 @@ func (i *invocation) discovery(cmd *cobra.Command) (*catalog.Catalog, result.Met
 	}
 	summary := bundle.Summary(m)
 	summary.InspectionParserVersion = catalog.ParserVersion
+	identity := c.Identity()
+	summary.InspectionCatalog = &identity
 	return c, result.Metadata{Reference: &summary}, nil
 }
 

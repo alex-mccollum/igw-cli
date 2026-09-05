@@ -28,14 +28,27 @@ type Adjustment struct {
 // validated. Original bytes and descriptions are kept separately.
 func normalizeIgnition(value any) []Adjustment {
 	root, _ := value.(map[string]any)
+	if !ignitionGenerator(root) {
+		return nil
+	}
+	return normalizeIgnitionOperations(root)
+}
+
+func ignitionGenerator(root map[string]any) bool {
 	info, _ := root["info"].(map[string]any)
 	license, _ := info["license"].(map[string]any)
 	// 8.3.0 points to the Gateway's own EULA; later captures use IA's site.
 	knownLicense := license["url"] == "https://inductiveautomation.com/ignition/license" ||
 		(license["url"] == "/res/sys/license.html" && license["name"] == "Inductive Automation EULA")
-	if root["openapi"] != "3.1.0" || info["title"] != "Ignition HTTP API" || !knownLicense {
-		return nil
-	}
+	return root["openapi"] == "3.1.0" && info["title"] == "Ignition HTTP API" && knownLicense
+}
+
+func keyboardDialect(root map[string]any) bool {
+	dialect := root["jsonSchemaDialect"]
+	return dialect == nil || dialect == "https://spec.openapis.org/oas/3.1/dialect/base"
+}
+
+func normalizeIgnitionOperations(root map[string]any) []Adjustment {
 	paths, _ := root["paths"].(map[string]any)
 	var adjustments []Adjustment
 	for path, rawItem := range paths {
@@ -56,7 +69,7 @@ func normalizeIgnition(value any) []Adjustment {
 				}
 			}
 			adjustments = append(adjustments, normalizeLegacyParameters(op, key, pointer)...)
-			if dialect := root["jsonSchemaDialect"]; dialect == nil || dialect == "https://spec.openapis.org/oas/3.1/dialect/base" {
+			if keyboardDialect(root) {
 				adjustments = append(adjustments, normalizeKeyboardDefinitions(op, key, pointer)...)
 			}
 			if responses, ok := op["responses"].(map[string]any); ok && len(responses) == 0 {

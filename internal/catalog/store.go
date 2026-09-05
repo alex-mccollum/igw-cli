@@ -20,8 +20,10 @@ import (
 const SnapshotVersion = 2
 
 type LegacyIdentity struct {
-	ParserVersion  string `json:"parserVersion"`
-	ContractSHA256 string `json:"contractSha256"`
+	ParserVersion  string          `json:"parserVersion"`
+	ContractSHA256 string          `json:"contractSha256"`
+	ContractPolicy string          `json:"contractPolicy,omitempty"`
+	Previous       *LegacyIdentity `json:"previous,omitempty"`
 }
 
 type Metadata struct {
@@ -191,9 +193,17 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 		m.LegacyIdentity = &LegacyIdentity{ParserVersion: m.ParserVersion, ContractSHA256: m.ContractSHA256}
 		m.Version, m.DocumentSHA256, m.ContractSHA256, m.ContractPolicy = SnapshotVersion, c.DocumentHash(), c.ContractHash(), ContractPolicy
 		warnings = append(warnings, "Loaded a legacy snapshot with a new contract hash policy; review and replace old pins. Gateway verification time is unchanged.")
-	} else if c.ContractHash() != m.ContractSHA256 || c.DocumentHash() != m.DocumentSHA256 || m.ContractPolicy != ContractPolicy {
-		c.Close()
-		return nil, errors.New("catalog contract checksum mismatch")
+	} else {
+		original, err := c.IdentityForPolicy(m.ContractPolicy)
+		if err != nil || original.ContractSHA256 != m.ContractSHA256 || original.DocumentSHA256 != m.DocumentSHA256 {
+			c.Close()
+			return nil, errors.New("catalog contract checksum mismatch")
+		}
+		if m.ContractPolicy != ContractPolicy {
+			m.LegacyIdentity = &LegacyIdentity{ParserVersion: m.ParserVersion, ContractSHA256: m.ContractSHA256, ContractPolicy: m.ContractPolicy, Previous: m.LegacyIdentity}
+			m.ContractSHA256, m.ContractPolicy = c.ContractHash(), ContractPolicy
+			warnings = append(warnings, "Loaded a previous contract identity policy; review and replace old pins. Gateway verification time is unchanged.")
+		}
 	}
 	m.Compatibility = c.Compatibility()
 	m.ParserVersion = ParserVersion

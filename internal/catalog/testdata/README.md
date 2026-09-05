@@ -30,7 +30,9 @@ Historical version 1 `capture.json` receipts used the canonical document hash
 as `contractSha256`. Keep those receipts unchanged. A separate
 `qualification.json` records current parser/policy versions, all three
 identities, operation count, and compatibility totals for each capture. New
-captures use version 2 receipts with distinct document and contract hashes.
+captures use version 3 receipts with distinct document and contract hashes and
+observed module inventory. Version 2 and 3 historical hashes are verified with
+their recorded policy; current qualification never relabels those receipts.
 
 Fixture updates must retain the original bytes, image/version provenance, and
 checksums. Review new captures before replacing a fixture; see the qualification
@@ -54,7 +56,16 @@ on 2026-09-05, with 32 observed modules and successful owned-container cleanup.
 The original `capture.json` records parser version 10's validation failure;
 `capture-run.json` records the stopped coordinator, and `lifecycle.json` records
 the passing containment probe. These are immutable historical receipts. Current
-`qualification.json` records version 11's successful 672-operation parser result
+`qualification.json` records the current successful 672-operation parser result
 after review of EAM/SFC parameter defects. Tests check both the original raw hash
 and all current-parser identities and adjustments. The failed capture must not
 be relabeled as live workflow acceptance or shipped as a qualified reference.
+
+`ignition-8.3.0-defaults-repeat` retains the second clean coordinator capture
+from `40a8502`. Its original parser-11 receipt passed; the subsequent transfer
+suite failed because the Gateway lacks tag import/export. Complete run evidence
+is retained in `internal/referencebuild/testdata/ignition-8.3.0-incomplete/`.
+These two minimum-version documents differ only in schema array order and
+example timestamps. Contract policy 2 uses the reviewed keyboard reference
+scopes so both current hashes agree; policy 1's differing original hashes still
+verify. Current parser qualification does not imply live workflow acceptance.

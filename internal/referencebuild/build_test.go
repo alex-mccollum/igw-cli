@@ -136,6 +136,7 @@ func TestBuildRejectsUnqualifiedOrMismatchedEvidence(t *testing.T) {
 		{"image", func(r map[string]any) { r["imageId"] = "sha256:" + strings.Repeat("b", 64) }},
 		{"modules", func(r map[string]any) { r["moduleInventory"].(map[string]any)["sha256"] = strings.Repeat("b", 64) }},
 		{"parser", func(r map[string]any) { r["catalog"].(map[string]any)["parserVersion"] = "old" }},
+		{"old identity policy", func(r map[string]any) { r["catalog"].(map[string]any)["contractPolicy"] = "igw-contract/1" }},
 		{"contract", func(r map[string]any) { r["catalog"].(map[string]any)["contractSha256"] = strings.Repeat("b", 64) }},
 		{"source", func(r map[string]any) { r["catalog"].(map[string]any)["sourceKind"] = "import" }},
 		{"checks", func(r map[string]any) { r["checks"] = []any{} }},

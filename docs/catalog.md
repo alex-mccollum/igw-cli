@@ -34,7 +34,7 @@ The identities have distinct purposes:
 - `rawSha256` checks the exact vendor bytes, including formatting.
 - `documentSha256` normalizes object key order and JSON whitespace while
   retaining all fields, array order, and exact JSON number spellings.
-- `contractSha256` applies versioned policy `igw-contract/1` before hashing.
+- `contractSha256` applies versioned policy `igw-contract/2` before hashing.
   It omits recognized documentation annotations in their OpenAPI/Schema
   contexts and sorts schema `allOf`, `anyOf`, `oneOf`, `enum`, `required`, and
   union `type` arrays. Defaults, constraints, duplicates, unknown keywords,
@@ -43,7 +43,12 @@ The identities have distinct purposes:
 Pins use the contract hash. The policy name is part of the hash input. Reference
 targets and array/annotation ancestors are preserved; unresolved, anchor, and
 dynamic references conservatively preserve their containing resource. Local
-schema resources respect `$id` boundaries. This is a reviewed projection, not a
+schema resources respect `$id` boundaries. Policy 2 additionally recognizes the
+exact paired keyboard embedding reviewed by the parser adapter below. Its local
+references preserve their actual definition targets instead of freezing the
+entire document. Generic nested `$defs` and unreviewed references retain the
+conservative rules; no parameter placeholder is used for hashing. Original raw
+and document identities remain unchanged. This is a reviewed projection, not a
 general proof of JSON Schema equivalence or runtime behavior. A changed hash
 requires review; it is not automatically a breaking change. The rules follow
 the [JSON Schema validation vocabulary](https://json-schema.org/draft/2020-12/json-schema-validation)
@@ -54,6 +59,12 @@ loader verifies their original canonical checksum, derives current identities,
 retains `legacyIdentity`, and emits a migration warning. It does not rewrite
 history or advance Gateway verification time. Old pins are not accepted as new
 contract identities; inspect the document and explicitly replace those pins.
+Version 2 receipts with policy 1 also remain readable: the loader verifies the
+original policy-1 hash before deriving policy 2. `legacyIdentity` records the
+prior parser, hash, and policy, preserving an earlier migration in `previous`
+when present. Neither load path rewrites a receipt or advances its fetch or
+verification times. All current hashes change because the policy name itself
+is hashed, even when the projected contract is otherwise unchanged.
 
 Discovery and reads refresh after 24 hours. A write revalidates during each
 invocation, using ETag or Last-Modified when supplied. A failed refresh retains
@@ -240,10 +251,16 @@ All reference paths work without Gateway configuration, credentials, cache, or
 network. They return `meta.reference` with explicit source kind, origin, image,
 module inventory hash, qualification scope, and contract identities. Assembly
 time is `createdAt`; it is not a current Gateway verification timestamp.
-API discovery additionally reports `inspectionParserVersion`, distinguishing
-current parsing from the recorded qualification parser. Human output identifies
+API discovery additionally reports `inspectionParserVersion` and
+`inspectionCatalog`, distinguishing current parsing and identity policy from
+the recorded qualification. Historical bundles verify against their recorded
+supported policy. Their manifest, receipts, and `catalog` identity remain
+unchanged; current inspection is not renewed live workflow qualification.
+Human output identifies
 the reference before listing operations. The `--spec-pin` check applies to
-inspection, export, and API discovery. Export verifies the reviewed identity
+inspection, export, and API discovery using the manifest's recorded contract
+hash and policy. A reference pin never becomes a live-target pin implicitly.
+Export verifies the reviewed identity
 again before publishing and refuses existing directories.
 
 References never populate a target cache and the flag is unavailable on request

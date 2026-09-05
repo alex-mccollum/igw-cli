@@ -141,6 +141,9 @@ func TestKeyboardDefinitionsRejectUnreviewedScopesAtomically(t *testing.T) {
 		_ = json.Unmarshal(b, &backup)
 		object(object(schema["items"])["properties"])["backupConfig"] = backup
 		before, _ := json.Marshal(root)
+		if len(keyboardIdentityScopes(root)) != 0 {
+			t.Fatal("unreviewed reference scope affected identity")
+		}
 		for _, adjustment := range normalizeIgnition(root) {
 			if adjustment.Rule == "keyboard-local-definitions" {
 				t.Fatal("unreviewed schema was expanded")

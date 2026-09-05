@@ -152,6 +152,8 @@ was removed, with no host recovery or automatic retry.
 
 Two captures of that same image/module profile also exposed a policy-1 identity
 defect: unresolved keyboard references preserve the entire document, including
-changing examples and unordered schema arrays. Capability-aware qualification
-and an explicitly versioned identity correction with historical verification
-are required before this minimum-version cell can qualify.
+changing examples and unordered schema arrays. Contract policy 2 now uses the
+reviewed keyboard reference scopes; both minimum captures produce the same
+current hash while their original policy-1 hashes remain verifiable. This
+parser inspection does not renew live workflow qualification. Capability-aware
+qualification and a complete clean run remain required for the minimum cell.

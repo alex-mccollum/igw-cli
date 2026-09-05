@@ -115,6 +115,9 @@ func TestAPIDiscoveryUsesQualifiedReferenceWithoutTarget(t *testing.T) {
 		if ref == nil || ref.SourceKind != "reference" || ref.Catalog.ContractSHA256 != builtinContract || ref.InspectionParserVersion != catalog.ParserVersion || r.Meta.Catalog != nil || r.Meta.Target != nil || r.Meta.Stale {
 			t.Fatalf("reference was confused with live target evidence: %+v", r.Meta)
 		}
+		if ref.Catalog.ContractPolicy != "igw-contract/1" || ref.InspectionCatalog == nil || ref.InspectionCatalog.ContractPolicy != catalog.ContractPolicy || ref.InspectionCatalog.ContractSHA256 == ref.Catalog.ContractSHA256 || ref.InspectionCatalog.RawSHA256 != ref.Catalog.RawSHA256 || ref.InspectionCatalog.DocumentSHA256 != ref.Catalog.DocumentSHA256 {
+			t.Fatal("historical qualification and current inspection identities were conflated")
+		}
 		if args[1] == "list" {
 			items := r.Data.([]any)
 			if len(items) != 1 || items[0].(map[string]any)["key"] != "GET /data/api/v1/gateway-info" {

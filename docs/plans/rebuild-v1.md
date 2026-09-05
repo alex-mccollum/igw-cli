@@ -791,6 +791,45 @@ counting absent tag round trips as passing. The separately qualified 8.3.9 tag
 workflows remain required. This evidence narrows the next two implementation
 slices; the full compatibility matrix and v1 delivery goal remain unfinished.
 
+Contract policy `igw-contract/2` and parser version 12 now resolve the identity
+defect using the keyboard adapter's shared read-only qualification. Only the
+reviewed paired schemas establish additional local reference scopes. The hash
+retains the original definition targets, constraints, and unknown references;
+it never incorporates inferred parameter schemas or other model placeholders.
+Both 672-operation minimum captures now have current contract SHA-256
+`30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800`.
+Both 687-operation 8.3.9 captures have current contract SHA-256
+`17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea`.
+Original bytes, raw/document hashes, and adjustment counts remain unchanged.
+The repeated minimum capture is now a parser regression fixture alongside
+its separately retained incomplete workflow evidence.
+
+Policy 1 remains an explicit historical verifier. Cache loads verify it before
+deriving current identity, preserve prior parser/hash/policy history, warn about
+pin migration, and leave original receipts and Gateway timestamps untouched.
+Historical reference bundles remain readable and exportable with their recorded
+policy and pins. API discovery reports the current `inspectionCatalog` identity
+separately from immutable qualification metadata. A current-policy hash cannot be
+silently substituted for a recorded reference hash, and new reference assembly
+still requires current-policy live receipts. No historical acceptance evidence
+was promoted or rewritten.
+
+The full unit suite and focused catalog/reference/CLI race checks passed under
+serialized bounded validation. All four complete captured-document regressions
+passed, including exact historical-hash verification and repeated-capture
+stability. Tests also cover unknown reference scopes, preserved new assertions,
+tampered/unknown policy receipts, immutable migration history, old-pin refusal,
+and reference policy relabeling. Logs are in
+`bin/identity-policy-{unit,race,qualification}.log`. Capability-aware workflows,
+minimum-version live acceptance, and the remaining v1 gates are still required.
+
+The development CLI and canonical legacy binary built successfully. Command-doc
+checks, docs lint, and the added old-policy assembly-refusal regression passed.
+Legacy smoke stopped at `doctor` with exit 2 because the default Gateway URL and
+token are unconfigured; no live smoke success is claimed. Logs are in
+`bin/identity-policy-{docs,smoke}.log`. No containers or host-setting changes were
+needed for this identity slice.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

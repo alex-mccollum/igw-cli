@@ -30,21 +30,23 @@ type Bundle struct {
 
 // Summary identifies reference evidence without claiming live target freshness.
 // ParserVersion identifies qualification; InspectionParserVersion is set only
-// when a command has reparsed the document in this invocation.
+// when a command has reparsed the document in this invocation. InspectionCatalog
+// reports current policy identity separately from the immutable recorded one.
 type Summary struct {
-	Selector                string           `json:"selector"`
-	SourceKind              string           `json:"sourceKind"`
-	Origin                  string           `json:"origin"`
-	Version                 string           `json:"version"`
-	Name                    string           `json:"name"`
-	CreatedAt               time.Time        `json:"createdAt"`
-	Image                   Image            `json:"image"`
-	ModuleInventorySHA256   string           `json:"moduleInventorySha256"`
-	ModuleCount             int              `json:"moduleCount"`
-	Catalog                 catalog.Identity `json:"catalog"`
-	ParserVersion           string           `json:"parserVersion"`
-	InspectionParserVersion string           `json:"inspectionParserVersion,omitempty"`
-	Qualification           Qualification    `json:"qualification"`
+	Selector                string            `json:"selector"`
+	SourceKind              string            `json:"sourceKind"`
+	Origin                  string            `json:"origin"`
+	Version                 string            `json:"version"`
+	Name                    string            `json:"name"`
+	CreatedAt               time.Time         `json:"createdAt"`
+	Image                   Image             `json:"image"`
+	ModuleInventorySHA256   string            `json:"moduleInventorySha256"`
+	ModuleCount             int               `json:"moduleCount"`
+	Catalog                 catalog.Identity  `json:"catalog"`
+	ParserVersion           string            `json:"parserVersion"`
+	InspectionParserVersion string            `json:"inspectionParserVersion,omitempty"`
+	InspectionCatalog       *catalog.Identity `json:"inspectionCatalog,omitempty"`
+	Qualification           Qualification     `json:"qualification"`
 }
 
 func (b Bundle) Summary(m Manifest) Summary {

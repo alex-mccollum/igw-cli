@@ -13,6 +13,26 @@ import (
 // reviewed operations, paired schemas, and reference positions qualify. Every
 // supplied assertion survives; original evidence remains outside this model.
 func normalizeKeyboardDefinitions(op map[string]any, key, pointer string) []Adjustment {
+	pair := reviewedKeyboardDefinitions(op, key)
+	if pair == nil {
+		return nil
+	}
+	var adjustments []Adjustment
+	for _, name := range []string{"config", "backupConfig"} {
+		pair.properties[name] = expandKeyboardDefinitions(object(pair.properties[name]), pair.defs)
+		adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + pair.base + "/" + name, Rule: "keyboard-local-definitions"})
+	}
+	return adjustments
+}
+
+type keyboardDefinitions struct {
+	properties, defs map[string]any
+	base             string
+}
+
+// Shared read-only qualification keeps identity reference scopes and model
+// expansion aligned. It never normalizes other vendor defects for hashing.
+func reviewedKeyboardDefinitions(op map[string]any, key string) *keyboardDefinitions {
 	var parts []string
 	switch key {
 	case "POST /data/api/v1/resources/ignition/keyboard_layout", "PUT /data/api/v1/resources/ignition/keyboard_layout":
@@ -53,12 +73,7 @@ func normalizeKeyboardDefinitions(op map[string]any, key, pointer string) []Adju
 	if !keyboardReferenceScope(op, "", base, allowed, seen) || len(seen) != len(allowed) {
 		return nil
 	}
-	var adjustments []Adjustment
-	for _, name := range []string{"config", "backupConfig"} {
-		properties[name] = expandKeyboardDefinitions(object(properties[name]), defs)
-		adjustments = append(adjustments, Adjustment{Operation: key, Pointer: pointer + base + "/" + name, Rule: "keyboard-local-definitions"})
-	}
-	return adjustments
+	return &keyboardDefinitions{properties: properties, defs: defs, base: base}
 }
 
 // Scan the entire operation before changing anything. Any unknown reference,

@@ -32,6 +32,7 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 				Modules         []string       `json:"moduleWhitelist"`
 				RawSHA256       string         `json:"rawSha256"`
 				ContractSHA256  string         `json:"contractSha256"`
+				ContractPolicy  string         `json:"contractPolicy"`
 				Operations      int            `json:"operations"`
 				Validated       bool           `json:"validated"`
 				Cleanup         bool           `json:"cleanup"`
@@ -69,6 +70,12 @@ func TestCapturedIgnitionCatalogs(t *testing.T) {
 			capturedHash := c.ContractHash()
 			if receipt.Version == 1 {
 				capturedHash = c.DocumentHash()
+			} else if receipt.Validated {
+				original, err := c.IdentityForPolicy(receipt.ContractPolicy)
+				if err != nil {
+					t.Fatal(err)
+				}
+				capturedHash = original.ContractSHA256
 			}
 			if c.RawHash() != receipt.RawSHA256 || (receipt.Validated && (capturedHash != receipt.ContractSHA256 || c.OperationCount() != receipt.Operations)) {
 				t.Fatal("capture checksum or qualification drift")

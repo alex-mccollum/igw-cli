@@ -68,6 +68,7 @@ func TestContractProjectionPreservesReferenceTargetsAndPositions(t *testing.T) {
 		{"embedded-resource", `{"$id":"urn:test","$ref":"#/oneOf/0","oneOf":[{"type":"string"},{"type":"number"}]}`, `{"$id":"urn:test","$ref":"#/oneOf/0","oneOf":[{"type":"number"},{"type":"string"}]}`},
 		{"anchor", `{"$id":"urn:test","$ref":"#here","examples":[1]}`, `{"$id":"urn:test","$ref":"#here","examples":[2]}`},
 		{"dynamic", `{"$dynamicRef":"#here","examples":[1]}`, `{"$dynamicRef":"#here","examples":[2]}`},
+		{"unreviewed-definitions", `{"$defs":{"key":{"type":"string"}},"$ref":"#/$defs/key","examples":[1]}`, `{"$defs":{"key":{"type":"string"}},"$ref":"#/$defs/key","examples":[2]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if schemaIdentity(t, tc.a) == schemaIdentity(t, tc.b) {
