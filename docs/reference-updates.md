@@ -140,6 +140,60 @@ is not freshness evidence. Use manual dispatch or the same local coordinator
 when a scheduled run is missed. The repository variable/runner must be enabled
 and a real hosted run observed before claiming the remote schedule is active.
 
+## Updater status and activation
+
+Check hosted status without a Gateway, Docker, Go build, or local cache:
+
+```bash
+python3 scripts/reference-status.py --repo alex-mccollum/igw-cli --json
+```
+
+The script uses read-only GitHub API requests. Public status is readable without
+credentials; authenticated requests use `GH_TOKEN` or `GITHUB_TOKEN` from the
+environment. It never prints credentials or remote error bodies. JSON uses
+`igw/reference-status/v1`; exit 0 means a recent complete qualification was
+observed, 1 means attention is needed, and 2 means invalid arguments. An unknown
+runner gate remains explicit; successful history alone does not verify that a
+dedicated runner is currently available.
+
+The report includes the latest run and last complete qualification among the
+20 most recent default-branch runs. Both named module-profile jobs must have
+succeeded in the same attempt, including the actual qualification and evidence
+upload steps. A green run containing skipped jobs does not qualify. Partial
+reruns cannot borrow a successful profile from an earlier attempt; rerun all
+jobs to establish complete hosted qualification. A newer failure preserves the
+last successful timestamp/link. Beyond 14 days (two weekly intervals), the
+qualification is overdue. History outside this bounded lookup is unknown;
+the script neither discards bundled references nor changes their dates.
+
+The workflow's separate status job runs on a GitHub-hosted runner after the
+qualification jobs, even when they fail or are skipped. It writes a
+[job summary](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#adding-a-job-summary)
+with the current result, last complete qualification, and recovery guidance.
+Its token has only `contents: read` and `actions: read`. An inactive gate,
+incomplete qualification, overdue evidence, or unreadable status fails the
+status job visibly. Failed-run notifications can be enabled in GitHub's own
+notification settings; this repository adds no messaging service. If a dedicated
+runner leaves qualification queued, the status job waits for it; use the
+read-only script to see the pending run. An entirely missed schedule needs an
+external status check because a workflow that never starts cannot report itself.
+
+Activate in this order:
+
+1. Publish the reviewed workflow and scripts on the repository's default branch.
+2. Verify the dedicated runner's labels, admission controls, available memory,
+   and running engine using the requirements above. Do not repurpose the shared
+   WSL workstation or change its host settings for activation.
+3. Set `IGW_REFERENCE_RUNNER_ENABLED=true`, then manually dispatch the workflow
+   for the chosen patch. The existing serial matrix and cleanup checks apply.
+4. Inspect both profile receipts, cleanup, artifacts, and the final status
+   summary. Only then record activation and observe the next weekly run.
+
+As checked on 2026-09-06, the remote repository lists CI and Release workflows
+only; the reference workflow is not installed. Runner and variable settings
+could not be inspected with the available local credentials. Local status
+verification returned `not-installed`; no hosted activation is claimed.
+
 ## Review and retain an update
 
 Inspect `run.json`, every required stage, the reference manifest, and the catalog

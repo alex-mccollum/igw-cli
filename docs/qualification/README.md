@@ -6,6 +6,19 @@ The [qualification record](simplification.json) binds the source, executables,
 images, observed catalogs, measurements, and artifact hashes. Full local run
 receipts and logs are preserved under `bin/simplification/final/`.
 
+Subsequent maintenance on 2026-09-06 added verified-blob reuse, accurate request
+field pointers, actionable lock errors, original capture dates, and hosted
+updater status reporting. It passed the full offline Go suite, catalog/config/
+filesystem-lock race tests, 34 executable smoke checks, 23 reference-tool tests,
+command docs/lint, and workflow linting. Logs are in `bin/improvements/`.
+The built CLI includes the runtime follow-ups through `6809e5f`; those changes
+have not received a new live Gateway qualification or release artifact matrix.
+The table and performance measurements below apply to `a1d2b4b` only.
+
+The read-only hosted status check returned `not-installed`: the remote reference
+workflow still needs publication, a verified dedicated runner, activation, and
+an observed complete run. See [activation steps](../reference-updates.md#updater-status-and-activation).
+
 | Check | Result |
 | --- | --- |
 | Full offline Go suite | Passed |

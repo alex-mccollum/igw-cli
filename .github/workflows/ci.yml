@@ -29,8 +29,8 @@ jobs:
       - name: Lint docs quality
         run: ./scripts/lint-docs.sh
 
-      - name: Verify reference update coordinator
-        run: python3 -m unittest discover -s scripts -p 'test_update_reference.py'
+      - name: Verify reference update tools
+        run: python3 -m unittest discover -s scripts -p 'test*reference*.py'
 
   test-and-build:
     name: Test and Build (${{ matrix.os }})
