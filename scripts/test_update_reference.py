@@ -1,6 +1,8 @@
 """Coordinator contracts only: no Go compilation, registry, or Docker access."""
 
 import importlib.util
+from contextlib import redirect_stderr
+import io
 import json
 import os
 from pathlib import Path
@@ -115,6 +117,23 @@ class CoordinatorTests(unittest.TestCase):
 
     def receipt(self):
         return json.loads((self.out / "run.json").read_text())
+
+    def test_default_baseline_matches_profile_and_allows_override(self):
+        for profile, filename in (("image-defaults", "ignition-8.3.9-defaults"),
+                                  ("core-opcua", "ignition-8.3.9-core")):
+            for explicit in (False, True):
+                with self.subTest(profile=profile, explicit=explicit):
+                    args = ["--out", str(self.out), "--module-profile", profile]
+                    expected = UPDATE.ROOT / "internal/reference/bundles" / filename / "openapi.json.gz"
+                    if explicit:
+                        expected = self.root / "reviewed-baseline.json"
+                        args += ["--baseline", str(expected)]
+                    # Stop at input validation, before any runtime lock or stage.
+                    with patch.object(UPDATE.sys, "platform", "linux"), patch.object(UPDATE.Path, "is_file", autospec=True, return_value=False) as check, redirect_stderr(io.StringIO()):
+                        with self.assertRaises(SystemExit) as error:
+                            UPDATE.main(args)
+                    self.assertEqual(error.exception.code, 2)
+                    check.assert_called_once_with(expected)
 
     def test_serial_pinned_pipeline_and_receipt(self):
         receipt = self.run_update()

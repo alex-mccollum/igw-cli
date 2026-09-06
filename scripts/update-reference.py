@@ -14,7 +14,10 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_BASELINE = ROOT / "internal/reference/bundles/ignition-8.3.9-defaults/openapi.json.gz"
+DEFAULT_BASELINES = {
+    "image-defaults": ROOT / "internal/reference/bundles/ignition-8.3.9-defaults/openapi.json.gz",
+    "core-opcua": ROOT / "internal/reference/bundles/ignition-8.3.9-core/openapi.json.gz",
+}
 MAX_METADATA = 4 << 20
 ENGINE_FORMAT = ('{"OSType":{{json .OSType}},"CgroupVersion":{{json .CgroupVersion}},'
                  '"MemoryLimit":{{json .MemoryLimit}},"SwapLimit":{{json .SwapLimit}},'
@@ -215,11 +218,13 @@ def main(argv=None):
     parser.add_argument("--tag", default="8.3", help="Official 8.3 channel or explicit 8.3.patch tag")
     parser.add_argument("--out", required=True, type=Path, help="New private directory for run evidence and candidate")
     parser.add_argument("--docker", default="docker", help="Docker executable; the engine must already be running")
-    parser.add_argument("--baseline", default=DEFAULT_BASELINE, type=Path, help="Previous qualified JSON or JSON.gz")
+    parser.add_argument("--baseline", type=Path, help="Previous qualified JSON or JSON.gz; defaults to the matching 8.3.9 module profile")
     parser.add_argument("--skip-pull", action="store_true", help="Require the resolved image to be present locally")
     parser.add_argument("--require-clean", action="store_true", help="Require the source commit and clean checkout to stay unchanged")
     parser.add_argument("--module-profile", default="image-defaults", choices=("image-defaults", "core-opcua"), help="Reviewed module selection applied to every Gateway")
     args = parser.parse_args(argv)
+    if args.baseline is None:
+        args.baseline = DEFAULT_BASELINES[args.module_profile]
     if not re.fullmatch(r"8\.3(?:\.(?:0|[1-9][0-9]{0,4}))?", args.tag):
         parser.error("tag must be 8.3 or 8.3.patch")
     if sys.platform != "linux":
