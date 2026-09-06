@@ -10,8 +10,9 @@ release gates and final-source Gateway evidence.
 
 Keep Go and a thin operational scope. Use one Cobra command tree and typed
 execution/workflow services, a versioned result contract, target-bound HTTP,
-private streamed artifacts, and versioned profile/catalog storage. Use a JSON contract index and direct `jsonschema/v6` validation behind a
-catalog boundary checked against actual captures. The JSON engine supersedes
+private streamed artifacts, and versioned profile/catalog storage. Use a JSON
+contract index and direct `jsonschema/v6` validation behind a catalog boundary
+checked against actual captures. The JSON engine supersedes
 the original libopenapi model/validator choice.
 
 The target Gateway's exact OpenAPI document supplies the documented wire

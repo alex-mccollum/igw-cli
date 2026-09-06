@@ -72,7 +72,7 @@ if [[ $missing_refs -ne 0 ]]; then
   exit 1
 fi
 
-# Ensure documented command examples use known CLI command names/subcommands.
-go test ./internal/cli -run '^TestDocsCommandsMatchCommandTree$' -count=1
+# Check authored Markdown links/headings and command examples across the repo.
+go test ./internal/cli -run '^TestDocs(CommandsMatchCommandTree|LinksResolve)$' -count=1
 
 echo "ok: docs lint checks passed"

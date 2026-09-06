@@ -5,13 +5,20 @@ All notable user-facing changes to `igw` are documented here.
 ## [Unreleased]
 
 ### Changed
-- Cut over to one `cmd/igw` command tree and typed execution core. Remove the development entrypoint, legacy argument parser, persistent RPC, old OpenAPI index, and WSL address helper. This breaking interface is intended for v1; release qualification remains in progress.
+- Cut over to one `cmd/igw` command tree and typed execution core. Remove the development entrypoint, legacy argument parser, persistent RPC, old OpenAPI index, and WSL address helper. This breaking interface is intended for v1; see `docs/qualification/README.md` for tested sources and remaining release gates.
 - Use one `igw/v1` JSON envelope for discovery, requests, workflow results, and errors. Preserve exit codes 0/2/6/7 and the release version/artifact naming contracts.
 - Discover the target Gateway's complete OpenAPI contract with immutable snapshots, provenance, freshness, pins, and explicit offline references; remove implicit CWD spec lookup.
 - Require deliberate previews/confirmation and supported resource/project preconditions. Distinguish accepted requests from verified workflow outcomes and uncertain writes.
 - Add bounded batch requests, streamed artifacts, resource/project/tag workflows, operational diagnostics, and observed Gateway restart.
 - Add versioned profiles, private local writes, explicit reversible migration, revision checks, and token input through stdin. Preserve environment names and per-field configuration precedence.
 - Generate help, command schemas, and shell completion from the same command tree. See `docs/migration-v1.md` for old-to-new commands and remaining qualification limits.
+- Replace the full OpenAPI/YAML model with direct JSON validation, bound target caches to current/previous snapshots, and distribute two-file offline references with original capture provenance.
+- Show focused command and operation discovery by default; retain complete views through `schema --recursive` and `api describe --full`.
+- Add a serial reference-update coordinator and read-only hosted qualification status; remote activation remains separate from local implementation.
+
+### Fixed
+- Reuse verified unchanged cache blobs while preserving corruption repair, escape validation field pointers correctly, and distinguish permanent configuration lock failures from contention.
+- Compare reference-update candidates against the default baseline for their selected module profile; explicit baseline overrides remain available.
 
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 

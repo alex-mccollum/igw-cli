@@ -10,7 +10,8 @@ Existing 0.x users should read the [migration guide](docs/migration-v1.md).
 
 ## Start here
 
-Build from this checkout with the [workstation safeguards](docs/development-safety.md):
+On a shared Linux/WSL workstation, build this checkout with the
+[workstation safeguards](docs/development-safety.md):
 
 ```bash
 bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
@@ -41,8 +42,8 @@ rollback while preserving existing settings.
 
 Use `api list` and `api describe` to learn what the selected Gateway advertises.
 Resource, project, tag, and operational commands share a typed execution core
-and add workflow-specific checks. Every mutation requires `--yes`; previews
-send no proposed mutation. Replacement/deletion requires supported reviewed
+and add workflow-specific checks. Every Gateway mutation and profile edit
+requires `--yes`; previews send no proposed mutation. Replacement/deletion requires supported reviewed
 preconditions, such as resource signatures.
 
 `--json` emits one `igw/v1` result, including errors. Read `outcome` and

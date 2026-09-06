@@ -27,7 +27,7 @@ All operation inventories and raw/document/contract identities match. The
 hashes, samples, and inventory checksums. These are local startup observations,
 not portable latency guarantees. Live workflow results are recorded separately
 in the same candidate record. Historical model-backend measurements remain in
-[Git history](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/performance.md).
+[Git history](qualification/README.md#historical-evidence) (`65e643d:docs/performance.md`).
 
 ## Unchanged catalog revalidation
 
@@ -35,4 +35,6 @@ Each new process loads and validates its selected target snapshot. A conditional
 304 or byte-identical response reuses that invocation's catalog. Reuse preserves
 fresh write verification and publishes updated metadata before transferring
 ownership. The revalidation benchmark covers load, conditional HTTP, and cache
-publication rather than only a warmed lookup.
+publication rather than only a warmed lookup. Later cache maintenance reuses an
+already verified blob instead of rewriting it on unchanged publication. The
+measurements above predate that change; no additional speedup is inferred.

@@ -22,10 +22,8 @@ an invalid envelope is an adapter error; a failed or disconnected mutation can
 have taken effect. Keep `uncertain` and partial results. Never turn a handshake,
 parse, or transport failure into an automatic second write.
 
-Use current previews and supported preconditions, then inspect verification
-metadata. Resource signatures, project content digests, and local profile
-revisions protect their documented scopes; none is a universal server transaction
-or job identifier. Generic HTTP acceptance is not workflow verification.
+Use the preview, precondition, and outcome rules in
+[automation](automation.md). Generic HTTP acceptance is not workflow verification.
 
 Use returned artifact metadata for files and a lossless JSON decoder for large
 numbers. Do not assume fields from the 0.x envelope or RPC protocol remain.

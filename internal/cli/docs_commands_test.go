@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -13,8 +12,8 @@ import (
 // Gateway. Command paths, flags, literal flag types, and arity come from Cobra.
 func TestDocsCommandsMatchCommandTree(t *testing.T) {
 	count := 0
-	for _, name := range []string{"README.md", "docs/commands.md"} {
-		raw, err := os.ReadFile(filepath.Join("../..", name))
+	for _, name := range documentationFiles(t) {
+		raw, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}

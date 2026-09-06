@@ -52,16 +52,14 @@ private data and should be retained only where appropriate.
 ## Batches and process integration
 
 `api batch` accepts a bounded JSON array and produces ordered per-item results.
-It prepares the batch against one catalog scope and sends no proposed mutation
+It processes the batch against one catalog scope and sends no proposed mutation
 in preview mode. Default execution stops on failure; explicit continuation still
 stops on auth, cancellation, and uncertain outcomes. It is sequential and not a
 transaction. For independent processes, bound concurrency in the caller.
 
-Persistent RPC and implicit one-shot fallback are removed. Spawn `igw` directly
-with an argv array, provide secret input via environment/stdin, drain stdout and
-stderr, apply a parent deadline, and terminate only the owned child when needed.
-A missing or invalid result is a failed observation, not permission to replay.
-See `docs/host-integration.md` for adapter expectations.
+See [host integration](host-integration.md) for process spawning, stream
+handling, parent deadlines, and adapter failure handling. A missing or invalid
+result is a failed observation, not permission to replay.
 
 Use `--out` for large artifacts and verify returned size/hash metadata. Preserve
 exact JSON numbers in host decoders when they can exceed IEEE-754 integer
@@ -71,9 +69,12 @@ longer maintains a separate output-selection language.
 ## Catalog and freshness
 
 The target's OpenAPI defines its documented wire contract. Keep its original
-bytes and evidence separate from imported or bundled references. Writes refresh
-within the invocation, while offline inspection is explicit. A failed refresh
-preserves the last valid local snapshot but does not silently make it fresh.
+bytes and evidence separate from imported or bundled references. Schema-assisted
+writes normally refresh within the invocation;
+`--allow-stale-spec` is the explicit exception for a previously fetched target
+snapshot. Offline inspection is explicit. Raw requests do not use a catalog.
+A failed refresh preserves the last valid local snapshot but does not silently
+make it fresh.
 Pins constrain contract identity. See `docs/catalog.md` and
 `docs/reference-updates.md` for cache, distribution, and update behavior.
 
@@ -84,7 +85,12 @@ temporary XDG configuration paths and a loopback HTTP fixture. It requires
 Python 3. Other platforms retain native Go unit/contract checks; this smoke
 refuses to modify their real user configuration for isolation.
 `IGW_SMOKE_LIVE=1 bash scripts/smoke.sh` additionally performs explicit read-only
-checks against the configured Gateway. Neither mode triggers mutations.
+checks against the configured Gateway. Both modes leave live Gateway state
+unchanged. Local smoke checks deliberately exercise profile writes/migration in
+isolated directories and request behavior
+against a loopback fixture; they do not use production credentials for those
+checks. On shared Linux/WSL, run the script through the
+[bounded runner](development-safety.md).
 Real workflow qualification uses the guarded disposable-Gateway suites described
 in `docs/catalog.md` and `docs/compatibility-matrix.md`.
 Performance scope and remaining optimization work are in `docs/performance.md`.

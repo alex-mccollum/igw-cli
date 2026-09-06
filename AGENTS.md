@@ -50,11 +50,11 @@ Project-local operating notes for `igw-cli`.
 
 ## Project Contracts
 - Exit codes are part of the automation contract:
-  - `0`: success (`2xx`)
+  - `0`: success (local operations or HTTP `2xx`)
   - `2`: usage/config errors
   - `6`: auth failures (`401`, `403`)
   - `7`: network/transport and non-auth HTTP failures
-- Mutating operations require explicit `--yes` confirmation.
+- Gateway mutations and profile edits require explicit `--yes` confirmation.
 - Configuration precedence is strict: flags > environment > config file.
 - Runtime environment variable names are stable: `IGNITION_GATEWAY_URL`, `IGNITION_API_TOKEN`.
 - Command examples are canonical in `docs/commands.md`; keep `README.md` as onboarding and link back to docs.

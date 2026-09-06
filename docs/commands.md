@@ -40,6 +40,8 @@ security, and transitively referenced components. Use `--full` for the complete
 path item and component inventory. If reference scope cannot be represented
 safely in a smaller view, `document` carries the original complete document.
 
+## Profiles
+
 Configure a profile using explicit stored values. These commands are local and
 can run without a Gateway connection:
 
@@ -77,6 +79,8 @@ Rollback requires the unchanged legacy file and archives the current v1 bytes
 before returning to it. Migration reads current legacy settings and has no v1
 revision precondition. See `docs/profiles.md` for exact precedence, strict file
 validation, storage permissions, concurrent writer behavior, and recovery limits.
+
+## Gateway restart
 
 `gateway restart` is a full Gateway restart and interrupts its running services.
 Use a direct URL for the intended Gateway node. A preview reads node identity,
@@ -120,6 +124,8 @@ code (auth 6, other failures 7). Inspect current state before considering anothe
 restart. Preview and local usage errors remain non-mutating. Both core image
 versions passed live restart qualification; see `docs/compatibility-matrix.md`.
 
+## Offline references
+
 Qualified API references are available without Gateway configuration, credentials,
 network access, or a populated cache:
 
@@ -145,13 +151,15 @@ records assembly; inspection renews neither. `qualification.parserVersion`,
 `catalogParserVersion`, and `inspectionParserVersion` distinguish original
 qualification, recorded catalog derivation, and parsing in this invocation.
 The last field is absent for manifest-only listing and payload inspection.
-The 8.3.0 references
-report tag-transfer workflows as unavailable. See the [qualification matrix](compatibility-matrix.md).
+The 8.3.0 references report tag-transfer workflows as unavailable. See the
+[qualification matrix](compatibility-matrix.md).
 
 `REFERENCE` accepts a bundled selector or a local bundle directory; prefix a
 relative directory with `./` if it has the same name as a bundled selector.
-Export requires a new directory and preserves the complete evidence bundle,
-including exact compressed vendor JSON. It never replaces a previous bundle.
+Export requires a new directory and copies exactly `reference.json` and
+`openapi.json.gz`, preserving their bytes. The manifest includes qualification
+provenance and an evidence locator; the separate contributor audit packet is
+not copied or fetched. It never replaces a previous bundle.
 `--spec-pin SHA256` checks the reference contract for inspection, export, and API
 discovery. `--reference` is available only on `api list`, `api describe`, and
 `api capabilities`.
@@ -160,14 +168,18 @@ catalog receipt. They do not populate the Gateway cache or establish authority
 for a request. An invalid reference fails explicitly. See `docs/catalog.md` for
 the source-of-truth and qualification boundaries. On a shared Linux/WSL
 workstation, wrap API discovery in `bash scripts/bounded-run.sh --` because it
-parses the captured model; reference listing, inspection, and export only verify
-bounded metadata and payload checksums.
+parses the captured document. Reference listing reads only manifests;
+inspection and export additionally verify compressed payload checksums.
+
+## Generic API requests
 
 `api request` accepts either an exact `METHOD /path` key or an unambiguous
 operationId. Use repeatable `--path-param name=value`, `--query key=value`,
 and `--header name:value` for parameters and `--body @file.json` for input.
 Preview mutations with `--dry-run`; execution requires `--yes`. A preview
 may fetch the API document but never sends the proposed request.
+
+### Path parameters
 
 For simple path parameters, pass the literal string, boolean, integer, or number
 with `--path-param name=value`; the CLI handles percent encoding. Encoded slashes
@@ -184,6 +196,8 @@ schema-assisted validation as `unsupported_serialization`; their contracts
 remain inspectable with `api describe`. A path template with multiple expressions
 in one segment must have an unambiguous binding. `api raw` remains the explicit
 escape hatch for encodings that are not yet supported.
+
+### Header parameters
 
 `--header name:value` supplies HTTP field text. Header names are case-insensitive;
 repeated flags retain their value order. Leading/trailing HTTP spaces and tabs
@@ -226,6 +240,8 @@ Each entry reports the declared media type, required-body flag, schema presence,
 supported encoding, validation coverage, and streaming support. `selected_media`
 means that an actual content type is needed to resolve support for a media range.
 Malformed vendor media types remain visible as `unsupported`.
+
+### Query parameters
 
 `--query key=value` separates on the first `=`. Names and values are literal:
 whitespace is preserved, percent escapes are not decoded, and the CLI performs
@@ -279,6 +295,8 @@ Gateway claim. Other query styles and nested `schema` serialization still need
 explicit support; `api raw` remains available. Multipart input has a separate
 contract and remaining implementation work.
 
+### JSON and text bodies
+
 JSON request bodies are decoded without rounding numbers and validated against
 the selected request schema. The CLI sends the original bytes, including
 whitespace and numeric spelling; the preview digest covers those same bytes.
@@ -318,6 +336,8 @@ schema checks passed. `declared_transport` means the body received media-type
 and presence checks, with no validation of its contents. Raw requests report
 `not_requested`. Multipart schema decoding and additional schema encodings
 remain unfinished.
+
+### URL-encoded forms
 
 For an operation that declares `application/x-www-form-urlencoded`, use
 `--urlencoded 'name=value'` on `api request` or `api raw`. Repeat it to provide
@@ -359,6 +379,8 @@ To supply a pre-encoded form or an explicit empty form, use
 through the same schema decoder. The decoder also accepts `charset=utf-8` or
 `charset=us-ascii`; ASCII requires ASCII field names and values after decoding.
 
+### Binary uploads
+
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so
 preview metadata and transmission use the same bytes within an invocation.
@@ -375,6 +397,8 @@ Additional binary value constraints are refused until supported. Use bounded
 ```bash
 igw api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
 ```
+
+### Multipart uploads
 
 For multipart uploads, use repeatable `--form-field name=value` and
 `--form-file name=path`. Text values are literal UTF-8, so `@file`, `-`, commas,
@@ -458,6 +482,8 @@ recipe does not establish behavior for every bulk-datafile route. The tested
 [body-input qualification](compatibility-matrix.md#additional-request-body-qualification)
 for exact versions and evidence.
 
+## Batches
+
 For independent small requests, `api batch` accepts a JSON array through
 `--input` as literal JSON, `@file`, or `-` for stdin. A manifest can mix reads
 and writes against the selected Gateway:
@@ -518,6 +544,8 @@ precedence. Human output lists every ID and outcome, including on failure;
 use `--json` to retain full response data and evidence. Review per-item results
 before retrying any part of a failed batch.
 
+## Resources
+
 Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:
 
@@ -535,6 +563,8 @@ igw resource delete ignition/schedule Example --dry-run --json
 igw resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes --json
 ```
 
+### List filters
+
 `resource list`, `project list`, and `logs list` accept repeatable
 `--filter 'field[operator]=value'`. Quote the complete expression for your shell.
 For example, combine `--filter 'name[sw]=Line'` with
@@ -548,6 +578,8 @@ Generic requests use the same validation with
 `--query 'filter={...}'` is not that wire format. Invalid or ambiguous filters
 fail before an operation request. Other object serializations and nested filter
 values still need explicit encoding support; `api raw` remains available.
+
+### Resource inputs and verification
 
 Replace `REVIEWED_SIGNATURE` with the `data.signature` from `get` or the
 `data.beforeSignature` from the corresponding preview. A changed signature
@@ -593,6 +625,8 @@ values that cannot be compared can prevent verification; inspect current state
 before retrying. Forced reference changes still require explicit generic API
 requests.
 
+### Singletons
+
 Singletons use the same commands with `TYPE` alone. `resource types` reports
 `singleton: true` when the catalog advertises that type's singleton read route;
 each requested mutation must also exist in the current catalog. For example:
@@ -617,20 +651,13 @@ single-mutation behavior, and independent readback checks as named resources.
 Create requires observed absence. Deletion verifies that the stored definition
 is absent; the Gateway may still use built-in defaults at runtime.
 
-The fixture checks cover all 17 singleton types in each retained default
-8.3.0/8.3.9 contract, plus actual CLI HTTP fixtures. A disposable-Gateway harness
-exercises translations update, stale review, deletion, recreation, and duplicate
-creation refusal. Its first 8.3.0 run verified update, stale-review refusal, and
-deletion, but recreation returned HTTP 200 with an unverified outcome. The
-[original failed attempt](../internal/testgateway/testdata/singleton/attempts/README.md)
-is retained. Full singleton qualification remains pending.
-The subsequent diagnostic run on 8.3.0 matched acknowledgement, signature,
-description, and enabled state, but omitted `config` from both readbacks even
-though the schema advertises it. Such a result remains `uncertain`/exit 7;
-metadata success cannot establish translation configuration state. The harness
-keeps that exact configuration request and separately tests metadata-only
-creation. This observed limitation does not establish behavior for other types
-or Gateway versions.
+Fixtures cover all 17 singleton types in each retained default 8.3.0/8.3.9
+contract. Live translations checks verify metadata update and deletion, but
+complete configuration creation remains unqualified: acknowledged writes can
+produce `uncertain`/exit 7 when readback omits `config`. See
+[singleton evidence and limits](compatibility-matrix.md#singletons).
+
+## Projects
 
 Project workflows transfer a complete project ZIP, inspect its file manifest,
 and verify the imported contents through a fresh export:
@@ -664,6 +691,8 @@ Post-import export must match the complete file manifest before the command
 reports `completed` and `verified`. This checks project files, not runtime
 health. Project exports do not contain Gateway resources or tag providers.
 
+## Tags
+
 Tag imports default to the `Abort` collision policy and verify supported JSON
 inputs through independent tag exports:
 
@@ -676,7 +705,7 @@ igw tag import --provider default --path Destination --in tags.json --collision-
 igw tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --yes --json
 ```
 
-`api capabilities` currently assesses tag workflow prerequisites from the
+`api capabilities` assesses tag and Gateway restart prerequisites from the
 selected catalog, including offline snapshots and explicit references. Each
 entry reports its required and missing operation keys with status `advertised`
 or `unavailable`. `advertised` means the routes exist in that document; request
@@ -696,7 +725,8 @@ route. This check does not introduce a fallback to an undocumented API.
 Provider defaults to `default`; `--path` is relative to that provider. Export
 defaults to JSON, recursively including children and UDT definitions; use
 `--recursive=false`, `--include-udts=false`, or `--type xml` explicitly.
-Export requires `--out` and publishes the completed download atomically.
+Export requires `--out` and publishes only a complete download. Platform and
+filesystem publication limits are described in [architecture](architecture.md).
 Import accepts JSON, XML, or CSV; type is inferred from a known extension,
 defaults to JSON for an extensionless file, and can be set with `--type`.
 JSON verification inputs are limited to 32 MiB; opaque uploads default to 1 GiB.
@@ -713,6 +743,8 @@ when the Gateway reports no failures. Unknown reports and readback mismatches
 remain `uncertain`; inspect exported state before retrying. Imports are never
 automatically replayed. Previews describe structure and digests without tag
 values or project file contents; explicit exports contain the selected data.
+
+## Logs, backups, and diagnostics
 
 Operational commands provide bounded log queries, complete downloads, and
 diagnostics collection through one invocation:

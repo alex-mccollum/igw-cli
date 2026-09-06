@@ -1,7 +1,8 @@
 # Workflow candidate qualification
 
-The [release plan](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/plans/rebuild-v1.md) defines six task journeys. The opt-in
-`TestLiveWorkflowJourneys` harness runs the prebuilt Linux `igw` executable as
+The current journey scope is described in [architecture](architecture.md#scope-and-evidence).
+The opt-in `TestLiveWorkflowJourneys` harness runs the prebuilt Linux `igw`
+executable as
 separate processes against one fresh owned Gateway. It covers profile setup,
 discovery, resource preview/change/conflict, project ZIP transfer, applicable
 JSON tag transfers, log selection and human output, and complete backup/log/

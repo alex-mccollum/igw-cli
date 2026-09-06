@@ -21,7 +21,10 @@ python3 scripts/update-reference.py --tag 8.3.0 --module-profile core-opcua --ou
 
 Use `--docker PATH` when the Docker executable has a different location. The
 engine must already be running. `--baseline FILE` selects the previous qualified
-JSON or JSON.gz document; the default is the retained 8.3.9 reference.
+JSON or JSON.gz document; the default is the retained 8.3.9 reference matching
+`--module-profile`.
+Both local invocations and the hosted matrix therefore compare matching module
+profiles unless `--baseline` explicitly selects a different document.
 `--skip-pull` requires the resolved immutable image to be present locally.
 `--require-clean` verifies the source commit and clean Git status before building
 and before final qualification. A separate clean worktree allows this check
@@ -211,17 +214,17 @@ must preserve the evidence checksum and original qualification identity. Update 
 never replace an old manifest with newly generated evidence. Shipping bytes and
 promoting a new default are separate reviewed release actions.
 
-The coordinator supports both reviewed module profiles. The initial minimum/
-latest matrix has complete local qualification for both profiles; selecting an
-additional tag alone does not prove that release is supported. Read the progress
-evidence in
-[current qualification status](qualification/README.md) before making compatibility or schedule-activation
-claims.
+The coordinator supports both reviewed module profiles. The retained
+8.3.0/8.3.9 matrix has local qualification for both profiles; selecting another
+tag alone does not establish support. Consult
+[current qualification status](qualification/README.md) for tested sources and
+remaining release or activation work.
 
-Coordinator failure/ordering tests run without Docker or Go compilation:
+Coordinator and hosted-status tests use synthetic inputs without Docker,
+GitHub access, or Go compilation:
 
 ```sh
-python3 -m unittest discover -s scripts -p 'test_update_reference.py'
+python3 -m unittest discover -s scripts -p 'test*reference*.py'
 ```
 
 These tests verify orchestration, not real Gateway behavior. Real pipeline
@@ -231,7 +234,7 @@ receipts provide the separate acceptance evidence.
 
 The four version/profile cells were qualified on 2026-09-05 using the earlier
 parser. Their original pipeline runs and audit packets remain in
-[Git history](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/reference-updates.md#recorded-real-run).
+[Git history](qualification/README.md#historical-evidence) (`65e643d:docs/reference-updates.md`).
 Current-format built-ins retain those dates and qualified identities separately
 from present parsing. Consult [current status](qualification/README.md) before
 claiming that a new source revision passed live qualification.

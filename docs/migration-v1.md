@@ -2,8 +2,10 @@
 
 The working source now uses one `igw` entrypoint. The old `igw-next` entrypoint,
 legacy parser and wrappers, persistent RPC, and CWD OpenAPI loader are removed.
-This is an intentional major-version interface change. V1 release qualification
-is still in progress; it has not been published by the rebuild workflow.
+This is an intentional major-version interface change. The v1 source has not
+been published by the rebuild workflow. See
+[current qualification status](qualification/README.md) for the tested commits
+and the checks still required for a release candidate.
 
 ## Configuration
 
@@ -54,7 +56,8 @@ but it does not claim schema validation or workflow completion.
 ## Automation contract changes
 
 Every JSON result is a single `igw/v1` envelope with `ok`, `outcome`, `data`,
-`error`, and `meta`; downloads add `artifact`. Gateway JSON stays structured
+and `meta`. `data` can be null; `error` is included only on failure. Completed
+downloads add `artifact`. Gateway JSON stays structured
 rather than becoming a JSON string. Preserve large numeric values when choosing
 an application JSON decoder. Parse errors also use the envelope.
 

@@ -84,7 +84,7 @@ func (i *invocation) referenceCommands() *cobra.Command {
 			i.output.Meta.Reference = &summary
 			return nil
 		}}
-	export.Flags().StringVar(&out, "out", "", "New directory for the manifest, exact document, and qualification evidence")
+	export.Flags().StringVar(&out, "out", "", "New directory for the manifest and compressed OpenAPI document")
 	_ = export.MarkFlagRequired("out")
 	group.AddCommand(export)
 	return group

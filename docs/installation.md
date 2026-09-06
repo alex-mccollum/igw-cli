@@ -1,67 +1,79 @@
 # Installation
 
-## Requirements
-- Go `1.25.7+` (for source install/build; required by the OpenAPI parser).
-- Network reachability to your Ignition Gateway.
-- Ignition API token with required permissions.
+These docs describe the working v1 source. The latest published release checked
+on 2026-09-06 is v0.5.0, whose commands and output differ. Installing `latest`
+does not install this checkout. Use the documentation at the selected release
+tag, or build the working source below. See [migration](migration-v1.md) and
+[current qualification status](qualification/README.md) before adopting v1.
 
-## Install for Host Applications/Agents (Recommended)
+## Build this checkout
 
-Linux/macOS:
+Source builds require Go 1.25.7 or later, as declared in `go.mod`. On a shared
+Linux/WSL workstation, use the [bounded runner](development-safety.md):
+
+```bash
+bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
+bin/igw version
+```
+
+On macOS, native Windows, or an isolated development host, build directly:
+
+```bash
+go build -o bin/igw ./cmd/igw
+```
+
+On Windows, use `-o bin/igw.exe`. Add the binary's directory to PATH or use its
+explicit path. An unstamped checkout build normally reports `dev`; published
+artifacts report their release tag. Go is not needed to run a prebuilt binary.
+
+Gateway reachability and a permitted full API token (`name:key`) are required
+for authenticated online operations. Command schemas, local file inspection,
+and explicit bundled-reference discovery work without a Gateway or credentials.
+
+## Install a published release
+
+Replace `vX.Y.Z` with an existing release tag. Pin the installer and binary to
+the same release for reproducible installation. Linux/macOS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alex-mccollum/igw-cli/vX.Y.Z/scripts/install.sh -o /tmp/igw-install.sh
 bash /tmp/igw-install.sh --version vX.Y.Z --dir "$HOME/.local/bin"
 ```
 
-Windows (PowerShell):
+Windows PowerShell:
 
 ```powershell
 Invoke-WebRequest "https://raw.githubusercontent.com/alex-mccollum/igw-cli/vX.Y.Z/scripts/install.ps1" -OutFile "$env:TEMP\igw-install.ps1"
 powershell -ExecutionPolicy Bypass -File "$env:TEMP\igw-install.ps1" -Version vX.Y.Z
 ```
 
-Installer options:
-- `--version` / `-Version`: install channel (`latest`, default) or explicit release tag to pin (`vMAJOR.MINOR.PATCH`).
-- `--dir` / `-InstallDir`: install target directory.
-- `--repo` / `-Repo`: alternate GitHub repo (`OWNER/REPO`).
+The installers verify archive checksums. Their options are:
 
-## Install for Developers (Go)
+| Shell / PowerShell option | Purpose |
+| --- | --- |
+| `--version` / `-Version` | Explicit tag, or `latest` (default) |
+| `--dir` / `-InstallDir` | Installation directory |
+| `--repo` / `-Repo` | Alternate `OWNER/REPO` |
+
+Developers can also install a published Go module version:
 
 ```bash
 go install github.com/alex-mccollum/igw-cli/cmd/igw@vX.Y.Z
 ```
 
-## Install for Operators/CI (Release Artifacts)
+On shared Linux/WSL, run that command through the checkout's bounded runner.
+The selected tag's `go.mod` determines its toolchain requirement.
 
-1. Download:
-   - your OS/arch archive from GitHub Releases,
-   - `checksums.txt`,
-   - optional `release-manifest.json` (machine-readable artifact metadata).
-   - for always-latest channel, use stable filenames from:
-     - `https://github.com/<owner>/<repo>/releases/latest/download/igw_linux_amd64.tar.gz`
-     - `https://github.com/<owner>/<repo>/releases/latest/download/checksums.txt`
-2. Verify checksums:
+## Manual artifacts and application bootstrapping
 
-```bash
-ARCHIVE="igw_vX.Y.Z_linux_amd64.tar.gz"
-grep "  ${ARCHIVE}$" checksums.txt | sha256sum -c -
-```
+Download the archive for your platform and `checksums.txt` from the same
+[release](https://github.com/alex-mccollum/igw-cli/releases).
+`release-manifest.json` optionally provides artifact names, OS/architecture,
+checksums, and download URLs for applications. See
+[artifact naming and verification](releasing.md#artifacts-and-integrity) for the
+single naming contract, latest aliases, archive contents, and checksum example.
 
-3. Extract `igw` (or `igw.exe`) and place it on your `PATH`.
-
-Manifest notes (`release-manifest.json`):
-- Includes release `version` and artifact entries (`name`, `os`, `arch`, `archive`, `sha256`, `url`).
-- Intended for host apps/agents that need deterministic install/bootstrap logic.
-
-## Verify
-
-```bash
-igw version
-```
-
-## Next
-
-1. Configure gateway URL and token: `docs/configuration.md`.
-2. Run your first health check: `igw gateway doctor`.
-3. Use canonical command examples: `docs/commands.md`.
+Archives contain a top-level `igw_<version>_<os>_<arch>/` directory. Extract it
+and place its `igw` or `igw.exe` on PATH. Run `igw version`, then follow the
+[configuration guide](configuration.md) and [canonical commands](commands.md)
+for a binary built from this source; use release-tag docs for older binaries.

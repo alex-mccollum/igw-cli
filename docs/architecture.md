@@ -7,8 +7,8 @@ then distinguish request acceptance from a verified workflow outcome.
 One Cobra command tree in `internal/cli` defines parsing, help, completion, and
 machine command schemas. Handlers construct typed requests or workflow inputs;
 workflow services never re-enter an argument parser. `cmd/igw` owns process
-signals and maps errors to the stable exit codes. The old CLI, persistent RPC,
-CWD OpenAPI index, and WSL address helper have been removed.
+signals and maps errors to the stable exit codes. See
+[migration](migration-v1.md) for removed 0.x interfaces.
 
 ```mermaid
 flowchart TD
@@ -44,9 +44,10 @@ flowchart TD
 | `internal/referencebuild`, `testgateway` | Contributor evidence validation and real-Gateway qualification |
 
 Keep Go and standard-library transport/filesystem primitives. Cobra removes
-separate registries for help, parser, completion, and schemas. The catalog uses one decoded JSON contract and compiles selected schemas
-with `jsonschema/v6`; behavior is tested against retained vendor captures. Narrow version/hash-scoped vendor corrections stay
-separate from original bytes and appear in inspection output.
+separate registries for help, parser, completion, and schemas. The catalog uses
+one decoded JSON contract and compiles selected schemas with `jsonschema/v6`;
+behavior is tested against retained vendor captures. Narrow vendor corrections
+stay separate from original bytes and appear in inspection output.
 
 ## Authority and availability
 
@@ -83,14 +84,19 @@ mutation. Generic success is `accepted`; verified workflows can be `completed`.
 A transport failure after dispatch may be `uncertain`; writes are not replayed.
 
 Downloads remain private until complete, with explicit overwrite and bounded
-sizes. File-system and platform atomicity limits are documented rather than
-inferred from a successful rename. Configuration migration preserves legacy
-bytes and rollback archives v1 before returning to unchanged legacy settings.
+sizes. Publication without overwrite uses a hard link in the destination
+filesystem and fails if the destination exists or linking is unsupported.
+Overwrite uses rename; Go does not promise atomic rename on non-Unix platforms.
+A completed download is not a guarantee of crash-durable directory metadata.
+Configuration migration preserves legacy bytes and rollback archives v1 before
+returning to unchanged legacy settings.
 
 Flags override environment, which overrides configuration. Environment names
 remain `IGNITION_GATEWAY_URL` and `IGNITION_API_TOKEN`. Credentials are excluded
 from output, command-line token values, response-error diagnostics, and previews.
-Exit codes remain 0/2/6/7. Every mutation requires `--yes`.
+Exit codes remain 0/2/6/7. Gateway mutations and profile edits require `--yes`;
+local cache refreshes, imports, and explicit exports follow their own command
+contracts.
 
 ## Scope and evidence
 

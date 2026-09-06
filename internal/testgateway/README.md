@@ -145,14 +145,9 @@ clean source commit, executable checksum, lifecycle and process exit results,
 and an independent empty-container check alongside it. A compiled or skipped
 test is not live acceptance; both process and complete receipt must pass.
 
-The retained [body-input evidence](https://github.com/alex-mccollum/igw-cli/blob/65e643d/internal/testgateway/testdata/body-inputs/README.md) records passing
-31-check 8.3.0 and 62-check 8.3.9 core-profile runs from source `03566a8`, each
-preceded by a passing lifecycle probe. Independent downloads establish that
-`files` worked for the exercised translations route. The 8.3.9 singleton
-already existed, so the optional creation/deletion branch remains
-unqualified. An anchored manifest preserves all 21 original files; offline
-tests check provenance, cleanup, input/readback identities, and current parsing
-without renewing the recorded parser or observation times.
+Historical request-body results and their limits are recorded in the
+[compatibility guide](../../docs/compatibility-matrix.md#additional-request-body-qualification).
+The original run packets and transcript tests remain in Git history.
 
 `TestLiveBatch` uses the same clean-source build and per-image lifecycle gate,
 with a new `IGW_BATCH_EVIDENCE_DIR`. It checks malformed-manifest and confirmation
@@ -165,6 +160,6 @@ only in memory. This suite does not force live transport failures or revoke
 credentials midway through a batch; those stop behaviors have fixture coverage.
 Passing still requires a complete receipt, a zero process exit, and independent
 container absence checks. Compile or skip results do not establish live success.
-The retained [batch evidence](https://github.com/alex-mccollum/igw-cli/blob/65e643d/internal/testgateway/testdata/batch/README.md) records passing 13-check
+The retained [batch evidence](../../docs/qualification/README.md#historical-evidence) (`65e643d:internal/testgateway/testdata/batch/README.md`) records passing 13-check
 runs on both pinned core profiles from source `2ddc7f4`, including 29 item results
 per run. Keep that source distinct from subsequent input-budget hardening.

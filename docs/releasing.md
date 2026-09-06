@@ -1,168 +1,103 @@
 # Releasing
 
-This project uses a lightweight tag-based release flow.
+Releases use an explicit `vMAJOR.MINOR.PATCH` tag. The working v1 source is not
+published by a local build or dry-run. Check [qualification status](qualification/README.md)
+for the exact tested source and remaining live or platform checks before choosing
+a release candidate. Earlier passing evidence does not qualify changed code.
 
-## One-command release (recommended)
+## Prepare and verify
 
-Use:
+Use a clean candidate checkout and a new, unused tag. The examples use
+`v1.0.0` as a prospective tag, not a claim that this release exists. Add the
+matching `## [v1.0.0]` changelog heading and release notes before cutting it.
+Require the candidate's CI, relevant live workflow qualification, and platform
+checks to pass; the release workflow does not perform live Gateway qualification.
+
+On shared Linux/WSL, use the [bounded runner](development-safety.md) for local
+build/test/release commands. Run one job at a time. The local dry-run/cut helpers
+require a Linux amd64 host because they execute the packaged Linux binary. They
+also require Go, Python 3, Git, Bash, tar, and zip. Use a fresh distribution
+directory to keep previous evidence separate:
 
 ```bash
-./scripts/release/cut.sh v0.1.0
+DIST_DIR=bin/release-candidate bash scripts/bounded-run.sh -- bash scripts/release/dry-run.sh v1.0.0
 ```
 
-`cut.sh` enforces this order:
+The dry-run checks command docs and links, runs the Go suite, and builds Linux,
+macOS, and Windows artifacts for amd64 and arm64. It requires all six targets;
+missing ZIP support fails the run. It executes version and isolated smoke checks
+on packaged Linux amd64 only, then creates latest aliases, checksums, and the
+release manifest. Other targets require their own native qualification.
+A dry-run permits a dirty checkout and labels its build metadata accordingly;
+that result is not a clean release candidate. It creates no tag and publishes
+nothing. It does not run the race detector, performance gate, or live suites.
 
-1. Requires a clean working tree.
-2. Verifies `CHANGELOG.md` includes `## [v0.1.0]`.
-3. Runs `./scripts/release/dry-run.sh v0.1.0`.
-4. Creates local tag `v0.1.0` (or verifies it already points to `HEAD`).
-5. Runs `./scripts/release/checklist.sh v0.1.0`.
-6. Pushes `HEAD` and `refs/tags/v0.1.0` to `origin`.
+Each archive is prepared in a private staging directory and published only when
+complete. Reusing a distribution directory does not merge stale payload files
+into a newly built archive, but a new directory keeps different releases' assets
+and checksums unambiguous.
 
-## Create a release
+## Cut and publish
 
-1. Ensure `main` is green:
-   - `go test ./...`
-   - `go build ./cmd/igw`
-   - `./scripts/check-command-docs.sh`
-   - `./scripts/lint-docs.sh`
-2. Ensure `CHANGELOG.md` has a release heading for the tag:
-   - `## [v0.1.0](https://github.com/alex-mccollum/igw-cli/compare/v0.0.0...v0.1.0) - YYYY-MM-DD`
-3. Cut and push the release:
+Once the selected candidate is ready and publication is intended:
 
 ```bash
-./scripts/release/cut.sh v0.1.0
+bash scripts/bounded-run.sh -- bash scripts/release/cut.sh v1.0.0
 ```
 
-4. GitHub Actions `release.yml` runs preflight + build + publish:
-   - verifies `CHANGELOG.md` contains `## [v0.1.0]`,
-   - verifies the release tag resolves to the workflow commit on tag-triggered runs,
-   - verifies the release tag exists on `origin`,
-   - builds and packages all platform artifacts,
-   - runs packaged Linux `amd64` version and isolated executable smoke verification,
-   - generates stable latest aliases (`igw_<os>_<arch>.<ext>`),
-   - generates `checksums.txt`,
-   - generates `release-manifest.json`,
-   - publishes a GitHub Release with generated notes.
+On an isolated Linux amd64 release host, invoke the underlying script directly
+if the workstation guard does not apply. `cut.sh` requires a clean working tree
+and the matching changelog heading, runs the dry-run, creates the tag or verifies
+it points to HEAD, runs the release checklist, then pushes HEAD and that tag to
+`origin`. This command publishes Git refs; it is not another local check.
 
-## Pre-push release guard (recommended)
+GitHub's [release workflow](../.github/workflows/release.yml) checks tag and
+changelog metadata, verifies the tag is on `origin`, builds from the tag, verifies
+the packaged Linux amd64 executable, and publishes all archives and metadata.
+Manual workflow dispatch accepts `tag_name`, which must already exist on the
+remote. Keep `main` CI green before dispatch; publication does not replace it.
 
-Enable repo-managed hooks:
+Optional repository hooks add tag checks to manual pushes:
 
 ```bash
-./scripts/install-git-hooks.sh
+bash scripts/install-git-hooks.sh
 ```
 
-When enabled, `scripts/hooks/pre-push` automatically runs
-`./scripts/release/checklist.sh <tag>` for any pushed `vMAJOR.MINOR.PATCH` tag.
-This blocks tag pushes if changelog/tag checks fail.
-When checklist runs from `pre-push` (or `cut.sh`), it skips dry-run push auth probes so local validation does not repeatedly prompt for SSH passphrases.
+The hook runs `scripts/release/checklist.sh` for pushed semver tags. The checklist
+checks changelog/tag integrity and normally probes push authentication with
+`git push --dry-run --no-verify`. Calls from `cut.sh` and the hook skip those
+probes to avoid repeated authentication prompts and hook recursion.
 
-## Tag Failure Recovery
+If a published tag fails, fix the source and prefer a new patch tag. Do not
+force-move an existing release tag as routine recovery.
 
-If a pushed release tag fails preflight due to release metadata drift (for example missing changelog heading):
+## Artifacts and integrity
 
-1. Fix `CHANGELOG.md` and any release metadata on `main`.
-2. Prefer creating the next patch release tag (for example `v0.4.1`) from the corrected commit.
-3. Avoid force-moving an already published tag unless you explicitly intend to rewrite release history.
+| Platform | Archive | Latest alias |
+| --- | --- | --- |
+| Linux | `igw_<version>_linux_<arch>.tar.gz` | `igw_linux_<arch>.tar.gz` |
+| macOS | `igw_<version>_darwin_<arch>.tar.gz` | `igw_darwin_<arch>.tar.gz` |
+| Windows | `igw_<version>_windows_<arch>.zip` | `igw_windows_<arch>.zip` |
 
-## Version contract
+`<version>` includes the `v` prefix; `<arch>` is `amd64` or `arm64`. Each archive
+contains a matching top-level directory with the executable, LICENSE, README,
+and `docs/`. Additional assets are `checksums.txt` and `release-manifest.json`.
+The manifest has top-level `version` and `artifacts[]` entries with `name`, `os`,
+`arch`, `archive`, `sha256`, and `url`. Latest aliases use stable filenames under
+`https://github.com/alex-mccollum/igw-cli/releases/latest/download/`; the release
+selected by `latest` can change, so use explicit tags for reproducibility.
 
-- Release artifacts must print the release tag in `igw version` output.
-- CI enforces this contract for the packaged Linux `amd64` artifact with:
-
-```bash
-./scripts/check-version-contract.sh <binary-path> <tag>
-```
-
-- The check validates output starts with `igw version <tag>`.
-- Release builds include commit/date metadata, so full output may be:
-  - `igw version v0.3.1 (abc1234, 2026-02-22)`
-
-## Checksums
-
-- Release publishing generates `checksums.txt` with SHA-256 digests for all `.tar.gz` and `.zip` artifacts.
-- Downloaded artifacts should be verified against this manifest before installation.
-
-Verify one artifact deterministically:
+Verify a downloaded Linux artifact against that release's checksum manifest:
 
 ```bash
-ARCHIVE="igw_v0.4.0_linux_amd64.tar.gz"
+ARCHIVE="igw_v1.0.0_linux_amd64.tar.gz"
 grep "  ${ARCHIVE}$" checksums.txt | sha256sum -c -
 ```
 
-## Release Manifest
-
-- Release publishing generates `release-manifest.json`.
-- Manifest fields include:
-  - top-level `version`,
-  - `artifacts[]` entries with `name`, `os`, `arch`, `archive`, `sha256`, and `url`.
-- Host applications can consume this manifest to select the correct artifact and verify checksums without scraping HTML pages.
-
-## Post-Release Smoke Check
-
-After publishing, validate checksums and one installed artifact:
-
-```bash
-ARCHIVE="igw_v0.4.0_linux_amd64.tar.gz"
-grep "  ${ARCHIVE}$" checksums.txt | sha256sum -c -
-```
-
-Then run:
-
-```bash
-igw version
-igw gateway doctor --gateway-url http://127.0.0.1:8088 --json
-```
-
-## Manual release run
-
-You can also run the workflow manually from GitHub Actions and provide `tag_name`.
-The provided tag must already exist and be pushed.
-
-## Produced artifacts
-
-- Linux: `igw_<version>_linux_<arch>.tar.gz`
-- macOS: `igw_<version>_darwin_<arch>.tar.gz`
-- Windows: `igw_<version>_windows_<arch>.zip`
-- Latest alias (Linux): `igw_linux_<arch>.tar.gz`
-- Latest alias (macOS): `igw_darwin_<arch>.tar.gz`
-- Latest alias (Windows): `igw_windows_<arch>.zip`
-
-Latest aliases are published on each release so host tools can use stable URLs:
-
-- `https://github.com/<owner>/<repo>/releases/latest/download/igw_linux_amd64.tar.gz`
-
-Each archive includes:
-
-- `igw` (or `igw.exe`)
-- `LICENSE`
-- `README.md`
-- `docs/` with command, migration, automation, and catalog guidance
-
-Additional release assets:
-
-- `checksums.txt`
-- `release-manifest.json`
-
-## Local v1 qualification
-
-Run the dry-run through the bounded runner on a shared Linux/WSL workstation.
-Use an isolated output directory when preserving earlier artifacts. The command
-requires all six OS/architecture targets; missing ZIP support is an error rather
-than a smaller passing matrix. Python 3 supplies the isolated Linux executable
-smoke, which exercises local profiles, migration, errors, and fixture HTTP without
-contacting a configured Gateway. Other targets are compiled and packaged; native
-execution requires their own qualification.
-Each archive is built from a private staging directory and published after it
-is complete, so reusing a distribution directory cannot include stale files
-from a previous payload tree or ZIP archive.
-
-The current v1 source remains under qualification. A local `v1.0.0` artifact
-dry-run verifies format and behavior; it does not publish a release or complete
-the remaining Gateway/workflow/performance gates.
-
-The [local cutover evidence](qualification/README.md) retains the passing
-six-target dry-run, 33-check packaged smoke, source-input identity, artifact
-hashes, and independent stale-file/header checks. Its recorded precommit source
-and Linux-only execution scope remain distinct from final release qualification.
+After extraction, confirm the installed version. All three human version forms
+(`igw version`, `igw --version`, and `igw -v`) start with `igw version <tag>`.
+Release builds can append commit and date, for example
+`igw version v1.0.0 (abc1234, 2026-09-06)`. The packaged Linux check uses
+`scripts/check-version-contract.sh BINARY TAG` to enforce this contract.
+See [installation](installation.md) for installation options and
+[commands](commands.md) for an optional read-only Gateway check.

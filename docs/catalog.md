@@ -5,8 +5,8 @@ single CLI in `cmd/igw`. The legacy OpenAPI loader and CWD cache lookup have
 been removed; see `docs/migration-v1.md` for command and cache migration.
 
 The target Gateway's `/openapi.json` describes the documented routes provided
-by its installed version and modules. IA's `/openapi` endpoint is a UI, so it
-is not the first JSON discovery candidate. Runtime state, permissions, custom
+by its installed version and modules. IA's `/openapi` endpoint is a UI;
+the CLI fetches `/openapi.json` directly. Runtime state, permissions, custom
 validation, and operation effects require separate Gateway evidence. See the
 [IA API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi).
 
@@ -32,16 +32,18 @@ only when it resolves to exactly one operation.
 
 Snapshots are partitioned by profile and normalized effective Gateway URL,
 including a reverse-proxy base path. Credentials are never stored in a snapshot.
-Each target keeps `current.json`, `previous.json`, and at most two SHA-256-addressed
-raw documents. A short cross-process lock protects atomic metadata publication
-and copying bytes for readers. Network requests and schema parsing run outside
+After successful publication, each target retains `current.json`,
+`previous.json`, and at most two SHA-256-addressed raw documents. A short
+cross-process lock protects atomic metadata publication and copying bytes for
+readers. Network requests and schema parsing run outside
 the lock. Publication refuses to replace a later verification with an earlier
 one. A corrupt current snapshot produces a warning and falls back to the previous
 snapshot. Metadata checksums prevent damaged provenance from replacing a valid
-fallback. Successful publication removes obsolete blobs and abandoned private
-temporary files; interrupted publication
-leaves the last complete snapshot usable. This is a disposable cache, not an
-audit history.
+fallback. Unchanged, hash-verified blobs are reused while metadata is updated;
+missing or corrupt blobs are atomically repaired. Successful publication removes
+obsolete blobs and abandoned private temporary files. Interrupted publication
+can leave extra blobs until the next successful save, while preserving the
+last complete snapshot. This is a disposable cache, not an audit history.
 
 The identities have distinct purposes:
 
@@ -85,7 +87,7 @@ assumed to be the Gateway version.
 
 Every store load validates the retained bytes with the current parser. A
 conditional [HTTP 304](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5)
-can reuse that model only when the request sent its Gateway validator; an
+can reuse that parsed catalog only when the request sent its Gateway validator; an
 identical fresh response can also reuse it. Different bytes always reparse.
 Reuse transfers ownership after the new snapshot metadata is published, so failed
 publication leaves the fallback usable. It does not skip write verification,
@@ -155,7 +157,7 @@ Synthetic regression tests isolate these defects. The four canonical vendor
 fixtures cover both supported reference versions and module profiles, including
 exact-number bindings, streaming declarations, resource signatures, discriminator
 constraints, and unresolved schema refusal. Historical repeat captures and
-parser investigations are [archived in Git](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/catalog.md).
+parser investigations are [archived in Git](qualification/README.md#historical-evidence) (`65e643d:docs/catalog.md`).
 
 ## Contributor qualification
 

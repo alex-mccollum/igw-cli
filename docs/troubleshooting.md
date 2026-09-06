@@ -59,7 +59,9 @@ See `docs/development-safety.md` for the recorded incident and safeguards.
 Artifact failures preserve the previous destination. Check the explicit output
 path, capacity, overwrite choice, and supported local filesystem behavior.
 Configuration writes require a private local directory; an existing lock file
-is normal and must not be deleted to bypass another writer.
+is normal and must not be deleted to bypass another writer. Retry guidance is
+reserved for active writer contention. Permission, invalid-file, and unsupported
+locking errors require correcting the underlying filesystem problem.
 
 ## Catalog and verification
 
@@ -75,11 +77,7 @@ and limits; see `docs/catalog.md` and `docs/compatibility-matrix.md`.
 
 ## Translations singleton qualification limit
 
-On both pinned 8.3.0 and 8.3.9 core-opcua Gateways, translations creation with `config` was acknowledged,
-but both workflow and independent readback omitted `config`, despite its presence
-in the advertised schema. The CLI reports `uncertain` and exit 7. Metadata-only
-creation was rejected. Neither observation proves whether configuration was
-stored or applied. Do not replay an uncertain write automatically. Metadata
-update, stale-signature refusal, and deletion were verified; complete translations
-creation is not qualified. See the retained
-[original attempts](../internal/testgateway/testdata/singleton/attempts/README.md).
+Translations creation can return `uncertain`/exit 7 when the Gateway
+acknowledges the request but omits `config` from readback. Do not replay it
+automatically. The [singleton compatibility notes](compatibility-matrix.md#singletons)
+record the tested versions, observed limits, and original evidence.
