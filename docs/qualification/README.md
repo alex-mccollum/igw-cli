@@ -1,31 +1,46 @@
 # Current qualification status
 
-The simplification implementation is complete; final candidate gates are in
-progress. No release or hosted reference-update activation is claimed.
+Candidate `a1d2b4b` passed the simplification gates on 2026-09-06 UTC.
+No release was published and no hosted reference-update activation is claimed.
+The [qualification record](simplification.json) binds the source, executables,
+images, observed catalogs, measurements, and artifact hashes. Full local run
+receipts and logs are preserved under `bin/simplification/final/`.
 
-The work replaced the full OpenAPI/YAML model with a direct JSON engine, bounded
-the disposable cache, separated two-file references from contributor evidence,
-and made discovery compact by default. Profiles, current contract pins,
-workflow commands, explicit changes, output envelopes, and exit codes remain.
+| Check | Result |
+| --- | --- |
+| Full offline Go suite | Passed |
+| Race detector | Full suite passed; follow-up cache integrity changes passed catalog race tests |
+| Minimum Go 1.25.7 | Full suite and CLI build passed |
+| Executable smoke checks | 34 passed, including packaged Linux executable |
+| Command docs, lint, update coordinator | Passed; eight coordinator tests |
+| Performance budgets | Passed |
+| Release artifacts | Six built and structurally audited; Linux amd64 executed natively |
+| Live version/module matrix | All 20 stages passed across 8.3.0/8.3.9 and core/default profiles |
+| Native CLI journeys | 206 process checks passed; 48 per 8.3.0 cell, 55 per 8.3.9 cell |
 
-Completed slices passed the full offline Go suite, 34 executable smoke checks,
-docs checks, and update-coordinator tests. The [paired performance record](catalog-json-engine.json)
-shows more than 2x faster reference startup and 52-60% lower peak RSS across
-four references under the unchanged workstation guard. It identifies its exact
-measured binaries; it is not fresh live-Gateway evidence.
+Every live stage used one fresh owned Gateway under verified limits. Cleanup
+receipts and independent name/ownership-label queries passed after every stage.
+No WSL/Docker Desktop lifecycle or host memory settings were changed.
 
-Final checks still required: consolidated fixtures, race detector, minimum Go,
-performance gates, six release artifacts, and the existing live workflow matrix
-if the already-running engine is available. Workstation limits and host lifecycle
-restrictions remain unchanged.
+Matched release builds show 2.21-3.06x faster reference startup and 53.8-70.9%
+lower peak RSS across four references, with identical operation inventories and
+catalog identities. Root command discovery is 2,932 bytes by default versus
+94,604 bytes recursively. These are local measurements, not latency guarantees.
+See [methodology](../performance.md).
 
-Previous qualification packets, failed attempts, and the completed workflow-v1
-plan are [archived at 65e643d](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/qualification/README.md).
-Canonical vendor documents and small behavior fixtures remain in the active
-repository. Historical qualification identities and dates remain visible in
-reference manifests; reparsing is not renewed live qualification.
+Profiles, current `igw-contract/2` pins, workflow commands, explicit `--yes`,
+`igw/v1` results, and exit codes remain. Cache and portable reference formats
+were intentionally reset before release; raw document import remains available.
+Historical built-in qualification identities and dates are preserved separately
+from current inspection. Current live checks do not relabel old capture packets.
 
-The weekly update workflow requires a dedicated runner and repository enablement.
-A successful hosted run has not been verified. Embedded references and retained
-target snapshots remain available during upstream failures. See
-[reference maintenance](../reference-updates.md) and [compatibility scope](../compatibility-matrix.md).
+Prior plans, failed attempts, repeated captures, and superseded qualification
+logs are [archived in Git](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/qualification/README.md).
+Canonical vendor documents and behavior fixtures remain in the active tree.
+[Workflow limits](../compatibility-matrix.md) still apply, including unavailable
+8.3.0 tag APIs and uncertain singleton configuration creation.
+
+The weekly updater still needs a dedicated enabled runner and an observed
+successful hosted run before it can be called active. Embedded references and
+retained target snapshots remain available during upstream failures. See
+[reference maintenance](../reference-updates.md).

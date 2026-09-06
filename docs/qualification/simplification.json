@@ -1,0 +1,1172 @@
+{
+  "version": "igw/simplification-qualification/1",
+  "source": "a1d2b4b2c56ca30aa2d466c6ebe804bdf8793a5d",
+  "recordedAt": "2026-09-06T10:33:06.908477+00:00",
+  "scope": "Local candidate qualification; no publication or hosted schedule activation",
+  "cliSHA256": "ddc761b739384447f620b057e8436ec678c6516c3b2d4f8d0c2cf362115539bf",
+  "testBinarySHA256": "2992dc333213b142931b7fabdd4fe7bf5c20486d74c18f840ad3ac5ab5bbc5b9",
+  "gates": {
+    "fullOfflineSuite": "passed",
+    "smokeChecks": 34,
+    "race": "Full suite at e4216a4 plus catalog race coverage after the only production follow-up, cache integrity",
+    "minimumGo": "1.25.7: full suite and CLI build passed",
+    "goVersion": "1.27.1",
+    "docs": "canonical command checks and lint passed",
+    "updateCoordinatorTests": 8,
+    "performanceBudgets": "passed",
+    "releaseArtifacts": 6,
+    "liveStages": 20,
+    "nativeCLIChecks": 206
+  },
+  "conditions": {
+    "processMemoryLimitGiB": 8,
+    "swapBytes": 0,
+    "cpuQuota": 2,
+    "containerMemoryLimitGiB": 2,
+    "concurrentHeavyJobs": 1,
+    "hostSettingsChanged": false
+  },
+  "performance": {
+    "baselineSource": "511c5fee5241f6d8157344a1ed5250b01db5edb6",
+    "baselineBinarySHA256": "564ea43e02ae6022aead8c5de116d6af9860f2c82c619d063d7fa81fc1d0dacb",
+    "build": "Both use Go 1.27.1, CGO_ENABLED=0, -trimpath, -s -w and the same version/date flags",
+    "sampling": "Five sequential interleaved process samples per binary/reference; filesystem cache not flushed",
+    "references": {
+      "ignition-8.3.0-core": {
+        "catalog": {
+          "rawSha256": "581ec1e0bfcaafb6e7d0e708ec2561c0873aafac51a1e6e59d9a4326748e9ba0",
+          "documentSha256": "9a5ee721162160ef2ac0c6c7775b6703c8ab99d3f9294ff46ee374c7be560ac8",
+          "contractSha256": "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75",
+          "contractPolicy": "igw-contract/2"
+        },
+        "operations": 446,
+        "inventorySHA256": "8ffd712c64fc19bc80077a25521b102ccde2dcc31be8d61c2193e69958e1157e",
+        "before": {
+          "medianSeconds": 0.71,
+          "medianPeakRSSKiB": 150384,
+          "samples": [
+            {
+              "seconds": 0.73,
+              "peakRSSKiB": 149044,
+              "cpuSeconds": 0.89,
+              "outputBytes": 13763
+            },
+            {
+              "seconds": 0.67,
+              "peakRSSKiB": 149636,
+              "cpuSeconds": 0.83,
+              "outputBytes": 13763
+            },
+            {
+              "seconds": 0.71,
+              "peakRSSKiB": 150412,
+              "cpuSeconds": 0.88,
+              "outputBytes": 13763
+            },
+            {
+              "seconds": 0.71,
+              "peakRSSKiB": 150384,
+              "cpuSeconds": 0.87,
+              "outputBytes": 13763
+            },
+            {
+              "seconds": 0.7,
+              "peakRSSKiB": 150784,
+              "cpuSeconds": 0.87,
+              "outputBytes": 13763
+            }
+          ]
+        },
+        "after": {
+          "medianSeconds": 0.31,
+          "medianPeakRSSKiB": 69484,
+          "samples": [
+            {
+              "seconds": 0.31,
+              "peakRSSKiB": 69244,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6379
+            },
+            {
+              "seconds": 0.29,
+              "peakRSSKiB": 69484,
+              "cpuSeconds": 0.36,
+              "outputBytes": 6379
+            },
+            {
+              "seconds": 0.31,
+              "peakRSSKiB": 71156,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6379
+            },
+            {
+              "seconds": 0.3,
+              "peakRSSKiB": 72828,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6379
+            },
+            {
+              "seconds": 0.31,
+              "peakRSSKiB": 69268,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6379
+            }
+          ]
+        }
+      },
+      "ignition-8.3.0-defaults": {
+        "catalog": {
+          "rawSha256": "b8ea0090102ad0018f8fde8f5e1120f0e090b59d54a5f74182a528cf0ef435db",
+          "documentSha256": "899fb46e172399bb2e99cc753ace48ddea3401a5a499cd1e509a86be7e48999a",
+          "contractSha256": "30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800",
+          "contractPolicy": "igw-contract/2"
+        },
+        "operations": 672,
+        "inventorySHA256": "8ed47dd0ccd17af0835d61ac6437635c12fdfbc5a3dcbee4eb14ec2d160ef106",
+        "before": {
+          "medianSeconds": 1.18,
+          "medianPeakRSSKiB": 251960,
+          "samples": [
+            {
+              "seconds": 1.85,
+              "peakRSSKiB": 247136,
+              "cpuSeconds": 2.28,
+              "outputBytes": 13647
+            },
+            {
+              "seconds": 1.22,
+              "peakRSSKiB": 253400,
+              "cpuSeconds": 1.54,
+              "outputBytes": 13647
+            },
+            {
+              "seconds": 1.14,
+              "peakRSSKiB": 251960,
+              "cpuSeconds": 1.41,
+              "outputBytes": 13647
+            },
+            {
+              "seconds": 1.13,
+              "peakRSSKiB": 250524,
+              "cpuSeconds": 1.4,
+              "outputBytes": 13647
+            },
+            {
+              "seconds": 1.18,
+              "peakRSSKiB": 253584,
+              "cpuSeconds": 1.44,
+              "outputBytes": 13647
+            }
+          ]
+        },
+        "after": {
+          "medianSeconds": 0.51,
+          "medianPeakRSSKiB": 108736,
+          "samples": [
+            {
+              "seconds": 0.72,
+              "peakRSSKiB": 105724,
+              "cpuSeconds": 0.89,
+              "outputBytes": 6267
+            },
+            {
+              "seconds": 0.47,
+              "peakRSSKiB": 107388,
+              "cpuSeconds": 0.58,
+              "outputBytes": 6267
+            },
+            {
+              "seconds": 0.53,
+              "peakRSSKiB": 113276,
+              "cpuSeconds": 0.64,
+              "outputBytes": 6267
+            },
+            {
+              "seconds": 0.48,
+              "peakRSSKiB": 112380,
+              "cpuSeconds": 0.6,
+              "outputBytes": 6267
+            },
+            {
+              "seconds": 0.51,
+              "peakRSSKiB": 108736,
+              "cpuSeconds": 0.62,
+              "outputBytes": 6267
+            }
+          ]
+        }
+      },
+      "ignition-8.3.9-core": {
+        "catalog": {
+          "rawSha256": "19a2b41a24630d93d37fcad892771b31810536c1d63bd661a0bbb2eff0126096",
+          "documentSha256": "7b3b8f72a6e7223a9a99853164249536510805ce00e74de89143e49b7e4bfc27",
+          "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+          "contractPolicy": "igw-contract/2"
+        },
+        "operations": 454,
+        "inventorySHA256": "6a39ac328fe2d60e35ddb4c4f4cdc6a3530c263c0a2c90d53d50987474b09f90",
+        "before": {
+          "medianSeconds": 0.73,
+          "medianPeakRSSKiB": 162280,
+          "samples": [
+            {
+              "seconds": 0.78,
+              "peakRSSKiB": 163812,
+              "cpuSeconds": 0.97,
+              "outputBytes": 13795
+            },
+            {
+              "seconds": 0.73,
+              "peakRSSKiB": 163180,
+              "cpuSeconds": 0.91,
+              "outputBytes": 13795
+            },
+            {
+              "seconds": 0.72,
+              "peakRSSKiB": 162280,
+              "cpuSeconds": 0.9,
+              "outputBytes": 13795
+            },
+            {
+              "seconds": 0.74,
+              "peakRSSKiB": 159220,
+              "cpuSeconds": 0.9,
+              "outputBytes": 13795
+            },
+            {
+              "seconds": 0.71,
+              "peakRSSKiB": 161716,
+              "cpuSeconds": 0.88,
+              "outputBytes": 13795
+            }
+          ]
+        },
+        "after": {
+          "medianSeconds": 0.33,
+          "medianPeakRSSKiB": 73884,
+          "samples": [
+            {
+              "seconds": 0.34,
+              "peakRSSKiB": 73884,
+              "cpuSeconds": 0.39999999999999997,
+              "outputBytes": 6411
+            },
+            {
+              "seconds": 0.33,
+              "peakRSSKiB": 74432,
+              "cpuSeconds": 0.39,
+              "outputBytes": 6411
+            },
+            {
+              "seconds": 0.33,
+              "peakRSSKiB": 76980,
+              "cpuSeconds": 0.39,
+              "outputBytes": 6411
+            },
+            {
+              "seconds": 0.31,
+              "peakRSSKiB": 73676,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6411
+            },
+            {
+              "seconds": 0.3,
+              "peakRSSKiB": 72200,
+              "cpuSeconds": 0.37,
+              "outputBytes": 6411
+            }
+          ]
+        }
+      },
+      "ignition-8.3.9-defaults": {
+        "catalog": {
+          "rawSha256": "2c40e5569b9cdd8acfb2a738f83c45192c3dc83b3a34b6fdfd1445a9e3705375",
+          "documentSha256": "d768d01bbdc658175d934055c7db9c779328409f3f1940798357faf2d685447e",
+          "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+          "contractPolicy": "igw-contract/2"
+        },
+        "operations": 687,
+        "inventorySHA256": "c05892be24a9e42199d2504b607963d68c09fa0fca66875710eae6ff5efc8b75",
+        "before": {
+          "medianSeconds": 1.62,
+          "medianPeakRSSKiB": 402072,
+          "samples": [
+            {
+              "seconds": 1.63,
+              "peakRSSKiB": 402072,
+              "cpuSeconds": 1.95,
+              "outputBytes": 13009
+            },
+            {
+              "seconds": 1.56,
+              "peakRSSKiB": 405640,
+              "cpuSeconds": 1.96,
+              "outputBytes": 13009
+            },
+            {
+              "seconds": 1.62,
+              "peakRSSKiB": 405040,
+              "cpuSeconds": 2.04,
+              "outputBytes": 13009
+            },
+            {
+              "seconds": 1.62,
+              "peakRSSKiB": 396564,
+              "cpuSeconds": 1.96,
+              "outputBytes": 13009
+            },
+            {
+              "seconds": 1.54,
+              "peakRSSKiB": 399148,
+              "cpuSeconds": 1.9000000000000001,
+              "outputBytes": 13009
+            }
+          ]
+        },
+        "after": {
+          "medianSeconds": 0.53,
+          "medianPeakRSSKiB": 117084,
+          "samples": [
+            {
+              "seconds": 0.51,
+              "peakRSSKiB": 116860,
+              "cpuSeconds": 0.6200000000000001,
+              "outputBytes": 5628
+            },
+            {
+              "seconds": 0.53,
+              "peakRSSKiB": 118524,
+              "cpuSeconds": 0.65,
+              "outputBytes": 5628
+            },
+            {
+              "seconds": 0.54,
+              "peakRSSKiB": 116572,
+              "cpuSeconds": 0.6599999999999999,
+              "outputBytes": 5628
+            },
+            {
+              "seconds": 0.51,
+              "peakRSSKiB": 117244,
+              "cpuSeconds": 0.64,
+              "outputBytes": 5628
+            },
+            {
+              "seconds": 0.55,
+              "peakRSSKiB": 117084,
+              "cpuSeconds": 0.6799999999999999,
+              "outputBytes": 5628
+            }
+          ]
+        }
+      }
+    }
+  },
+  "discovery": {
+    "compact": {
+      "bytes": 2932,
+      "rootChildren": 15
+    },
+    "recursive": {
+      "bytes": 94604,
+      "rootChildren": 15
+    }
+  },
+  "artifacts": [
+    {
+      "platform": "linux/amd64",
+      "archive": "igw_v1.0.0_linux_amd64.tar.gz",
+      "archiveBytes": 5917302,
+      "archiveSHA256": "85a2c1951b7878418aaf4a2e732a284ee89d20ed4adbe168a3b1f98ce018e53e",
+      "binaryBytes": 11468960,
+      "binarySHA256": "ddc761b739384447f620b057e8436ec678c6516c3b2d4f8d0c2cf362115539bf",
+      "structure": "passed",
+      "machine": 62
+    },
+    {
+      "platform": "linux/arm64",
+      "archive": "igw_v1.0.0_linux_arm64.tar.gz",
+      "archiveBytes": 5523898,
+      "archiveSHA256": "8cdc677fdb4c2360283120ace6d5d9f3f969e147f45cd2f8a0ccca00c5083951",
+      "binaryBytes": 10748064,
+      "binarySHA256": "18485a3fb890f228558d27e55f3515a3be25f8b296ce1a81c20e14719c2a14b3",
+      "structure": "passed",
+      "machine": 183
+    },
+    {
+      "platform": "darwin/amd64",
+      "archive": "igw_v1.0.0_darwin_amd64.tar.gz",
+      "archiveBytes": 5975718,
+      "archiveSHA256": "0abb920d3bcfdeecc6710640f5194390ae51fa0f47d5739360e8dc57d3da0f08",
+      "binaryBytes": 11674544,
+      "binarySHA256": "f8499d5914f31745a5684798ec541e5088c325d0ee98a9f84568fee1ad5e1ae0",
+      "structure": "passed",
+      "machine": 16777223
+    },
+    {
+      "platform": "darwin/arm64",
+      "archive": "igw_v1.0.0_darwin_arm64.tar.gz",
+      "archiveBytes": 5670109,
+      "archiveSHA256": "8c688279e8b8fef67ef85385ecd0ec2914c86e26767c845fd40fb7afa07fec07",
+      "binaryBytes": 10948066,
+      "binarySHA256": "1bcdd774df1b5dfd7434b53c24de0e427eaba0eccbc68048a946d00c282145d5",
+      "structure": "passed",
+      "machine": 16777228
+    },
+    {
+      "platform": "windows/amd64",
+      "archive": "igw_v1.0.0_windows_amd64.zip",
+      "archiveBytes": 6037962,
+      "archiveSHA256": "7df0a2ba9e3beedac24155d2610560084968810abeb66e5968bf95bfb630bb91",
+      "binaryBytes": 11767296,
+      "binarySHA256": "9cfa2da2472fcd8f731695562073479fb3a413c395174cb34e71ecdbf05cd3b5",
+      "structure": "passed",
+      "machine": 34404
+    },
+    {
+      "platform": "windows/arm64",
+      "archive": "igw_v1.0.0_windows_arm64.zip",
+      "archiveBytes": 5600401,
+      "archiveSHA256": "3c680aebc0e345ac2e8e94392f12c2e03a276217841b7f8da017e30ed2c29316",
+      "binaryBytes": 10850816,
+      "binarySHA256": "1b4e81a39b602fdaded4433abed9420814d8419cab99006f6195d6ce0ed557d3",
+      "structure": "passed",
+      "machine": 43620
+    }
+  ],
+  "live": [
+    {
+      "version": "8.3.0",
+      "profile": "core-opcua",
+      "name": "lifecycle",
+      "test": "TestLiveCaptureLifetime",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:03:07.110032+00:00",
+      "finishedAt": "2026-09-06T10:03:14.801282+00:00",
+      "exitCode": 0,
+      "logSHA256": "6fd05e2f7b759b548e08ce7160b9a0bc9923e34b3e28162f9f0e834898813c7d",
+      "receiptSHA256": "9d10dfb5d24486ad76aad00166f85e60f1b24fded67d95a1b8bcb792a94c8c42",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 10
+    },
+    {
+      "version": "8.3.0",
+      "profile": "core-opcua",
+      "name": "resources",
+      "test": "TestLiveAPIResourceContract",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:03:14.935573+00:00",
+      "finishedAt": "2026-09-06T10:04:15.833490+00:00",
+      "exitCode": 0,
+      "logSHA256": "2b3a023cbdfa67345231d1a64e0bedc799e489bd7e743d56659992216cf095cc",
+      "receiptSHA256": "ce898d6bdbbba537284f4a7d1484e061e58b16a48e5dc98601d1b5da9e0b035d",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "e64b5e0633b5830fa15d02cb611576fda53a521714826f86a3ad0ffff50b479b",
+        "documentSha256": "632783aea1c85e052a88067cbe7f47e34b43919391d83c67b4098f276f086c02",
+        "contractSha256": "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "59de1d32eebf05ae8a8d1cd9b23f398c6bbdc214b33f09c43137dbf23b2588c6"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "core-opcua",
+      "name": "transfers",
+      "test": "TestLiveProjectTagWorkflows",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:04:15.979047+00:00",
+      "finishedAt": "2026-09-06T10:05:19.881809+00:00",
+      "exitCode": 0,
+      "logSHA256": "4f044101ba3763e566a77ee933cfa8c1ff0238da6041351c49e7c8043560351c",
+      "receiptSHA256": "d1858076cb1f5fae107c9977035e6de6e4255b2306081ee8fe2e36e4030d68fa",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "990cbe71c1250c420a196b61d0d4e41edf6fb3eac6be1f38b37c095f79042547",
+        "documentSha256": "b764cce299b79b5c7a48d21263e949d2425484a608be17cb3b7de5acc448cc0b",
+        "contractSha256": "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "59de1d32eebf05ae8a8d1cd9b23f398c6bbdc214b33f09c43137dbf23b2588c6"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "core-opcua",
+      "name": "operations",
+      "test": "TestLiveOperationalWorkflows",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:05:20.018412+00:00",
+      "finishedAt": "2026-09-06T10:06:19.256228+00:00",
+      "exitCode": 0,
+      "logSHA256": "c49b999e257a3a8a9141e2a3354e165131f92b5b66f5043c407c6ac02d3b122c",
+      "receiptSHA256": "8457030ae44d5ce52e4606c116da4448f398b45f7f9c97386980e684f345ec3e",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 23,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "aad9866f96fde2b6f1bc024456af672835fd3bec25473c7408618d8feab5d359",
+        "documentSha256": "46983ccdad3e74a7a74f562fd0be1cf2a1120d2cfaf3dcb296e7d6c41410aceb",
+        "contractSha256": "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "59de1d32eebf05ae8a8d1cd9b23f398c6bbdc214b33f09c43137dbf23b2588c6"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "core-opcua",
+      "name": "journeys",
+      "test": "TestLiveWorkflowJourneys",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:06:19.384201+00:00",
+      "finishedAt": "2026-09-06T10:07:27.756251+00:00",
+      "exitCode": 0,
+      "logSHA256": "a682c0caf923fdaf2d4f4e5dcde8e12b695383fd2feed9a92b340d5c783161a8",
+      "receiptSHA256": "68db1941ee1530eee9a5bca068923f99b8454ed1d474819925defce0417655bb",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 1,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "ee0bb6228aef286f7b568827afaa8828b1dd0188a139049a3e70e3c801c623f4",
+        "documentSha256": "76d86bb8b2346ec0b400afa1b7686d73e9de7322a07e55ffc764e28f2c248be6",
+        "contractSha256": "d5ec3e55a0d85d8e22bf8a7389307fa36b78362c5b71ee01947146c57c2ebb75",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "59de1d32eebf05ae8a8d1cd9b23f398c6bbdc214b33f09c43137dbf23b2588c6",
+      "nativeChecks": 48,
+      "nativeOutcomes": {
+        "not_recorded": 7,
+        "completed": 27,
+        "preview": 4,
+        "failed": 7,
+        "accepted": 3
+      },
+      "nativeCheckNames": [
+        "offline-help",
+        "offline-schema",
+        "profile-preview",
+        "profile-setup",
+        "profile-show",
+        "doctor-json",
+        "doctor-human",
+        "operation-discovery",
+        "operation-contract",
+        "offline-reference",
+        "resource-description",
+        "resource-preview",
+        "resource-preview-absence",
+        "resource-create",
+        "resource-update-preview",
+        "resource-update",
+        "resource-stale-review",
+        "resource-readback",
+        "resource-delete",
+        "capabilities",
+        "project-create",
+        "project-source-export",
+        "workflow-project-list",
+        "workflow-project-get",
+        "workflow-project-export",
+        "workflow-project-inspect",
+        "workflow-project-preview",
+        "workflow-project-preview-absence",
+        "workflow-project-import",
+        "workflow-project-change",
+        "workflow-project-replace-preview",
+        "workflow-project-stale-digest",
+        "workflow-project-replace",
+        "workflow-project-delete",
+        "workflow-tag-import-unavailable",
+        "workflow-tag-preview-unavailable",
+        "workflow-tag-export-unavailable",
+        "logs-json",
+        "logs-human",
+        "logs-search",
+        "logs-empty",
+        "logs-help",
+        "backup-export",
+        "logs-download",
+        "bundle-initial-contract",
+        "bundle-preview",
+        "bundle-collect",
+        "bundle-status"
+      ]
+    },
+    {
+      "version": "8.3.0",
+      "profile": "image-defaults",
+      "name": "lifecycle",
+      "test": "TestLiveCaptureLifetime",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:07:27.880537+00:00",
+      "finishedAt": "2026-09-06T10:07:35.571458+00:00",
+      "exitCode": 0,
+      "logSHA256": "d16dc1282c8cb3858c5dd1f7961eacdbeed4c9cad459c79c4ab69561cbcf827a",
+      "receiptSHA256": "2aace9c7a1341d7316ecc67e6189685bc80fbab442abfce4e3255156953ceb8c",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 10
+    },
+    {
+      "version": "8.3.0",
+      "profile": "image-defaults",
+      "name": "resources",
+      "test": "TestLiveAPIResourceContract",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:07:35.699844+00:00",
+      "finishedAt": "2026-09-06T10:09:01.249747+00:00",
+      "exitCode": 0,
+      "logSHA256": "22b24dcdaf148e8b321eee82b66b7526184c95d9dd107e5dddf82854c06eeb99",
+      "receiptSHA256": "0ea673643306374912d9f6fd087a4a35b3c0d979f9cc32d1287033d2bdefe17a",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "93d8f76f99cbf5fabc7a7a5ec09ce0773b1c7abaf5464ccda2230c41fda6f269",
+        "documentSha256": "e114e4a77d9b7018d36d185ea302101e3d6f934a4edf429b4d943e9f1161dd90",
+        "contractSha256": "30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f8205842deae9087a570d3c30f54f8ed1d414f65d429bd4eefd3040493ae256f"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "image-defaults",
+      "name": "transfers",
+      "test": "TestLiveProjectTagWorkflows",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:09:01.376962+00:00",
+      "finishedAt": "2026-09-06T10:10:30.437191+00:00",
+      "exitCode": 0,
+      "logSHA256": "a0fb5d6c6545b81ba0a76c2ab222fb87f9de3ad538ed4076318fb80ad0591ff7",
+      "receiptSHA256": "43907264456a1d447ebfeff4c7640349859483190b48296861a3f95abe5f579b",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "9f92f222a71d3bc30ca3987babd271cdb5360b94a71d35636c88840b0bfa1644",
+        "documentSha256": "487e94bbb1ce7efb12602a7e281b28093cd4d41c66661d7734c9902636a967fa",
+        "contractSha256": "30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f8205842deae9087a570d3c30f54f8ed1d414f65d429bd4eefd3040493ae256f"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "image-defaults",
+      "name": "operations",
+      "test": "TestLiveOperationalWorkflows",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:10:30.581816+00:00",
+      "finishedAt": "2026-09-06T10:11:54.579665+00:00",
+      "exitCode": 0,
+      "logSHA256": "5e69ef4275a14ed678c0c0589fe9f0bd7cc6c08c215d0baecffa10ec02bf9171",
+      "receiptSHA256": "3b87251936d75b323b7e938b6a26376e5f23bd98d956e0573b85aceb4a96f7a9",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 23,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "f5b6d5d54635c4079a9b907cbdc4340cc8082960a70e5180e6126e5e3aaa81c3",
+        "documentSha256": "9302248b5a710cbaa9d26e1b75cc9b9caed4a2c08d4cfc8b75b70293c8e35409",
+        "contractSha256": "30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f8205842deae9087a570d3c30f54f8ed1d414f65d429bd4eefd3040493ae256f"
+    },
+    {
+      "version": "8.3.0",
+      "profile": "image-defaults",
+      "name": "journeys",
+      "test": "TestLiveWorkflowJourneys",
+      "image": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
+      "startedAt": "2026-09-06T10:11:54.725764+00:00",
+      "finishedAt": "2026-09-06T10:13:33.433161+00:00",
+      "exitCode": 0,
+      "logSHA256": "b4d343750154d83bf37bb4cfcc124b1c0ed7ff42e44fc975d59663ec9825c788",
+      "receiptSHA256": "599352f226e336e118539eb432324bb6f1d6ba2cf474743462664abe8efba2ac",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 1,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "5c5d8d02a85e6a1ab893fc3984c0c33456f9d9def9ae7f3bbdc8639391745dd7",
+        "documentSha256": "156c0d2cd7734a7b6fcc33f2efab9a99c855ae1f983602b6e4ac09f3651d493f",
+        "contractSha256": "30d6a91031f2495477e53c38bfdec7dfebb0157820a661c7e6a387c839b5f800",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f8205842deae9087a570d3c30f54f8ed1d414f65d429bd4eefd3040493ae256f",
+      "nativeChecks": 48,
+      "nativeOutcomes": {
+        "not_recorded": 7,
+        "completed": 27,
+        "preview": 4,
+        "failed": 7,
+        "accepted": 3
+      },
+      "nativeCheckNames": [
+        "offline-help",
+        "offline-schema",
+        "profile-preview",
+        "profile-setup",
+        "profile-show",
+        "doctor-json",
+        "doctor-human",
+        "operation-discovery",
+        "operation-contract",
+        "offline-reference",
+        "resource-description",
+        "resource-preview",
+        "resource-preview-absence",
+        "resource-create",
+        "resource-update-preview",
+        "resource-update",
+        "resource-stale-review",
+        "resource-readback",
+        "resource-delete",
+        "capabilities",
+        "project-create",
+        "project-source-export",
+        "workflow-project-list",
+        "workflow-project-get",
+        "workflow-project-export",
+        "workflow-project-inspect",
+        "workflow-project-preview",
+        "workflow-project-preview-absence",
+        "workflow-project-import",
+        "workflow-project-change",
+        "workflow-project-replace-preview",
+        "workflow-project-stale-digest",
+        "workflow-project-replace",
+        "workflow-project-delete",
+        "workflow-tag-import-unavailable",
+        "workflow-tag-preview-unavailable",
+        "workflow-tag-export-unavailable",
+        "logs-json",
+        "logs-human",
+        "logs-search",
+        "logs-empty",
+        "logs-help",
+        "backup-export",
+        "logs-download",
+        "bundle-initial-contract",
+        "bundle-preview",
+        "bundle-collect",
+        "bundle-status"
+      ]
+    },
+    {
+      "version": "8.3.9",
+      "profile": "core-opcua",
+      "name": "lifecycle",
+      "test": "TestLiveCaptureLifetime",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:13:33.569030+00:00",
+      "finishedAt": "2026-09-06T10:13:41.259479+00:00",
+      "exitCode": 0,
+      "logSHA256": "edc5b2833e538b900ab048da1c0ddab5824a5416b08e4494d7e33f4b115ed50d",
+      "receiptSHA256": "58ef75c074025870f6429b24cb6aab28ebd3d71e6f5930657671911ad0c1ed9c",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 10
+    },
+    {
+      "version": "8.3.9",
+      "profile": "core-opcua",
+      "name": "resources",
+      "test": "TestLiveAPIResourceContract",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:13:41.394097+00:00",
+      "finishedAt": "2026-09-06T10:14:43.409169+00:00",
+      "exitCode": 0,
+      "logSHA256": "803a95dcb625949b571357761f775435ea313a4903dd6e4af48f43fed16bcefa",
+      "receiptSHA256": "71059b19bbaeba793f1f53508019d3d7d83eb107f9f0bc13a315140cafc4052b",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "5e9609d86faf94b801368d99bba52f20b055082dcb45fd6f4484a1b2fbe16671",
+        "documentSha256": "542e34260ad6a0ee60d0f8bb123d5310ea15e5d7f844b45808aab903ec93c47c",
+        "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f90af2799c819326bed389c9ba6a237fa4c15ef75bf8e2fee28639d735817fcd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "core-opcua",
+      "name": "transfers",
+      "test": "TestLiveProjectTagWorkflows",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:14:43.543505+00:00",
+      "finishedAt": "2026-09-06T10:15:53.328609+00:00",
+      "exitCode": 0,
+      "logSHA256": "e0e0898daddd9f8d572857ff0595fc741b2d6cb759cb83e6c8b73d52ec8ee569",
+      "receiptSHA256": "d56a465c239154d85c9cd881b1f06f7cc88d5754a7a4b7d81b802d6ad5b3f611",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 39,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "087bc00e7afdf553c93adaf7042ce83f3160fd9c944420ae72d208423b3ab3a3",
+        "documentSha256": "66c23c35991d4ec36c146bb999d4df897ab07c6321c27dd17ca3447220f24841",
+        "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f90af2799c819326bed389c9ba6a237fa4c15ef75bf8e2fee28639d735817fcd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "core-opcua",
+      "name": "operations",
+      "test": "TestLiveOperationalWorkflows",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:15:53.450150+00:00",
+      "finishedAt": "2026-09-06T10:16:52.846013+00:00",
+      "exitCode": 0,
+      "logSHA256": "191d15d3b24607afa006487c09c89b6ed8f5e0d6fabad1f37deeea0bcbf6efde",
+      "receiptSHA256": "f84620b3ab4e7556864c9368c734c014585cf43d8838f5fb7a90b4f2728da25a",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 23,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "be1bd07c762cf8c6dd4282d300ce66bd54f0bebe51b8fd2cf88720bd3e5a96c0",
+        "documentSha256": "b9aa87c2ab7ae55aa0b5550bb71c1e766b40bb0a80ba3105611bfc70f45a4427",
+        "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f90af2799c819326bed389c9ba6a237fa4c15ef75bf8e2fee28639d735817fcd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "core-opcua",
+      "name": "journeys",
+      "test": "TestLiveWorkflowJourneys",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:16:52.974080+00:00",
+      "finishedAt": "2026-09-06T10:18:07.176339+00:00",
+      "exitCode": 0,
+      "logSHA256": "c3a5c9f0fc84c170e966255d08f20c33dfec19e01ef9f69716c1aff005703333",
+      "receiptSHA256": "e43e96a10f6e2d8f7a8c7110a1a60ee12a6008e60764f131792e0915b590dac6",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 1,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "e24a2a806b24b7fa63612567bbfe1ab9e30369620fd4c8eaed6b1ccac99675aa",
+        "documentSha256": "b4ddbc806a59d9bb9e91f87a3c9fac59a7b9d48c52e4c80a4f8abf988f4f1f08",
+        "contractSha256": "2112cbe1a55bc7b92add06cd89e86bda987ce7d7855e5bdee06660dc9f9a45fe",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "f90af2799c819326bed389c9ba6a237fa4c15ef75bf8e2fee28639d735817fcd",
+      "nativeChecks": 55,
+      "nativeOutcomes": {
+        "not_recorded": 7,
+        "completed": 34,
+        "preview": 6,
+        "failed": 4,
+        "accepted": 3,
+        "partial": 1
+      },
+      "nativeCheckNames": [
+        "offline-help",
+        "offline-schema",
+        "profile-preview",
+        "profile-setup",
+        "profile-show",
+        "doctor-json",
+        "doctor-human",
+        "operation-discovery",
+        "operation-contract",
+        "offline-reference",
+        "resource-description",
+        "resource-preview",
+        "resource-preview-absence",
+        "resource-create",
+        "resource-update-preview",
+        "resource-update",
+        "resource-stale-review",
+        "resource-readback",
+        "resource-delete",
+        "capabilities",
+        "project-create",
+        "project-source-export",
+        "workflow-project-list",
+        "workflow-project-get",
+        "workflow-project-export",
+        "workflow-project-inspect",
+        "workflow-project-preview",
+        "workflow-project-preview-absence",
+        "workflow-project-import",
+        "workflow-project-change",
+        "workflow-project-replace-preview",
+        "workflow-project-stale-digest",
+        "workflow-project-replace",
+        "workflow-tag-preview",
+        "workflow-tag-preview-absence",
+        "workflow-tag-import",
+        "workflow-tag-export",
+        "workflow-tag-overwrite-preview",
+        "workflow-tag-preview-unchanged",
+        "workflow-tag-overwrite",
+        "workflow-tag-overwrite-export",
+        "workflow-tag-abort",
+        "workflow-tag-abort-unchanged",
+        "workflow-project-delete",
+        "logs-json",
+        "logs-human",
+        "logs-search",
+        "logs-empty",
+        "logs-help",
+        "backup-export",
+        "logs-download",
+        "bundle-initial-contract",
+        "bundle-preview",
+        "bundle-collect",
+        "bundle-status"
+      ]
+    },
+    {
+      "version": "8.3.9",
+      "profile": "image-defaults",
+      "name": "lifecycle",
+      "test": "TestLiveCaptureLifetime",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:18:07.301785+00:00",
+      "finishedAt": "2026-09-06T10:18:14.892814+00:00",
+      "exitCode": 0,
+      "logSHA256": "e69d40f4e31ee28bf8903011bf26b720c5e12275b2516d7c0f19417868827622",
+      "receiptSHA256": "ddc6d1f46dd8635826ad2247859e9c1f4455ef655abbb8674445399ba734ecde",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 10
+    },
+    {
+      "version": "8.3.9",
+      "profile": "image-defaults",
+      "name": "resources",
+      "test": "TestLiveAPIResourceContract",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:18:15.022695+00:00",
+      "finishedAt": "2026-09-06T10:19:43.687587+00:00",
+      "exitCode": 0,
+      "logSHA256": "e613e64a659e2a6eb81f2e04c2a759bc52d5538137ce9d981dcc88c840c48935",
+      "receiptSHA256": "2f0dda9ad8378192d3aad2d7fd7129a1f2dad3f9c4992566037132a83c5e2fb2",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 27,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "af103c6c219367b7b8a9a4a774cdcff7cf15d3ab115e9b6bf291e1fe1732c6a3",
+        "documentSha256": "049433027f029b0b2858bfa6e9c9e24a2844f02734ab5af73ce8d25eaa5ae701",
+        "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "image-defaults",
+      "name": "transfers",
+      "test": "TestLiveProjectTagWorkflows",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:19:43.824958+00:00",
+      "finishedAt": "2026-09-06T10:21:26.382163+00:00",
+      "exitCode": 0,
+      "logSHA256": "d9fddf4100a8b38dc0d3c1cfa2878fc58b5dee45b4aab5beba9e729d547d914c",
+      "receiptSHA256": "de26f1686c4fd91b18c0f155f81ed30179778ced928855f2bfe5be261d045293",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 39,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "6646400f76455db6947b0aa3c0cd53bf5a8b854dfb2f48ca251aff72f097b991",
+        "documentSha256": "bd75606703877a48293f10b3f4581b8c7d8851aa83f26db0415bd567e1fd9019",
+        "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "image-defaults",
+      "name": "operations",
+      "test": "TestLiveOperationalWorkflows",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:21:26.520390+00:00",
+      "finishedAt": "2026-09-06T10:22:58.700913+00:00",
+      "exitCode": 0,
+      "logSHA256": "b47a27ceaf30f791993bdfd05f4c7ff87de840158aace384eab29a724097721d",
+      "receiptSHA256": "a4eff9dc211b6c1641c5471cdc3dbdaa2b5553b02fb1cb5472dd4e9d31b64389",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 23,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "38a2817e7756746112da4cb874d61ab674e863cc112d70ca1b5e35726e4b5fbf",
+        "documentSha256": "f2feb458948f3125e8e08b198e73d7b2da73fc26967bd8d28e875ff536fd7406",
+        "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd"
+    },
+    {
+      "version": "8.3.9",
+      "profile": "image-defaults",
+      "name": "journeys",
+      "test": "TestLiveWorkflowJourneys",
+      "image": "inductiveautomation/ignition@sha256:28bd6b320157ec8dbbe465d0cd7c9f0ababfda4ff01c0bab982c0522a7b4eba2",
+      "startedAt": "2026-09-06T10:22:58.827006+00:00",
+      "finishedAt": "2026-09-06T10:24:47.056510+00:00",
+      "exitCode": 0,
+      "logSHA256": "bafd1c53439ddee517b60ce380bdb0d0229ae9365fd504a8a1b47b85da48e397",
+      "receiptSHA256": "fc71fac528cd7fc009506fd61650053a7794fcf3e4579045d0d19c6ba86cc045",
+      "cleanup": true,
+      "independentEmptySlot": true,
+      "checks": 1,
+      "catalog": {
+        "version": 3,
+        "rawSha256": "1a3d7e54b1c8b0b15cc84b691799ec5b49566e1ef77bf232748abbc6c1719f3f",
+        "documentSha256": "5879047aa330bc58a7ea080c8f99356017f9364725a9ccbb2b7eacbbc58b1ea5",
+        "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
+        "contractPolicy": "igw-contract/2",
+        "parserVersion": "jsonschema/6.0.2;igw/23"
+      },
+      "moduleInventorySHA256": "8adf3d3f453ec516a9d29976c94cfb2696c89b85b1f05b35be4c4bc71392d4dd",
+      "nativeChecks": 55,
+      "nativeOutcomes": {
+        "not_recorded": 7,
+        "completed": 34,
+        "preview": 6,
+        "failed": 4,
+        "accepted": 3,
+        "partial": 1
+      },
+      "nativeCheckNames": [
+        "offline-help",
+        "offline-schema",
+        "profile-preview",
+        "profile-setup",
+        "profile-show",
+        "doctor-json",
+        "doctor-human",
+        "operation-discovery",
+        "operation-contract",
+        "offline-reference",
+        "resource-description",
+        "resource-preview",
+        "resource-preview-absence",
+        "resource-create",
+        "resource-update-preview",
+        "resource-update",
+        "resource-stale-review",
+        "resource-readback",
+        "resource-delete",
+        "capabilities",
+        "project-create",
+        "project-source-export",
+        "workflow-project-list",
+        "workflow-project-get",
+        "workflow-project-export",
+        "workflow-project-inspect",
+        "workflow-project-preview",
+        "workflow-project-preview-absence",
+        "workflow-project-import",
+        "workflow-project-change",
+        "workflow-project-replace-preview",
+        "workflow-project-stale-digest",
+        "workflow-project-replace",
+        "workflow-tag-preview",
+        "workflow-tag-preview-absence",
+        "workflow-tag-import",
+        "workflow-tag-export",
+        "workflow-tag-overwrite-preview",
+        "workflow-tag-preview-unchanged",
+        "workflow-tag-overwrite",
+        "workflow-tag-overwrite-export",
+        "workflow-tag-abort",
+        "workflow-tag-abort-unchanged",
+        "workflow-project-delete",
+        "logs-json",
+        "logs-human",
+        "logs-search",
+        "logs-empty",
+        "logs-help",
+        "backup-export",
+        "logs-download",
+        "bundle-initial-contract",
+        "bundle-preview",
+        "bundle-collect",
+        "bundle-status"
+      ]
+    }
+  ],
+  "logs": {
+    "race.log": {
+      "sha256": "769552601c1443872086774f3a02598d9de08cc614052f946aec7cfd16ea590e",
+      "bytes": 1706
+    },
+    "cache-recovery.log": {
+      "sha256": "076e32f9c11846399e93f9b0d1374ca12ec21a38b46f38011492d14d21de1af9",
+      "bytes": 3403
+    },
+    "cache-integrity.log": {
+      "sha256": "732a765b3dff427622f3cfcdb476582e2237b0b699f474c1693e46f01f88da21",
+      "bytes": 232
+    },
+    "minimum-go.log": {
+      "sha256": "ab6c6e3b195c27b1fcd0a1ffd186da0d0ddff6a55a0557abeadc63edeb9db07f",
+      "bytes": 1737
+    },
+    "build.log": {
+      "sha256": "b6cf5340dc90b8cdf81e078ca58d4c935e49a0726c504d83d87c4dea7c281697",
+      "bytes": 230
+    },
+    "verify-native.log": {
+      "sha256": "3be312b500af10fb5c5d8008449522aa4fa641e0763750aa8a734613f6fb8735",
+      "bytes": 1920
+    },
+    "performance.log": {
+      "sha256": "8daaae48bc4ef0e615e93908f29e58e5729f75289498759683e062f00fb51766",
+      "bytes": 1439
+    },
+    "artifact-audit.log": {
+      "sha256": "6778ceeecf9af088c5734b73d83d945dd22316324b6e63c933babf06b43d9d1a",
+      "bytes": 192
+    }
+  },
+  "localEvidence": "bin/simplification/final/",
+  "limitations": [
+    "Built-in qualification metadata retains its original dates and identities; live checks do not relabel old capture packets.",
+    "Only the packaged Linux amd64 executable ran natively; other five platform archives were cross-built and structurally audited.",
+    "No successful hosted reference-update run has been verified.",
+    "Generic accepted requests and uncertain workflow outcomes retain their documented limits."
+  ]
+}

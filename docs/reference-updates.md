@@ -149,9 +149,11 @@ qualified bundles when a new image fails. A raw or document-only change with an
 equal policy hash still retains its new original bytes and provenance; a
 contract change requires focused compatibility assessment and real checks.
 
-After review, a bundle can be added as a new directory under
-`internal/reference/bundles/` or distributed independently through an authorized
-release channel. Update the baseline intentionally. Preserve prior bundles;
+After review, add only `reference.json` and `openapi.json.gz` to a new directory
+under `internal/reference/bundles/`, or distribute those two files independently
+through an authorized release channel. Retain the full contributor audit packet
+at a durable source and set its evidence URI accordingly; changing the locator
+must preserve the evidence checksum and original qualification identity. Update the baseline intentionally. Preserve prior bundles;
 never replace an old manifest with newly generated evidence. Shipping bytes and
 promoting a new default are separate reviewed release actions.
 

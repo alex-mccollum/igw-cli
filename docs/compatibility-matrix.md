@@ -12,11 +12,11 @@ older workflow pass as qualification of this implementation.
 | 8.3.9 core | 1 active, 31 inactive | 454 | Advertised |
 | 8.3.9 defaults | 32 active | 687 | Advertised |
 
-All four cells passed contributor workflow qualification with the previous
-parser on 2026-09-05. Candidate `511c5fe` additionally passed 48 and 55 native
-journey checks on the two core profiles on 2026-09-06 UTC. These are historical
-observations; format conversion and offline tests do not renew them.
-Original evidence is [archived in Git](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/qualification/workflow-v1/README.md).
+Candidate `a1d2b4b` passed the resource, project/tag, operational, and native CLI
+journey suites on all four cells on 2026-09-06 UTC. Containment and cleanup were
+verified separately for each cell. The [current qualification record](qualification/README.md)
+identifies the exact source, binaries, and covered checks. The built-in manifests
+retain their original historical qualification dates and identities.
 
 Known boundaries remain explicit:
 

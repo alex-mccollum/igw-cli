@@ -14,16 +14,19 @@ Go 1.27.1 under the unchanged 8 GiB/two-CPU guard observed:
 
 | Reference | Startup before / after | Peak RSS before / after |
 | --- | --- | --- |
-| ignition-8.3.0-core | 0.69 / 0.31 s | 148.5 / 71.5 MiB |
-| ignition-8.3.0-defaults | 1.12 / 0.49 s | 248.6 / 108.7 MiB |
-| ignition-8.3.9-core | 0.76 / 0.33 s | 161.0 / 77.8 MiB |
-| ignition-8.3.9-defaults | 1.63 / 0.80 s | 399.2 / 158.9 MiB |
+| ignition-8.3.0-core | 0.71 / 0.31 s | 146.9 / 67.9 MiB |
+| ignition-8.3.0-defaults | 1.18 / 0.51 s | 246.1 / 106.2 MiB |
+| ignition-8.3.9-core | 0.73 / 0.33 s | 158.5 / 72.2 MiB |
+| ignition-8.3.9-defaults | 1.62 / 0.53 s | 392.6 / 114.3 MiB |
 
-Each row uses five interleaved samples per binary and unchanged reference bytes.
+Each row uses five interleaved samples per binary, identical Go 1.27.1 release
+build settings (CGO disabled, trimmed paths, stripped symbols), and unchanged
+vendor bytes. The final candidate is `a1d2b4b`; the baseline is `511c5fe`.
 All operation inventories and raw/document/contract identities match. The
-[measurement record](qualification/catalog-json-engine.json) retains binary
+[measurement record](qualification/simplification.json) retains binary
 hashes, samples, and inventory checksums. These are local startup observations,
-not portable latency guarantees or fresh live-Gateway qualification. Historical model-backend measurements remain in
+not portable latency guarantees. Live workflow results are recorded separately
+in the same candidate record. Historical model-backend measurements remain in
 [Git history](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/performance.md).
 
 ## Unchanged catalog revalidation

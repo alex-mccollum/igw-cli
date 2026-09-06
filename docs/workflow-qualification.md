@@ -66,10 +66,7 @@ historical when a later commit changes code.
 
 ## Recorded candidate
 
-The [completed candidate record](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/qualification/workflow-v1/README.md) retains
-passing 8.3.0 and 8.3.9 native journeys and their exact build identities. Run
-long local gates as separate serial bounded jobs: normal tests, race package
-groups, performance, and individual platform builds. Do not combine an entire
-cold race suite or six cross-builds with preceding tests into one ten-minute
-scope. If a guard expires, retain it, identify unfinished work, and use smaller
-jobs with the same caps; do not repeat completed work or raise limits.
+[Current qualification status](qualification/README.md) identifies the latest
+source, executable hashes, four version/profile cells, and known limits.
+Earlier candidate packets remain in Git history; they are never promoted by
+relabeling a parser version or capture date.
