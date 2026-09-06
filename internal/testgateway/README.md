@@ -108,3 +108,15 @@ already existed, so the optional creation/deletion branch remains
 unqualified. An anchored manifest preserves all 21 original files; offline
 tests check provenance, cleanup, input/readback identities, and current parsing
 without renewing the recorded parser or observation times.
+
+`TestLiveBatch` uses the same clean-source build and per-image lifecycle gate,
+with a new `IGW_BATCH_EVIDENCE_DIR`. It checks malformed-manifest and confirmation
+refusal, online/offline previews, read-only and mixed batches, retained responses
+after later validation/HTTP failures, and explicit continuation. Catalog fetch
+counts distinguish one fresh invocation snapshot from per-item refreshes.
+Receipts in `batch.json` retain ordered item outcomes, coverage, and prepared
+input identities, while successful response bodies and ciphertext are inspected
+only in memory. This suite does not force live transport failures or revoke
+credentials midway through a batch; those stop behaviors have fixture coverage.
+Passing still requires a complete receipt, a zero process exit, and independent
+container absence checks. Compile or skip results do not establish live success.

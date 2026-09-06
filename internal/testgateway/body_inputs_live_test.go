@@ -55,14 +55,19 @@ func (r *inputBodyReader) Read(p []byte) (int, error) {
 }
 
 type inputObserver struct {
-	base http.RoundTripper
-	mu   sync.Mutex
-	wire []inputWire
-	body []*inputBodyReader
+	base            http.RoundTripper
+	mu              sync.Mutex
+	wire            []inputWire
+	body            []*inputBodyReader
+	catalogRequests int
 }
 
 func (o *inputObserver) RoundTrip(r *http.Request) (*http.Response, error) {
-	if r.URL.Path != "/openapi.json" {
+	if r.URL.Path == "/openapi.json" {
+		o.mu.Lock()
+		o.catalogRequests++
+		o.mu.Unlock()
+	} else {
 		body := &inputBodyReader{ReadCloser: r.Body, hash: sha256.New()}
 		o.mu.Lock()
 		o.wire = append(o.wire, inputWire{Method: r.Method, Path: r.URL.EscapedPath(), ContentType: r.Header.Get("Content-Type"), ContentLength: r.ContentLength})
@@ -96,10 +101,12 @@ func (o *inputObserver) snapshot() []inputWire {
 
 type inputCheck struct {
 	transferCheck
-	Validation string           `json:"validation,omitempty"`
-	Wire       []inputWire      `json:"wire,omitempty"`
-	Preview    *execute.Preview `json:"preview,omitempty"`
-	Artifact   *inputArtifact   `json:"artifact,omitempty"`
+	CatalogRequests int                 `json:"catalogRequests,omitempty"`
+	Batch           *inputBatchEvidence `json:"batch,omitempty"`
+	Validation      string              `json:"validation,omitempty"`
+	Wire            []inputWire         `json:"wire,omitempty"`
+	Preview         *execute.Preview    `json:"preview,omitempty"`
+	Artifact        *inputArtifact      `json:"artifact,omitempty"`
 }
 
 type inputArtifact struct {
@@ -127,25 +134,31 @@ type inputReceipt struct {
 }
 
 type inputSuite struct {
-	t         *testing.T
-	ctx       context.Context
-	session   *testgateway.Session
-	dir       string
-	cache     string
-	token     string
-	receipt   inputReceipt
-	completed bool
+	t           *testing.T
+	ctx         context.Context
+	session     *testgateway.Session
+	dir         string
+	cache       string
+	token       string
+	receipt     inputReceipt
+	completed   bool
+	receiptName string
 }
 
 func beginInputSuite(t *testing.T) *inputSuite {
+	t.Helper()
+	return beginObservedSuite(t, "IGW_INPUT_EVIDENCE_DIR", "request-body-inputs", "body-inputs.json")
+}
+
+func beginObservedSuite(t *testing.T, directoryVariable, kind, receiptName string) *inputSuite {
 	t.Helper()
 	image := os.Getenv("IGW_ACCEPTANCE_TEST_IMAGE")
 	if image == "" {
 		t.Skip("requires a pinned image and guarded live invocation")
 	}
-	dir := os.Getenv("IGW_INPUT_EVIDENCE_DIR")
+	dir := os.Getenv(directoryVariable)
 	if dir == "" {
-		t.Fatal("requires a new IGW_INPUT_EVIDENCE_DIR")
+		t.Fatalf("requires a new %s", directoryVariable)
 	}
 	cfg, err := testgateway.ProfileConfig(image, os.Getenv("IGW_CAPTURE_TEST_DOCKER"), os.Getenv("IGW_TEST_MODULE_PROFILE"))
 	if err != nil {
@@ -155,7 +168,7 @@ func beginInputSuite(t *testing.T) *inputSuite {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
-	s := &inputSuite{t: t, ctx: ctx, dir: dir, cache: t.TempDir(), receipt: inputReceipt{Version: 1, Kind: "request-body-inputs", Image: image, StartedAt: time.Now().UTC(), Checks: []inputCheck{}}}
+	s := &inputSuite{t: t, ctx: ctx, dir: dir, cache: t.TempDir(), receiptName: receiptName, receipt: inputReceipt{Version: 1, Kind: kind, Image: image, StartedAt: time.Now().UTC(), Checks: []inputCheck{}}}
 	t.Cleanup(func() { s.finish(); cancel() })
 	executable, err := os.Executable()
 	if err != nil {
@@ -238,7 +251,7 @@ func (s *inputSuite) finish() {
 		s.t.Error(err)
 		return
 	}
-	w, err := artifact.New(filepath.Join(s.dir, "body-inputs.json"), false)
+	w, err := artifact.New(filepath.Join(s.dir, s.receiptName), false)
 	if err != nil {
 		s.t.Error(err)
 		return
@@ -270,11 +283,17 @@ func (s *inputSuite) run(name string, input io.Reader, args ...string) transferR
 		s.t.Fatalf("%s invalid CLI envelope", name)
 	}
 	check := inputCheck{transferCheck: transferCheck{Name: name, Outcome: got.Outcome, HTTPStatus: inputHTTPStatus(got)}, Validation: got.Meta.Validation, Wire: observer.snapshot()}
+	observer.mu.Lock()
+	check.CatalogRequests = observer.catalogRequests
+	observer.mu.Unlock()
 	check.OperationRequests = int64(len(check.Wire))
 	if got.Error != nil {
 		check.ErrorKind, check.ExitCode = got.Error.Kind, got.Error.Code
 	}
-	if got.Outcome == "preview" {
+	batch := len(args) >= 2 && args[0] == "api" && args[1] == "batch"
+	if batch {
+		check.Batch = batchEvidence(got.Data)
+	} else if got.Outcome == "preview" {
 		var preview execute.Preview
 		if json.Unmarshal(got.Data, &preview) != nil {
 			s.t.Fatalf("%s invalid preview envelope", name)

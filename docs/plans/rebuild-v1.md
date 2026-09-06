@@ -1567,6 +1567,23 @@ The next gate is a clean-source batch acceptance harness and disposable-Gateway
 qualification; structured inputs, restart verification, and the remaining
 full-v1 migration/cutover/release gates remain active.
 
+The opt-in live batch harness now exercises 12 batch invocations after catalog
+capture: malformed input, duplicate IDs, confirmation, online/offline previews,
+read-only and mixed execution, stop/continue after body validation and HTTP
+errors, and continued unknown-operation refusal. It checks ordered outcomes,
+actual preserved Gateway/JWE responses in memory, catalog identity and fetch
+counts, and exact preview text digests. Receipts retain no returned ciphertext
+or response bodies. Shared observation setup preserves original body receipts
+and records batch receipts with their own kind and filename. The focused
+harness/privacy/retained-evidence checks passed in
+`bin/batch-harness-focused.log`; a clean-source build and real runs remain
+required before this harness supports a live qualification claim.
+The observer/privacy race checks, full unit suite, command-doc consistency,
+and docs lint passed in `bin/batch-harness-gates.log`. Read-only Docker preflight
+reported a reachable Linux engine and no qualification containers; no recovery
+was attempted. The live runs will use a separately built executable and fresh
+evidence paths, with each image's lifecycle probe preceding its batch suite.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
