@@ -1,6 +1,7 @@
 # igw v1 workflow release plan
 
-Status: active. Rebaselined with the user after the architecture review.
+Status: completed within the agreed workflow scope; candidate remains unpublished.
+Rebaselined with the user after the architecture review.
 Implementation baseline: `8f8421f`. This plan supersedes the broad completion
 criteria in the [historical execution record](rebuild-v1-history.md).
 
@@ -21,12 +22,12 @@ human and JSON output, positive results, and useful failure recovery.
 
 | Journey | Required observations | Current status |
 | --- | --- | --- |
-| Set up and discover | Configure a profile, read Gateway information, discover an operation, inspect its inputs and catalog provenance | Implemented; final candidate walkthrough pending |
-| Configure resources | Preview and apply changes, inspect readback, refuse stale signatures without mutation | Named workflows qualified historically; singleton config omission diagnosed, metadata/uncertainty acceptance pending |
-| Deploy projects | Export and inspect a ZIP, import, and replace using a reviewed digest | Implemented and historically qualified; final candidate run pending |
-| Transfer tags | JSON import/export using existing verification policies; explicit refusal where APIs are absent | Implemented; final candidate run pending |
-| Troubleshoot | Retrieve relevant logs by time, severity, logger, and search; expose available exception context and pagination; distinguish no matches from failure | Human views, recovery guidance, and filter/JSON regressions pass locally; live candidate walkthrough pending |
-| Preserve evidence | Save complete backup/log/diagnostic artifacts; require confirmation for diagnostics generation | Implemented and historically qualified; final candidate run pending |
+| Set up and discover | Configure a profile, read Gateway information, discover an operation, inspect its inputs and catalog provenance | Qualified on both pinned core-opcua Gateways |
+| Configure resources | Preview and apply changes, inspect readback, refuse stale signatures without mutation | Named workflows qualified; translations creation remains explicitly limited |
+| Deploy projects | Export and inspect a ZIP, import, and replace using a reviewed digest | Export/import/reviewed replacement qualified on both Gateways |
+| Transfer tags | JSON import/export using existing verification policies; explicit refusal where APIs are absent | JSON transfers qualified on 8.3.9; explicit unavailable-API refusals on 8.3.0 |
+| Troubleshoot | Retrieve relevant logs by time, severity, logger, and search; expose available exception context and pagination; distinguish no matches from failure | Human/JSON filters, search, timestamps, empty pages, and downloads qualified |
+| Preserve evidence | Save complete backup/log/diagnostic artifacts; require confirmation for diagnostics generation | Complete artifacts and diagnostics preview/collection qualified on both Gateways |
 
 A generic accepted request is not a verified state change. Preserve uncertain
 outcomes and never replay writes automatically. Diagnose the existing singleton
@@ -60,8 +61,25 @@ states its limited scope. Logs: `bin/workflow-human-{checks,race}.log`.
 `TestLiveWorkflowJourneys` runs the built Linux CLI as separate processes with
 isolated configuration. It covers the six journeys and reuses existing transfer
 checks; executable identity and per-command results are separate from observed
-HTTP request counts. The harness is compiled locally; live outcomes are pending.
+HTTP request counts. The candidate passed 48 native checks on 8.3.0 and 55 on 8.3.9.
 See [workflow qualification](../workflow-qualification.md) for invocation.
+
+## Completion evidence
+
+Candidate `511c5fe` passed both pinned native journey runs, normal tests,
+package-complete race coverage, performance budgets, docs, 34 smoke checks,
+and all six artifact audits. Go 1.25.7 passed a build and focused regressions.
+Race and packaging each needed separate remaining-work jobs after the original
+ten-minute guard stopped a combined job; limits were not raised and the original
+timeouts remain recorded. See the [qualification record](../qualification/workflow-v1/README.md)
+for source/binary identities, exact scope, limitations, and all retained evidence.
+
+Live journeys found and fixed help-flag ordering and missing non-ready diagnostics
+file size handling. Tag capability selection was corrected in contributor
+harnesses. Translations creation remains uncertain or rejected as documented;
+verification was not weakened. No further implementation gate remains in this
+revised plan. Scheduled-runner activation and native non-Linux qualification
+remain follow-ups; no publication is included.
 
 ## OpenAPI authority and availability
 

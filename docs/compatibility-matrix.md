@@ -5,6 +5,19 @@ policy, and set of exercised workflows. A version label alone does not establish
 support for every API or module combination. The target Gateway's current
 catalog determines which APIs the CLI can use.
 
+## Workflow-first candidate
+
+Clean candidate `511c5fe` passed 48 native process checks on pinned 8.3.0 and
+55 on pinned 8.3.9, both using `core-opcua`, on 2026-09-06 UTC. These cover the
+six release journeys, with explicit absent tag APIs on 8.3.0. Diagnostics starts
+from an empty status without `fileSize` on both versions. Additional singleton
+checks preserve uncertain config creation and rejected metadata-only creation;
+complete translations creation is not qualified. Every live stage cleaned up.
+
+See the [candidate record](qualification/workflow-v1/README.md) for exact source,
+executable, image, module, artifact, and limitation evidence. The historical
+matrix below retains its original identities and broader reference scopes.
+
 ## Qualified version and module cells
 
 | Gateway | Profile | Observed modules | Operations | Tag transfer workflows |

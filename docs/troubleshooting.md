@@ -75,7 +75,7 @@ and limits; see `docs/catalog.md` and `docs/compatibility-matrix.md`.
 
 ## Translations singleton qualification limit
 
-On the pinned 8.3.0 Gateway, translations creation with `config` was acknowledged,
+On both pinned 8.3.0 and 8.3.9 core-opcua Gateways, translations creation with `config` was acknowledged,
 but both workflow and independent readback omitted `config`, despite its presence
 in the advertised schema. The CLI reports `uncertain` and exit 7. Metadata-only
 creation was rejected. Neither observation proves whether configuration was

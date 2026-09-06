@@ -63,3 +63,13 @@ without diagnosing the failure. Qualify both selected versions sequentially.
 Preserve source/build/log/receipt identities together, excluding temporary
 configuration and Gateway artifact contents. Historical qualification remains
 historical when a later commit changes code.
+
+## Recorded candidate
+
+The [completed candidate record](qualification/workflow-v1/README.md) retains
+passing 8.3.0 and 8.3.9 native journeys and their exact build identities. Run
+long local gates as separate serial bounded jobs: normal tests, race package
+groups, performance, and individual platform builds. Do not combine an entire
+cold race suite or six cross-builds with preceding tests into one ten-minute
+scope. If a guard expires, retain it, identify unfinished work, and use smaller
+jobs with the same caps; do not repeat completed work or raise limits.

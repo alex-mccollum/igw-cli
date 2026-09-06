@@ -1,5 +1,10 @@
 # Local qualification evidence
 
+The completed workflow-first candidate is recorded in
+[workflow-v1/README.md](workflow-v1/README.md), with both pinned native journeys,
+local gates, all six archive audits, and explicit limits. Earlier sections below
+remain historical evidence tied to their original source inputs.
+
 `singleton-local.json` records the typed singleton workflows and opt-in live
 harness from a precommit worktree at `4ff0ce3`. Local checks include 102 preview
 cases against the two retained default catalogs, real CLI HTTP fixtures, full
