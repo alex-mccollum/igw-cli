@@ -120,3 +120,6 @@ only in memory. This suite does not force live transport failures or revoke
 credentials midway through a batch; those stop behaviors have fixture coverage.
 Passing still requires a complete receipt, a zero process exit, and independent
 container absence checks. Compile or skip results do not establish live success.
+The retained [batch evidence](testdata/batch/README.md) records passing 13-check
+runs on both pinned core profiles from source `2ddc7f4`, including 29 item results
+per run. Keep that source distinct from subsequent input-budget hardening.

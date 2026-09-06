@@ -37,7 +37,7 @@ func TestRetainedBodyInputEvidence(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	checkBodyEvidenceManifest(t, read(t, "manifest.json"), read)
+	checkInputEvidenceManifest(t, read(t, "manifest.json"), "b783651e7334b4381a491785a27403d6695e14fbd7ec00d6daa16043c863c704", read)
 	var before, after struct {
 		Commit     string
 		Dirty      bool
@@ -142,9 +142,9 @@ func TestRetainedBodyInputEvidence(t *testing.T) {
 
 // The anchored manifest covers every original file, including fields that are
 // intentionally not interpreted by these focused semantic checks.
-func checkBodyEvidenceManifest(t *testing.T, raw []byte, read func(*testing.T, string) []byte) {
+func checkInputEvidenceManifest(t *testing.T, raw []byte, expectedSHA256 string, read func(*testing.T, string) []byte) {
 	t.Helper()
-	if fmt.Sprintf("%x", sha256.Sum256(raw)) != "b783651e7334b4381a491785a27403d6695e14fbd7ec00d6daa16043c863c704" {
+	if fmt.Sprintf("%x", sha256.Sum256(raw)) != expectedSHA256 {
 		t.Fatal("original evidence manifest changed")
 	}
 	var manifest struct {

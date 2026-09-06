@@ -89,6 +89,30 @@ digests, and provenance are retained with an integrity manifest under
 core references. These results do not relabel earlier bundles or qualify every
 datafile type, schema-bearing form, binary constraint, or module profile.
 
+## Additional batch qualification
+
+Both pinned `core-opcua` cells passed the batch suite on 2026-09-06 UTC from
+clean source `2ddc7f4`, using the same executable and parser 19. Each first
+passed 10 lifecycle checks, then 13 CLI checks: catalog capture and 12 batch
+invocations with 29 ordered item results and 15 operation requests. The 8.3.9
+and 8.3.0 suites took 60.80 and 59.25 seconds respectively.
+
+Qualification covers malformed-input and confirmation refusal, online/offline
+previews without dispatch, unconfirmed reads, mixed reads/encryption requests,
+and preserved responses after later validation, HTTP 404, and unknown-operation
+failures. Default stopping and explicit continuation behaved as documented.
+Each confirmed batch fetched one fresh catalog for all items. Encryption
+responses received structural JWE checks only. All processes and receipts
+passed, independent container queries were empty, and the source stayed clean.
+
+Original evidence and integrity checks are retained under
+`internal/testgateway/testdata/batch/`. This scope does not cover arbitrary
+operation combinations, live forced disconnects/revocation, or the subsequent
+repeated-name budget fix. Transport/authentication failure handling and the
+budget guard have separate fixture tests. The receipts keep their actual source
+and timestamps; final current-source qualification remains part of the full v1
+gate.
+
 ## Observed module profiles
 
 The core runs use the explicit `com.inductiveautomation.opcua` whitelist and

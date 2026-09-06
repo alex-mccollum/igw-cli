@@ -1605,6 +1605,24 @@ passed in `bin/batch-final-gates.log`; legacy smoke built and exited 2 at the
 unconfigured `doctor` (`bin/batch-expansion-smoke.log`). No requests were sent
 by the expansion regressions, and no resource limits or host settings changed.
 
+The 21 original batch evidence files are now retained byte-for-byte under
+`internal/testgateway/testdata/batch/`, anchored by a SHA-256 manifest. Offline
+checks verify clean-source/executable provenance, lifecycle and independent
+cleanup results, all 13 ordered checks and 29 item outcomes, observed payload
+hashes, and current parsing of the original vendor captures. Both catalogs match
+their existing core contract identities. The source is `2ddc7f4`, executable
+`3955930c5a6efe029afa1bd3166657908dc452f744cdbfa1becdda0826f5809c`,
+and parser 19; none of those historical identities was renewed by reopening
+the files or by the later input-budget fix. The owned clean checkout was removed
+after all live processes and cleanup checks completed.
+
+The focused retained body/batch checks passed in
+`bin/batch-retained-focused.log`, and the full unit/build/docs gates passed in
+`bin/batch-final-gates.log`. The compatibility matrix documents the tested
+versions and workflow limits. Full v1 work remains active, including structured
+input contracts, restart verification, migration/cutover, performance/release
+gates, and final current-source qualification.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)
