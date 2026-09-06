@@ -267,6 +267,33 @@ routes. No part names or value constraints are inferred from those gaps.
 Schema-bearing multipart requests are refused until their decoder is supported.
 Explicit `api raw` supports the same multipart options without catalog claims.
 
+The pinned 8.3.9 core-profile qualification verified repeated `files` parts with
+explicit filenames on the translations bulk-datafile route. For an existing
+core translations resource, obtain its current signature with `api request`
+against `GET /data/api/v1/resources/singleton/ignition/translations`, using
+`--query collection=core`. Set `signature` to the returned resource signature,
+then prepare a files-only manifest such as:
+
+```json
+[
+  {"name": "files", "file": "./payload.bin", "filename": "payload.bin", "contentType": "application/octet-stream"}
+]
+```
+
+Save it as `files.json` and review the request:
+
+```bash
+bin/igw-next api request 'PUT /data/api/v1/resources/datafile/ignition/translations' --query collection=core --query "signature=$signature" --multipart @files.json --dry-run --json
+```
+
+Replace `--dry-run` with `--yes` to execute the reviewed inputs. Read back each
+file using the corresponding single-datafile GET route to verify its bytes.
+`files` is a tested working name, not a vendor-declared exclusive name; this
+recipe does not establish behavior for every bulk-datafile route. The tested
+8.3.0 catalog lacks the bulk route. See the
+[body-input qualification](compatibility-matrix.md#additional-request-body-qualification)
+for exact versions and evidence.
+
 Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:
 

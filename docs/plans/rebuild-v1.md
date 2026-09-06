@@ -1487,6 +1487,46 @@ checksums are retained alongside observed request hashes. Live tests remain
 opt-in and were skipped by this construction gate; no live success is claimed
 until the separately built executable and its receipts pass against each image.
 
+The clean-source body qualification then passed against both pinned images
+using source `03566a80e1fa5458fe36b969e032c7cd171d1ad8`, Go 1.27.1 with
+`-trimpath`, and executable SHA-256
+`79305d68639e7717ec5ecb90f3b794273ad23915311df33df137dcc515cfb003`.
+The 8.3.9 core suite passed 62 CLI checks in 148.53 seconds; 8.3.0 passed 31 in
+100.94 seconds. Each image first passed all 10 lifecycle checks with the same
+executable. All processes exited zero, all receipts passed with cleanup true,
+and independent post-run container queries were empty. The source checkout was
+clean before the build and after both runs. No OOM, host recovery, retry, or
+host/guard-limit changes occurred.
+
+Both versions accepted text/literal/file/stdin/empty and binary/upload inputs
+at the encryption endpoint, with exact prepared/consumed hashes, correct
+coverage, zero-operation previews, and local invalid-input refusal. Flattened
+JWE responses were checked structurally, without decryption. On 8.3.9, repeated
+`files` parts with explicit filenames preserved binary, Unicode-text, and empty
+files. A stale signature returned HTTP 500/exit 7 without changing them; opaque
+overwrite and deletion were independently verified. The existing translations
+configuration stayed unchanged. This establishes a working part name on that
+route, not an exclusive schema or coverage of all bulk routes. The optional
+singleton creation/deletion branch was not exercised. On 8.3.0, both attempts
+to use the absent bulk route failed locally with exit 2 and no operation.
+
+All 21 original evidence files from `bin/body-inputs-live-v1/` are retained
+byte-for-byte under `internal/testgateway/testdata/body-inputs/`, with an
+anchored integrity manifest and separate current-parser checks. The receipts
+retain their original parser-19 identities and timestamps. Both contract hashes
+match the existing core references despite different raw/document hashes.
+The compatibility matrix and canonical commands now document this qualified
+scope. Structured encodings, form/binary assertions, remaining workflows,
+current-source full qualification, and cutover/release gates remain active
+parts of the complete v1 goal.
+
+The focused retained-evidence check passed in
+`bin/body-inputs-retained-focused-final.log`; the full unit suite, both CLI
+builds, command-doc consistency, and docs lint passed in
+`bin/body-inputs-retained-gates.log`. The offline checks anchor the original
+manifest, verify all 31/62 outcomes and byte identities, and reparse the exact
+captured documents without changing their historical provenance.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

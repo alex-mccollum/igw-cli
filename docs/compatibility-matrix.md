@@ -57,6 +57,38 @@ This additional evidence records parser 13; it does not rewrite the parser or
 workflow policy of an earlier reference, qualify every filter field/operator,
 or complete general parameter/multipart support.
 
+## Additional request-body qualification
+
+The body-input suite passed on both pinned `core-opcua` cells on 2026-09-05/06
+UTC from clean source `03566a8`, using one executable and parser 19. Each run
+first passed all 10 lifecycle checks with that same executable and image.
+
+| Gateway | CLI checks | Body-suite duration | Bulk datafiles |
+| --- | ---: | ---: | --- |
+| 8.3.0 | 31 | 100.94 s | Absent route refused before dispatch |
+| 8.3.9 | 62 | 148.53 s | Translations files uploaded and independently verified |
+
+Both versions accepted literal/file/stdin UTF-8 text, explicit empty text,
+binary bodies, streamed binary uploads, and empty uploads at the encryption
+endpoint. Previews sent zero operations; consumed-byte hashes matched the
+prepared inputs. Missing, invalid, and unsupported inputs failed locally.
+Responses passed structural flattened-JWE checks, without decryption or
+cryptographic validation.
+
+On 8.3.9, repeated `files` parts with explicit filenames preserved binary,
+Unicode-text, and empty files. A stale signature returned HTTP 500/exit 7 and
+left the files unchanged. Opaque overwrite and deletion were independently
+verified; the original translations configuration remained unchanged. `files`
+is an observed working name, not an exclusive field-name contract. The optional
+singleton creation/deletion branch was not exercised because it already existed.
+
+All processes and receipts passed, independent container queries were empty,
+and the source checkout remained clean. Original captures, previews, payload
+digests, and provenance are retained with an integrity manifest under
+`internal/testgateway/testdata/body-inputs/`. Contract hashes match the existing
+core references. These results do not relabel earlier bundles or qualify every
+datafile type, schema-bearing form, binary constraint, or module profile.
+
 ## Observed module profiles
 
 The core runs use the explicit `com.inductiveautomation.opcua` whitelist and

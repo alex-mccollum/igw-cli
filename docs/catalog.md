@@ -666,6 +666,22 @@ multipart declarations omit their part schema; this is a vendor contract gap.
 The builder accepts explicit user-supplied names without inventing a schema,
 and additional schema-bearing encodings still require a qualified decoder.
 
+Separate live qualification from source `03566a8` passed 31 body-input checks
+on the pinned 8.3.0 core profile and 62 on 8.3.9. Both accepted exact text and
+binary encryption inputs, including explicit empty inputs; previews sent no
+operations. Encryption responses were checked structurally as flattened JWE,
+without decryption. On 8.3.9, repeated `files` parts with explicit filenames
+worked for translations bulk datafiles: independent downloads verified binary,
+Unicode-text, and empty contents. Stale-signature rejection left the files
+unchanged; opaque overwrite and deletion were verified. This observed working
+part name does not supply the omitted vendor schema or qualify the other six
+bulk routes. The 8.3.0 catalog lacks that bulk route and refused both preview
+and execution before dispatch. Original captures and parser-19 receipts are
+retained in `internal/testgateway/testdata/body-inputs/`; their contract hashes
+match the corresponding core references. See the
+[qualification matrix](compatibility-matrix.md#additional-request-body-qualification)
+for scope, provenance, and limitations.
+
 Parser 17 separates explicit empty representations from omitted bodies. The
 typed request core uses a nil byte slice for omission and a non-nil empty slice
 for zero bytes. Catalog validation receives outgoing client requests with a nil

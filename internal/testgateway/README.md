@@ -99,3 +99,12 @@ The new evidence directory receives the exact compressed OpenAPI document and
 clean source commit, executable checksum, lifecycle and process exit results,
 and an independent empty-container check alongside it. A compiled or skipped
 test is not live acceptance; both process and complete receipt must pass.
+
+The retained [body-input evidence](testdata/body-inputs/README.md) records passing
+31-check 8.3.0 and 62-check 8.3.9 core-profile runs from source `03566a8`, each
+preceded by a passing lifecycle probe. Independent downloads establish that
+`files` worked for the exercised translations route. The 8.3.9 singleton
+already existed, so the optional creation/deletion branch remains
+unqualified. An anchored manifest preserves all 21 original files; offline
+tests check provenance, cleanup, input/readback identities, and current parsing
+without renewing the recorded parser or observation times.
