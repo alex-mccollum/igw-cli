@@ -144,7 +144,9 @@ func (c *Catalog) validateSchema(schema *schemaView, value any, body bool) ([]Is
 			return
 		}
 		issue := Issue{Kind: "requestBody", Rule: "schema"}
-		issue.Field = "/" + strings.Join(failure.InstanceLocation, "/")
+		for _, token := range failure.InstanceLocation {
+			issue.Field += "/" + pointerEscape(token)
+		}
 		issue.Schema = failure.SchemaURL
 		issues = append(issues, issue)
 	}

@@ -62,3 +62,28 @@ func TestEngineRequiredCookieCannotBeSilentlySkipped(t *testing.T) {
 		t.Fatalf("missing cookie: %v %v", issues, err)
 	}
 }
+
+func TestEngineValidationFieldPointers(t *testing.T) {
+	const raw = `{"openapi":"3.1.0","info":{"title":"test","version":"1"},"paths":{"/body":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"a/b":{"type":"object","properties":{"~1":{"type":"array","items":{"type":"integer"}}}},"":{"type":"integer"}}}}}},"responses":{"200":{"description":"OK"}}}}}}`
+	c, err := Parse([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	for _, tc := range []struct {
+		name, body, pointer string
+	}{
+		{"root", `[]`, ""},
+		{"empty property", `{"":"invalid"}`, "/"},
+		{"escaped nested array", `{"a/b":{"~1":["invalid"]}}`, "/a~1b/~01/0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, _ := http.NewRequest("POST", "http://gateway.test/body", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			issues, err := c.Validate("POST /body", req)
+			if err != nil || len(issues) != 1 || issues[0].Field != tc.pointer || issues[0].Kind != "requestBody" || issues[0].Rule != "schema" {
+				t.Fatalf("field pointer: %+v %v; want %q", issues, err, tc.pointer)
+			}
+		})
+	}
+}

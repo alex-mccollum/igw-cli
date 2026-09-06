@@ -27,6 +27,12 @@ transport, non-auth HTTP, output, artifact, cancellation, and verification error
 are 7. Do not retry a mutation because its process failed or output was missing.
 Read state first and deliberately decide whether another change is appropriate.
 
+For request-body schema issues, `field` is a JSON Pointer into the submitted
+body: `/` in a property name becomes `~1`, and `~` becomes `~0`. Array elements
+use numeric tokens. An omitted `field` means the body root; `/` identifies an
+empty-named property. For example, `/a~1b/~01/0` identifies the first element
+under `{"a/b":{"~1":[...]}}`. Issue paths never include the rejected values.
+
 ## Agent workflow
 
 1. Inspect the command schema and profile target without exposing credentials.
