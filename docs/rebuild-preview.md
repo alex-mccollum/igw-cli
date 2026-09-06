@@ -27,6 +27,9 @@ Examples for this entrypoint are maintained in the development section of
 - `api list`, `describe`, and `capabilities --reference NAME_OR_DIRECTORY` for
   explicit offline discovery without target configuration or credentials.
 - `api raw` for explicit requests without schema validation.
+- `api batch` for bounded sequential JSON/text requests with ordered per-item
+  results, zero-operation previews, and explicit continuation after ordinary
+  failures.
 - `gateway doctor`, which only reads Gateway information.
 - `resource types`, `describe`, `list`, `get`, and named-resource
   `create`/`update`/`delete` with signatures, previews, and state verification.
@@ -86,7 +89,7 @@ metadata reports the checks actually performed. Multipart construction supports
 literal text fields, streamed files, and ordered JSON part manifests with
 transport-only coverage for schema-less declarations. Multipart schema decoding,
 URL-encoded forms, parameter serialization beyond explicit path/query/header values,
-bounded batch, singleton resources, broader tag format/policy verification,
+singleton resources, broader tag format/policy verification,
 profile migration, remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.
 

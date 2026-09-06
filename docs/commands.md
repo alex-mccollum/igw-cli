@@ -294,6 +294,64 @@ recipe does not establish behavior for every bulk-datafile route. The tested
 [body-input qualification](compatibility-matrix.md#additional-request-body-qualification)
 for exact versions and evidence.
 
+For independent small requests, `api batch` accepts a JSON array through
+`--input` as literal JSON, `@file`, or `-` for stdin. A manifest can mix reads
+and writes against the selected Gateway:
+
+```json
+[
+  {"id": "gateway", "operation": "GET /data/api/v1/gateway-info"},
+  {"id": "encrypt", "operation": "POST /data/api/v1/encryption/encrypt", "bodyText": "Example", "contentType": "text/plain"}
+]
+```
+
+Save it as `batch.json`, preview every item, then execute deliberately:
+
+```bash
+bin/igw-next api batch --input @batch.json --dry-run --json
+bin/igw-next api batch --input @batch.json --yes --json
+```
+
+Each item requires a unique `id` (1..64 ASCII letters, digits, dots, underscores,
+or hyphens) and an `operation` key or unambiguous alias. Optional `pathParams`
+maps names to strings; `query` and `headers` map names to arrays of strings.
+Repeated values retain order, `[""]` sends an empty value, and `[]` omits that
+key. `body` contains the literal JSON value to transmit, preserving exact numbers
+and JSON `null`; `bodyText` supplies literal UTF-8, including an empty string.
+Choose at most one. Text is not a file selector. `contentType` defaults to
+`application/json` when a body is supplied; specify `text/plain` for plain text.
+The offline command schema includes the complete manifest shape.
+
+The complete manifest is limited to 1 MiB and 100 items. Malformed JSON,
+duplicate keys or IDs, unknown fields, and invalid input types fail before
+Gateway access. Each response is capped at 256 KiB. Use single-request commands
+for raw HTTP, file uploads, multipart input, and streamed artifacts. Batch items
+cannot override the invocation's target, credentials, confirmation, or catalog
+policy. A batch containing an advertised mutation requires `--yes` before any
+operation runs; `--yes` and `--dry-run` are mutually exclusive. Read-only batches
+need no confirmation. Offline batches require `--dry-run` and a cached catalog.
+
+Items run in order using one catalog and one discovery/execution deadline.
+Confirmed batches revalidate that catalog within the invocation. Previews send
+zero operation requests. Operation-specific validation occurs when each item
+is reached, so a later invalid item preserves earlier results. By default, the
+first failure stops execution. `--continue-on-error` attempts subsequent
+independent items after ordinary validation or HTTP failures. Uncertain writes,
+authentication failures, and cancellation always stop. Batches provide no
+rollback, cross-item value substitution, automatic mutation replay, or guarantee
+that a generic accepted mutation reached its desired state.
+
+One `igw/v1` result contains ordered `data.items`, each with `id` and its full
+`result`, plus `succeeded`, `failed`, and `notRun` counts. Unattempted items have
+`ok: false`, `outcome: "not_run"`, and no fabricated error or data. Successful
+previews report `preview`; a successful batch containing accepted operations
+reports `accepted`. Mixed success/failure reports `partial`, and any uncertain
+write reports `uncertain`. The exit code is the first ordinary failure's code,
+unless a terminal authentication/cancellation/uncertainty failure takes
+precedence. Human output lists every ID and outcome, including on failure;
+use `--json` to retain full response data and evidence. Review per-item results
+before retrying any part of a failed batch.
+
 Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:
 

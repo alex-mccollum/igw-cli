@@ -1527,6 +1527,46 @@ builds, command-doc consistency, and docs lint passed in
 manifest, verify all 31/62 outcomes and byte identities, and reparse the exact
 captured documents without changing their historical provenance.
 
+The next implementation slice is a sequential catalog-assisted `api batch`.
+It will accept a bounded JSON manifest of independently identified operations,
+share one target/catalog/deadline, preserve ordered per-item results, and stop
+on failure by default. Explicit continuation may collect independent errors;
+uncertain writes, authentication failures, and cancellation always stop.
+Confirmation and preview are invocation policies. JSON and literal-text bodies
+are in this slice; streaming files remain explicit single-request commands.
+Done checks cover exact inputs, preview non-dispatch, fresh-catalog reuse,
+partial results, limits, cancellation, redaction, and offline command schemas.
+Live batch qualification follows a clean committed implementation build.
+
+The typed batch executor and development command now share one target, catalog,
+and cancellation scope. Manifests are limited to 1 MiB/100 uniquely identified
+items, responses to 256 KiB per item. Exact JSON and explicit empty/literal text
+flow through the existing request core. Malformed structure fails before
+discovery; advertised mutations require invocation confirmation before any
+operation runs. Per-operation validation retains its execution order. Ordered
+results preserve successful responses, failed errors, and explicit `not_run`
+items. Default stop behavior and explicit continuation never replay mutations;
+auth failures, cancellation, and uncertainty always stop. Human output retains
+the per-item summary on failure; JSON retains each full result and evidence.
+This is a bounded independent-request workflow, without transaction semantics,
+cross-item value substitution, file transfer manifests, or new dependencies.
+
+Focused core/CLI checks passed in `bin/batch-focused.log`; race checks passed
+in `bin/batch-race.log`. Coverage includes fresh-catalog reuse, read-only
+confirmation policy, exact large JSON numbers and wire parameters, explicit
+null/empty text, offline schema/preview behavior, partial human/JSON results,
+ordinary-error continuation, terminal error precedence, canceled requests,
+disconnected non-replayed writes, oversized responses, and malformed input
+refusal before runtime. Human batch previews also show each prepared request's
+details and digest. The full unit suite, both CLI builds, command-doc consistency,
+and docs lint passed in `bin/batch-gates.log`. Legacy smoke built, then exited 2
+at `doctor` with the default Gateway URL/token unset (`bin/batch-smoke.log`).
+No live batch success is claimed yet. No host/engine operations or resource-limit
+changes occurred; all builds and tests ran serially under the bounded runner.
+The next gate is a clean-source batch acceptance harness and disposable-Gateway
+qualification; structured inputs, restart verification, and the remaining
+full-v1 migration/cutover/release gates remain active.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

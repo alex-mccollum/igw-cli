@@ -2,6 +2,12 @@
 
 This guide is for scripts, CI jobs, and coding agents.
 
+The commands below describe the released entrypoint. The development CLI's
+`api batch` shares one catalog across bounded sequential requests and retains
+per-item outcomes on failure. Its manifest, preview, and continuation contracts
+are documented in [the canonical command guide](commands.md); see
+[the rebuild preview](rebuild-preview.md) for the staged replacement surface.
+
 For host-application adapter guidance, see `docs/host-integration.md`.
 
 ## Core Contract

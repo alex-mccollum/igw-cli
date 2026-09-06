@@ -103,6 +103,11 @@ func (a App) Run(ctx context.Context, args []string) error {
 		}
 	} else {
 		if i.output.Error != nil {
+			if _, batch := i.output.Data.(execute.BatchReport); batch {
+				if writeErr := human(a.Out, i.output); writeErr != nil {
+					return &result.Problem{Kind: "output", Message: "could not write batch output", Code: 7}
+				}
+			}
 			_, _ = fmt.Fprintln(a.Err, i.output.Error.Message)
 		} else {
 			if writeErr := human(a.Out, i.output); writeErr != nil {
@@ -235,6 +240,24 @@ func referenceProfile(ref reference.Summary) string {
 }
 
 func human(out io.Writer, r result.Result) error {
+	if batch, ok := r.Data.(execute.BatchReport); ok {
+		for _, item := range batch.Items {
+			kind := ""
+			if item.Result.Error != nil {
+				kind = item.Result.Error.Kind
+			}
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n", item.ID, item.Result.Outcome, kind); err != nil {
+				return err
+			}
+			if item.Result.Outcome == "preview" {
+				if err := human(out, item.Result); err != nil {
+					return err
+				}
+			}
+		}
+		_, err := fmt.Fprintf(out, "%d succeeded, %d failed, %d not run\n", batch.Succeeded, batch.Failed, batch.NotRun)
+		return err
+	}
 	if references, ok := r.Data.([]reference.Summary); ok {
 		for _, item := range references {
 			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%d modules (%d active)\t%s\n", item.Selector, item.Image.GatewayVersion, referenceProfile(item), item.ModuleCount, item.ActiveModuleCount, item.Catalog.ContractSHA256); err != nil {

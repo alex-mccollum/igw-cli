@@ -71,7 +71,7 @@ func (i *invocation) apiCommands() *cobra.Command {
 			return nil
 		}}
 	capabilities.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
-	group.AddCommand(list, describe, capabilities, i.requestCommand(false), i.requestCommand(true))
+	group.AddCommand(list, describe, capabilities, i.requestCommand(false), i.requestCommand(true), i.batchCommand())
 	return group
 }
 
