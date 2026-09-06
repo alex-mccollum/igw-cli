@@ -104,4 +104,6 @@ The supported journeys are setup/discovery, resource configuration, project/tag
 transfer, troubleshooting, explicit changes, and complete evidence downloads.
 Current validation and limitations live in [qualification status](qualification/README.md).
 Reference maintenance lives in [the updater guide](reference-updates.md).
-Superseded design and qualification records remain in Git history.
+Superseded design documents and qualification summaries remain in Git history.
+Private execution records follow the
+[history cleanup policy](qualification/history-cleanup.md).

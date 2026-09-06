@@ -69,5 +69,6 @@ historical when a later commit changes code.
 
 [Current qualification status](qualification/README.md) identifies the latest
 source, executable hashes, four version/profile cells, and known limits.
-Earlier candidate packets remain in Git history; they are never promoted by
-relabeling a parser version or capture date.
+Earlier summarized results remain in Git history; private execution packets
+follow the [history cleanup policy](qualification/history-cleanup.md). Neither
+is promoted by relabeling a parser version or capture date.

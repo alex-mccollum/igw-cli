@@ -41,13 +41,14 @@ rejected. These observations do not prove whether configuration was stored or
 applied, and do not qualify complete translations creation or other singleton
 types. Preserve the outcome and inspect state before another mutation.
 
-The [original attempts](qualification/README.md#historical-evidence) (`65e643d:internal/testgateway/testdata/singleton/attempts/README.md`)
-remain in Git history. They are historical evidence, not a current-source pass.
+Original attempt receipts are retained privately under the
+[history cleanup policy](qualification/history-cleanup.md). These observations
+are historical evidence, not a current-source pass.
 
 ## Additional request-body qualification
 
-The [historical body-input packet](qualification/README.md#historical-evidence) (`65e643d:internal/testgateway/testdata/body-inputs/README.md`)
-records 31-check 8.3.0 and 62-check 8.3.9 core-profile runs from source `03566a8`,
+The privately retained historical body-input packet records 31-check 8.3.0 and
+62-check 8.3.9 core-profile runs from source `03566a8`,
 with lifecycle and cleanup evidence. The 8.3.9 run verified repeated `files`
 parts and explicit filenames on the translations bulk-datafile route through
 independent byte-for-byte downloads, stale-signature refusal, overwrite, and
@@ -57,7 +58,8 @@ was not qualified. The 8.3.0 catalog lacks that bulk route.
 The vendor declares no part schema for that route. This establishes the tested
 recipe's historical behavior, not exclusive part names or support for every
 multipart endpoint. Current schema-bearing multipart requests remain refused.
-The original packet and transcript tests are archived; current binding tests
-use canonical vendor documents and focused fixtures. See
+The original transcript-test source remains in rewritten Git history; its local
+execution packet is covered by the [privacy cleanup](qualification/history-cleanup.md).
+Current binding tests use canonical vendor documents and focused fixtures. See
 [current qualification status](qualification/README.md) for the source covered
 by the latest live matrix; it does not turn this older packet into a new pass.

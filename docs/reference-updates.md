@@ -233,8 +233,10 @@ receipts provide the separate acceptance evidence.
 ## Historical qualification
 
 The four version/profile cells were qualified on 2026-09-05 using the earlier
-parser. Their original pipeline runs and audit packets remain in
-[Git history](qualification/README.md#historical-evidence) (`65e643d:docs/reference-updates.md`).
+parser. Their summarized run results remain in
+[Git history](qualification/README.md#historical-evidence)
+(`c08fe22:docs/reference-updates.md`). Full local execution packets are retained
+privately under the [history cleanup policy](qualification/history-cleanup.md).
 Current-format built-ins retain those dates and qualified identities separately
 from present parsing. Consult [current status](qualification/README.md) before
 claiming that a new source revision passed live qualification.

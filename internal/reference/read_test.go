@@ -17,7 +17,7 @@ func TestCompactReferencePreservesHistoricalProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	if len(m.Modules) != 32 || len(m.Files) != 1 || m.Catalog != c.Identity() || m.Catalog.ContractPolicy != catalog.ContractPolicy || m.Qualification.Catalog.ContractPolicy != "igw-contract/1" || m.Qualification.ParserVersion == catalog.ParserVersion || !strings.Contains(m.Qualification.Evidence.URI, "65e643d") {
+	if len(m.Modules) != 32 || len(m.Files) != 1 || m.Catalog != c.Identity() || m.Catalog.ContractPolicy != catalog.ContractPolicy || m.Qualification.Catalog.ContractPolicy != "igw-contract/1" || m.Qualification.ParserVersion == catalog.ParserVersion || !strings.Contains(m.Qualification.Evidence.URI, "c08fe22") {
 		t.Fatal("format conversion relabeled qualification or lost original provenance")
 	}
 }

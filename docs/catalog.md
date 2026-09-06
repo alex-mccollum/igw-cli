@@ -136,7 +136,7 @@ and whether this invocation reparsed the document.
 Core references retain all 32 installed module records, including inactive ones.
 
 Format conversion does not renew workflow qualification. Converted built-ins
-point to their original full manifests in Git at commit `65e643d`. The evidence
+point to their original full manifests in Git at commit `c08fe22`. The evidence
 URI is a provenance locator, never an instruction for the CLI to fetch files.
 For new contributor output, `evidence/qualification.json` is relative to the
 original contributor artifact; retain that artifact when promoting a reference.
@@ -156,8 +156,10 @@ the CLI never silently invents a schema for an undocumented argument.
 Synthetic regression tests isolate these defects. The four canonical vendor
 fixtures cover both supported reference versions and module profiles, including
 exact-number bindings, streaming declarations, resource signatures, discriminator
-constraints, and unresolved schema refusal. Historical repeat captures and
-parser investigations are [archived in Git](qualification/README.md#historical-evidence) (`65e643d:docs/catalog.md`).
+constraints, and unresolved schema refusal. Historical parser discussions are
+[archived in Git](qualification/README.md#historical-evidence)
+(`c08fe22:docs/catalog.md`). Private execution receipts follow the
+[history cleanup policy](qualification/history-cleanup.md).
 
 ## Contributor qualification
 

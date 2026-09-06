@@ -15,8 +15,8 @@ The captures used the contributor executable from the complete clean 8.3.9 run
 at source `f5993f97223c35a2ab3fea292cd3e526bcbaf786`. Its SHA-256 is
 `19a64a0a2d157dff07b1a159b5e2268888fc82153e51b18d05adad3684169908`.
 Both pinned images had passed lifecycle checks with the same acceptance test
-binary; the original default-profile run/lifecycle receipts are retained under
-the [archived contributor fixtures](../../../docs/qualification/README.md#historical-evidence) (`65e643d:internal/referencebuild/testdata`).
+binary; the original default-profile run/lifecycle receipts are retained
+privately under the [history cleanup policy](../../../docs/qualification/history-cleanup.md).
 
 All 32 module records remain present in each receipt. Inactive modules belong
 to the vendor's `healthy` collection, with state `INACTIVE`, startup action

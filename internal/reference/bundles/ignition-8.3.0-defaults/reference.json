@@ -269,7 +269,7 @@
       "contractPolicy": "igw-contract/2"
     },
     "evidence": {
-      "uri": "https://github.com/alex-mccollum/igw-cli/blob/65e643d/internal/reference/bundles/ignition-8.3.0-defaults/reference.json",
+      "uri": "https://github.com/alex-mccollum/igw-cli/blob/c08fe22d86c9b5540aa052cf2b1a3cc133134163/internal/reference/bundles/ignition-8.3.0-defaults/reference.json",
       "sha256": "5fd58134ff0044c07bba5ce8e2203679647f2eaab64bfae6f55bda5e8b7fd04b"
     }
   },

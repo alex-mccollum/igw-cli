@@ -147,7 +147,8 @@ test is not live acceptance; both process and complete receipt must pass.
 
 Historical request-body results and their limits are recorded in the
 [compatibility guide](../../docs/compatibility-matrix.md#additional-request-body-qualification).
-The original run packets and transcript tests remain in Git history.
+The original transcript-test source remains in rewritten Git history; its local
+execution packets are retained privately.
 
 `TestLiveBatch` uses the same clean-source build and per-image lifecycle gate,
 with a new `IGW_BATCH_EVIDENCE_DIR`. It checks malformed-manifest and confirmation
@@ -160,6 +161,9 @@ only in memory. This suite does not force live transport failures or revoke
 credentials midway through a batch; those stop behaviors have fixture coverage.
 Passing still requires a complete receipt, a zero process exit, and independent
 container absence checks. Compile or skip results do not establish live success.
-The retained [batch evidence](../../docs/qualification/README.md#historical-evidence) (`65e643d:internal/testgateway/testdata/batch/README.md`) records passing 13-check
+Historical batch receipts recorded passing 13-check
 runs on both pinned core profiles from source `2ddc7f4`, including 29 item results
 per run. Keep that source distinct from subsequent input-budget hardening.
+
+The historical local execution receipts described above are retained privately,
+not in public Git history. See the [privacy cleanup](../../docs/qualification/history-cleanup.md).

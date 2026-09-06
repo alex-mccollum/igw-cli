@@ -70,10 +70,10 @@ broad cleanup/prune commands are unsuitable.
 
 The platform-verifying guard passed a second lifecycle probe on the same image:
 exit 124 after 6.7344 seconds, no OOM, and independent removal verification.
-The retained receipt is
-[the original lifecycle receipt](qualification/README.md#historical-evidence) (`65e643d:internal/testgateway/testdata/ignition-8.3.9-lifecycle.json`). A subsequent full
-capture with image/platform provenance passed and removed its container before
-parsing. These receipts do not qualify a different image or revised guard.
+The original receipt is retained privately; see the
+[historical receipt retention note](qualification/history-cleanup.md).
+A subsequent full capture with image/platform provenance passed and removed
+its container before parsing. These receipts do not qualify a different image or revised guard.
 
 Repository automation must not start, stop, restart, terminate, unregister, or
 repair WSL distributions or Docker Desktop. An unavailable engine blocks live

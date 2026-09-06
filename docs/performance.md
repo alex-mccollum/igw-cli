@@ -27,7 +27,7 @@ All operation inventories and raw/document/contract identities match. The
 hashes, samples, and inventory checksums. These are local startup observations,
 not portable latency guarantees. Live workflow results are recorded separately
 in the same candidate record. Historical model-backend measurements remain in
-[Git history](qualification/README.md#historical-evidence) (`65e643d:docs/performance.md`).
+[Git history](qualification/README.md#historical-evidence) (`c08fe22:docs/performance.md`).
 
 ## Unchanged catalog revalidation
 

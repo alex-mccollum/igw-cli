@@ -8,9 +8,8 @@ receipts and logs are preserved under `bin/simplification/final/`.
 
 Subsequent maintenance through `7a30c7e` on 2026-09-06 added verified-blob reuse,
 accurate request field pointers, actionable lock errors, original capture dates,
-and hosted
-updater status reporting. It passed the full offline Go suite, catalog/config/
-filesystem-lock race tests, 34 executable smoke checks, 23 reference-tool tests,
+and hosted updater status reporting. It passed the full offline Go suite,
+catalog/config/filesystem-lock race tests, 34 executable smoke checks, 23 reference-tool tests,
 command docs/lint, and workflow linting. Logs are in `bin/improvements/`.
 The built CLI includes the runtime follow-ups through `6809e5f`; those changes
 have not received a new live Gateway qualification or release artifact matrix.
@@ -48,8 +47,10 @@ were intentionally reset before release; raw document import remains available.
 Historical built-in qualification identities and dates are preserved separately
 from current inspection. Current live checks do not relabel old capture packets.
 
-Prior plans, failed attempts, repeated captures, and superseded qualification
-logs are [archived in Git](README.md#historical-evidence) (`65e643d:docs/qualification/README.md`).
+Prior design documents and summarized results are
+[archived in Git](#historical-evidence) (`c08fe22:docs/qualification/README.md`).
+Private historical execution logs and duplicate receipts were removed from
+public history; see the [privacy cleanup and commit map](history-cleanup.md).
 Canonical vendor documents and behavior fixtures remain in the active tree.
 [Workflow limits](../compatibility-matrix.md) still apply, including unavailable
 8.3.0 tag APIs and uncertain singleton configuration creation.
@@ -61,19 +62,24 @@ retained target snapshots remain available during upstream failures. See
 
 ## Historical evidence
 
-Earlier plans, investigations, and original run packets remain in Git at
-`65e643d`. References in these docs use `COMMIT:path` so they remain usable in a
-full local checkout without depending on a published GitHub URL. For example:
+Earlier design documents, summarized results, and original reference manifests
+remain in Git at `c08fe22`. References use `COMMIT:path` so they work in a full
+local checkout without depending on a published GitHub URL. For example:
 
 ```bash
-git show 65e643d:docs/qualification/README.md
-git show 65e643d:internal/testgateway/testdata/singleton/attempts/README.md
+git show c08fe22:docs/qualification/README.md
+git show c08fe22:internal/reference/bundles/ignition-8.3.9-core/reference.json
 ```
 
-Use `git ls-tree -r --name-only 65e643d -- PATH` to list an archived directory.
-A shallow checkout may not contain this history. The local rebuild history had
-not been published when checked on 2026-09-06, so its GitHub archive URLs are
-not currently available. Bundled manifests retain their original evidence
-locators and hashes; their archived full manifests can be read at
-`65e643d:internal/reference/bundles/SELECTOR/reference.json` in this checkout.
-Portable two-file bundles do not include Git history or the contributor packet.
+Use `git ls-tree -r --name-only c08fe22 -- PATH` to list an archived directory.
+A shallow checkout may not contain this history. Rebuild history had not been
+published when checked on 2026-09-06, so its GitHub archive URLs are not yet
+available. Bundled evidence locators identify the rewritten archive; original
+manifest bytes and their evidence hashes remain unchanged.
+
+Historical qualification source IDs retain their original values. Use the
+[commit map](history-map.json) to find their rewritten counterparts; rewriting
+history does not qualify a new binary. The [privacy cleanup](history-cleanup.md)
+explains which local execution records are intentionally absent from public
+history. Portable two-file bundles include neither Git history nor the separate
+contributor packet.
