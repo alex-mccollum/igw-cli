@@ -175,15 +175,18 @@ func (i *invocation) commands() *cobra.Command {
 		i.output = result.Success(map[string]string{"0": "success", "2": "usage or configuration error", "6": "authentication or permission failure (401/403)", "7": "transport, non-auth HTTP, artifact, cancellation, or verification failure"})
 		return nil
 	}})
-	root.AddCommand(&cobra.Command{Use: "schema [COMMAND...]", Short: "Describe commands and typed flags without connectivity", Args: cobra.ArbitraryArgs,
+	var recursive bool
+	schema := &cobra.Command{Use: "schema [COMMAND...]", Short: "Describe commands and typed flags without connectivity", Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target, rest, err := root.Find(args)
 			if err != nil || len(rest) != 0 {
 				return result.Usage("unknown command path for schema")
 			}
-			i.output = result.Success(commandSchema(target))
+			i.output = result.Success(commandSchema(target, recursive))
 			return nil
-		}})
+		}}
+	schema.Flags().BoolVar(&recursive, "recursive", false, "Include every descendant command and flag")
+	root.AddCommand(schema)
 	root.AddCommand(i.gatewayCommands())
 	root.InitDefaultHelpCmd()
 	help, _, _ := root.Find([]string{"help"})
@@ -202,7 +205,7 @@ func (i *invocation) commands() *cobra.Command {
 	defaultHelp := root.HelpFunc()
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		if i.json {
-			i.output = result.Success(commandSchema(cmd))
+			i.output = result.Success(commandSchema(cmd, false))
 			return
 		}
 		defaultHelp(cmd, args)
@@ -424,11 +427,11 @@ type commandInfo struct {
 	Name        string        `json:"name"`
 	Usage       string        `json:"usage"`
 	Description string        `json:"description"`
-	Flags       []flagSchema  `json:"flags"`
+	Flags       []flagSchema  `json:"flags,omitempty"`
 	Commands    []commandInfo `json:"commands,omitempty"`
 }
 
-func commandSchema(cmd *cobra.Command) commandInfo {
+func commandSchema(cmd *cobra.Command, recursive bool) commandInfo {
 	cmd.InitDefaultHelpFlag()
 	info := commandInfo{Name: cmd.Name(), Usage: cmd.UseLine(), Description: cmd.Short}
 	flags := make(map[string]*pflag.Flag)
@@ -449,7 +452,11 @@ func commandSchema(cmd *cobra.Command) commandInfo {
 	sort.Slice(info.Flags, func(a, b int) bool { return info.Flags[a].Name < info.Flags[b].Name })
 	for _, child := range cmd.Commands() {
 		if !child.Hidden {
-			info.Commands = append(info.Commands, commandSchema(child))
+			entry := commandInfo{Name: child.Name(), Usage: child.UseLine(), Description: child.Short}
+			if recursive {
+				entry = commandSchema(child, true)
+			}
+			info.Commands = append(info.Commands, entry)
 		}
 	}
 	return info

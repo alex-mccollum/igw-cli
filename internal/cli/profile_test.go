@@ -250,7 +250,7 @@ func TestProfileCLIConfirmationAndDiscoveryDoNotReadInputs(t *testing.T) {
 	out.Reset()
 	stderr.Reset()
 	a.ReadConfig = func() (config.File, error) { t.Fatal("schema read configuration"); return config.File{}, nil }
-	if err := a.Run(context.Background(), []string{"schema", "--json"}); err != nil {
+	if err := a.Run(context.Background(), []string{"schema", "--recursive", "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	var schema any

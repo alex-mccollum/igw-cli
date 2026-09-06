@@ -12,11 +12,13 @@ bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
 igw version
 igw exit-codes --json
 igw schema --json
+igw schema --recursive --json
 igw schema resource update --json
 igw profile show --json
 igw spec sync --json
 igw api list --search gateway --json
 igw api describe 'GET /data/api/v1/gateway-info' --json
+igw api describe 'GET /data/api/v1/gateway-info' --full --json
 igw api request 'GET /data/api/v1/gateway-info' --json
 igw gateway doctor --json
 igw gateway restart-tasks --json
@@ -30,6 +32,13 @@ igw spec import gateway-openapi.json --json
 igw api list --offline --json
 igw spec diff before-openapi.json after-openapi.json --json
 ```
+
+`schema [COMMAND...]` and JSON help show the selected command's flags and
+immediate child summaries. Use `--recursive` with `schema` for the full tree.
+`api describe` includes the selected operation, inherited parameters, effective
+security, and transitively referenced components. Use `--full` for the complete
+path item and component inventory. If reference scope cannot be represented
+safely in a smaller view, `document` carries the original complete document.
 
 Configure a profile using explicit stored values. These commands are local and
 can run without a Gateway connection:

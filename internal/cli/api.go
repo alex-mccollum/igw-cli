@@ -46,7 +46,12 @@ func (i *invocation) apiCommands() *cobra.Command {
 				return err
 			}
 			defer c.Close()
-			description, err := c.Describe(args[0])
+			full, _ := cmd.Flags().GetBool("full")
+			describeOperation := c.DescribeCompact
+			if full {
+				describeOperation = c.Describe
+			}
+			description, err := describeOperation(args[0])
 			if err != nil {
 				return result.Usage(err.Error())
 			}
@@ -54,6 +59,7 @@ func (i *invocation) apiCommands() *cobra.Command {
 			i.output.Meta = metadata
 			return nil
 		}}
+	describe.Flags().Bool("full", false, "Include the complete path item and shared components")
 	describe.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
 	capabilities := &cobra.Command{Use: "capabilities", Short: "Check catalog prerequisites for tag and restart workflows", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

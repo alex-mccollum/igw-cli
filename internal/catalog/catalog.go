@@ -46,6 +46,7 @@ type Description struct {
 	Gaps        []string        `json:"gaps,omitempty"`
 	Adjustments []Adjustment    `json:"adjustments,omitempty"`
 	BodyInputs  []BodyInput     `json:"bodyInputs,omitempty"`
+	Document    json.RawMessage `json:"document,omitempty"`
 }
 
 type Issue struct {
@@ -312,6 +313,14 @@ func (c *Catalog) Resolve(keyOrAlias string) (Operation, error) {
 }
 
 func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
+	return c.describe(keyOrAlias, true)
+}
+
+func (c *Catalog) DescribeCompact(keyOrAlias string) (Description, error) {
+	return c.describe(keyOrAlias, false)
+}
+
+func (c *Catalog) describe(keyOrAlias string, full bool) (Description, error) {
 	op, err := c.Resolve(keyOrAlias)
 	if err != nil {
 		return Description{}, err
@@ -320,8 +329,13 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 	if err != nil {
 		return Description{}, err
 	}
-	description := Description{Operation: op, PathItem: pathItem, Components: bytes.Clone(c.root["components"]),
+	description := Description{Operation: op, PathItem: pathItem,
 		Security: bytes.Clone(c.root["security"]), Gaps: c.gaps(op), BodyInputs: c.bodyInputs(op)}
+	if full {
+		description.Components = bytes.Clone(c.root["components"])
+	} else if err := c.compactDescription(&description); err != nil {
+		return Description{}, err
+	}
 	reported := make(map[string]bool)
 	for _, adjustment := range c.adjustments {
 		if adjustment.Operation == op.Key {

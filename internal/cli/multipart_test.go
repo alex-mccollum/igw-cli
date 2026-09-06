@@ -229,7 +229,7 @@ func TestMultipartManifestRetainsUnicodeAndLiteralEscapes(t *testing.T) {
 
 func TestMultipartInputSchemaIsDiscoverableOffline(t *testing.T) {
 	app, out, _ := testApp(t, nil)
-	if err := app.Run(context.Background(), []string{"schema", "--json"}); err != nil {
+	if err := app.Run(context.Background(), []string{"schema", "--recursive", "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := json.Marshal(decodeResult(t, out).Data)
