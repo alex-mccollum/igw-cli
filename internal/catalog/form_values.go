@@ -7,9 +7,6 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 const MaxFormFields = 4096
@@ -18,7 +15,7 @@ const MaxFormFields = 4096
 // object properties have a known field binding; composed/dynamic properties
 // and undefined encodings are refused rather than guessed. The caller validates
 // the complete decoded object with the request-purpose schema compiler.
-func decodeFormBody(raw []byte, media *v3.MediaType, charset string) (any, string) {
+func decodeFormBody(raw []byte, media *mediaType, charset string) (any, string) {
 	if len(raw) > MaxJSONBodyBytes || bytes.Count(raw, []byte{'&'}) >= MaxFormFields {
 		return nil, "form_limit"
 	}
@@ -60,13 +57,13 @@ func decodeFormBody(raw []byte, media *v3.MediaType, charset string) (any, strin
 		if schema.Properties == nil {
 			return nil, "unsupported_serialization"
 		}
-		property := schema.Properties.GetOrZero(name)
+		property := schema.Properties[name]
 		if property == nil || property.Schema() == nil {
 			return nil, "unsupported_serialization"
 		}
-		var encoding *v3.Encoding
+		var encoding *encoding
 		if media.Encoding != nil {
-			encoding = media.Encoding.GetOrZero(name)
+			encoding = media.Encoding[name]
 		}
 		decoded, rule := decodeFormProperty(property.Schema(), encoding, values)
 		if rule != "" {
@@ -77,14 +74,14 @@ func decodeFormBody(raw []byte, media *v3.MediaType, charset string) (any, strin
 	return value, ""
 }
 
-func decodeFormProperty(schema *base.Schema, encoding *v3.Encoding, values []string) (any, string) {
+func decodeFormProperty(schema *schemaView, encoding *encoding, values []string) (any, string) {
 	kind := querySchemaKind(schema)
 	contentType := ""
 	if encoding != nil {
 		contentType = encoding.ContentType
 		// Explicit false is significant: it selects RFC6570 serialization
 		// just as explicit style/explode do. Read presence from the source node.
-		reservedSet := encoding.GoLow() != nil && !encoding.GoLow().AllowReserved.IsEmpty()
+		reservedSet := encoding.ReservedSet
 		if encoding.Style != "" || encoding.Explode != nil || reservedSet || encoding.AllowReserved {
 			if (encoding.Style != "" && encoding.Style != "form") || encoding.AllowReserved {
 				return nil, "unsupported_serialization"
@@ -95,7 +92,7 @@ func decodeFormProperty(schema *base.Schema, encoding *v3.Encoding, values []str
 				}
 				members := make([]any, 0, len(values))
 				for _, text := range values {
-					member, rule := parameterPrimitive(querySchemaKind(schema.Items.A.Schema()), text)
+					member, rule := parameterPrimitive(querySchemaKind(schema.Items.Schema()), text)
 					if rule != "" {
 						return nil, rule
 					}

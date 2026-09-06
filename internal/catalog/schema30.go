@@ -2,14 +2,8 @@ package catalog
 
 import "strings"
 
-// Validated 3.0 schemas are adapted to the compiler's 3.1 schema dialect in the
-// private model. Keep OpenAPI vocabulary checks enabled after that adaptation.
-const validationSchemaVersion float32 = 3.1
-
-// The upstream 3.0 compiler converts schemas with json.Unmarshal into float64
-// and recursively rewrites instance data too. Adapt only schema positions in
-// our exact-number private model, after validating the original 3.0 document.
-// Neither exported vendor evidence nor its declared OpenAPI version changes.
+// Adapt only schema positions to JSON Schema 2020-12 after OpenAPI 3.0
+// admission. Instance data and the exported vendor bytes remain unchanged.
 func normalizeSchema30(value any, kind string) {
 	if kind == "opaque" {
 		return
@@ -53,11 +47,8 @@ func normalizeSchema30(value any, kind string) {
 		if enabled, ok := values[exclusive].(bool); ok {
 			delete(values, exclusive)
 			if number, present := values[bound]; enabled && present {
-				// The 3.0 renderer turns numeric exclusive bounds back into
-				// booleans. Keep the inclusive bound and exclude equality using
-				// a schema conjunction. Enum applies only to that exact number.
-				allOf, _ := values["allOf"].([]any)
-				values["allOf"] = append(allOf, map[string]any{"not": map[string]any{"enum": []any{number}}})
+				delete(values, bound)
+				values[exclusive] = number
 			}
 		}
 	}

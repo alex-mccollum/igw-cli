@@ -5,29 +5,23 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
-	"strings"
-
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
-// Exploded form objects use their property names as query keys. The upstream
-// validator instead binds all query keys to an absent object, strips brackets
-// from property names, and stops checking subsequent parameters. Bind the
-// advertised filter separately, validate its complete schema, then validate the
-// remaining request through a private view. Neither vendor data nor wire input
-// is changed. Unsupported or overlapping ownership is refused explicitly.
-func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request) (*v3.PathItem, *http.Request, []Issue, error) {
+// Exploded filter objects own their property names as query keys. Bind and
+// validate the complete object before the remaining named parameters; refuse
+// overlapping or unsupported ownership without changing wire values.
+func (c *Catalog) filterValidationView(item *requestContract, request *http.Request) (*requestContract, *http.Request, []Issue, error) {
 	if item == nil {
 		return item, request, nil, nil
 	}
-	operation := item.GetOperations().GetOrZero(strings.ToLower(request.Method))
+	operation := item.Operation
 	if operation == nil {
 		return item, request, nil, nil
 	}
 	// Operation declarations override inherited declarations by name/location.
-	queries := make(map[string]*v3.Parameter)
+	queries := make(map[string]*parameter)
 	duplicate := false
-	for _, list := range [][]*v3.Parameter{item.Parameters, operation.Parameters} {
+	for _, list := range [][]*parameter{item.Parameters, operation.Parameters} {
 		seen := make(map[string]bool)
 		for _, p := range list {
 			if p.In == "query" {
@@ -45,7 +39,7 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 	if schema == nil || len(schema.Type) != 1 || schema.Type[0] != "object" {
 		return item, request, nil, nil
 	}
-	refuse := func(rule string) (*v3.PathItem, *http.Request, []Issue, error) {
+	refuse := func(rule string) (*requestContract, *http.Request, []Issue, error) {
 		return item, request, []Issue{{Kind: "parameter", Rule: rule, Parameter: "filter"}}, nil
 	}
 	if duplicate {
@@ -67,8 +61,8 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 		}
 		// Content parameters own one exact query key. The named-parameter
 		// decoder checks their representation later, independently of filters.
-		if peer.Content != nil && peer.Content.Len() != 0 {
-			if peer.Schema != nil || peer.Content.Len() != 1 {
+		if peer.Content != nil && len(peer.Content) != 0 {
+			if peer.Schema != nil || len(peer.Content) != 1 {
 				return refuse("unsupported_serialization")
 			}
 			continue

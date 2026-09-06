@@ -4,29 +4,22 @@ package catalog
 
 import (
 	"bytes"
-	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/pb33f/libopenapi"
-	validator "github.com/pb33f/libopenapi-validator"
-	validatorconfig "github.com/pb33f/libopenapi-validator/config"
-	validatorerrors "github.com/pb33f/libopenapi-validator/errors"
-	"github.com/pb33f/libopenapi/datamodel"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/22"
+const ParserVersion = "jsonschema/6.0.2;igw/23"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -76,11 +69,10 @@ type Catalog struct {
 	paths        map[string]map[string]json.RawMessage
 	ops          map[string]Operation
 	aliases      map[string][]string
-	document     libopenapi.Document
-	model        *libopenapi.DocumentModel[v3.Document]
-	once         sync.Once
+	value        map[string]any
+	version      string
 	validationMu sync.Mutex
-	validator    validator.Validator
+	compilers    [2]*jsonschema.Compiler
 	rawHash      string
 	documentHash string
 	contractHash string
@@ -91,6 +83,7 @@ func Parse(raw []byte) (*Catalog, error) {
 	if len(raw) == 0 || len(raw) > MaxDocumentBytes {
 		return nil, fmt.Errorf("OpenAPI document must contain 1 to %d bytes", MaxDocumentBytes)
 	}
+	raw = bytes.Clone(raw)
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	value, err := decodeUniqueJSON(decoder, 0)
@@ -103,7 +96,7 @@ func Parse(raw []byte) (*Catalog, error) {
 	if err := checkReferences(value); err != nil {
 		return nil, err
 	}
-	canonical, err := json.Marshal(value)
+	documentHash, err := canonicalDigest(value, "")
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +104,31 @@ func Parse(raw []byte) (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	var root map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &root); err != nil {
+	document, ok := value.(map[string]any)
+	if !ok {
 		return nil, errors.New("OpenAPI root must be an object")
 	}
-	var version string
-	_ = json.Unmarshal(root["openapi"], &version)
+	version, _ := document["openapi"].(string)
+	// Decode raw operation definitions directly, avoiding an intermediate copy
+	// of the entire paths object. Only reference-bearing path items need a
+	// general raw-root index for their original sibling/definition bytes.
+	var index struct {
+		Paths      map[string]map[string]json.RawMessage `json:"paths"`
+		Components json.RawMessage                       `json:"components"`
+		Security   json.RawMessage                       `json:"security"`
+	}
+	if err := json.Unmarshal(raw, &index); err != nil {
+		return nil, errors.New("invalid OpenAPI index")
+	}
+	root := map[string]json.RawMessage{"components": index.Components, "security": index.Security}
+	for _, item := range index.Paths {
+		if item["$ref"] != nil {
+			if err := json.Unmarshal(raw, &root); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
 	if !strings.HasPrefix(version, "3.0.") && !strings.HasPrefix(version, "3.1.") {
 		return nil, errors.New("supported OpenAPI versions are 3.0 and 3.1")
 	}
@@ -126,66 +138,48 @@ func Parse(raw []byte) (*Catalog, error) {
 	}
 	if strings.HasPrefix(version, "3.0.") {
 		normalizeSchema30(value, "document")
-	} else {
-		// Validate before adapting boolean schemas for the high-level renderer.
-		_, _ = normalizeBooleanSchemas(value, "document")
 	}
-	modelBytes, err := modelDocument(value)
-	if err != nil {
+	if err := validateLocalReferences(value, "document", value); err != nil {
 		return nil, err
 	}
-	doc, err := newParserDocument(modelBytes)
-	if err != nil {
-		return nil, errors.New("invalid OpenAPI document structure")
-	}
-	model, err := doc.BuildV3Model()
-	if err != nil {
-		doc.Release()
-		return nil, errors.New("OpenAPI references or model could not be resolved")
-	}
 	c := &Catalog{
-		raw: bytes.Clone(raw), root: root, document: doc, model: model,
+		raw: raw, root: root, paths: index.Paths, value: value.(map[string]any), version: version,
 		ops: make(map[string]Operation), aliases: make(map[string][]string),
-		rawHash: digest(raw), documentHash: digest(canonical), contractHash: contractHash,
+		rawHash: digest(raw), documentHash: documentHash, contractHash: contractHash,
 		adjustments: adjustments,
 	}
-	if err := json.Unmarshal(root["paths"], &c.paths); err != nil {
-		c.Close()
-		return nil, errors.New("OpenAPI paths must be an object")
+	if err := c.expandPathItems(); err != nil {
+		return nil, err
 	}
-	if model.Model.Paths != nil {
-		for path, item := range model.Model.Paths.PathItems.FromOldest() {
-			definitions, err := c.pathDefinitions(path)
+	for path := range c.paths {
+		definitions, err := c.pathDefinitions(path)
+		if err != nil {
+			return nil, err
+		}
+		for _, method := range []string{"get", "post", "put", "patch", "delete", "head", "options", "trace"} {
+			definition, present := definitions[method]
+			if !present {
+				continue
+			}
+			upper := strings.ToUpper(method)
+			key := upper + " " + path
+			_, item, err := c.object("/paths/" + pointerEscape(path))
 			if err != nil {
-				c.Close()
 				return nil, err
 			}
-			for method, op := range item.GetOperations().FromOldest() {
-				upper := strings.ToUpper(method)
-				key := upper + " " + path
-				c.ops[key] = Operation{Key: key, Method: upper, Path: path, OperationID: op.OperationId,
-					Summary: op.Summary, Description: op.Description, Tags: op.Tags,
-					Deprecated: op.Deprecated != nil && *op.Deprecated,
-					Definition: definitions[method],
-				}
-				if op.OperationId != "" {
-					c.aliases[op.OperationId] = append(c.aliases[op.OperationId], key)
-				}
+			metadata, _ := item[method].(map[string]any)
+			op, err := operationMetadata(key, path, upper, definition, metadata)
+			if err != nil {
+				return nil, err
+			}
+			c.ops[key] = op
+			if op.OperationID != "" {
+				c.aliases[op.OperationID] = append(c.aliases[op.OperationID], key)
 			}
 		}
 	}
+	delete(c.root, "paths") // The path index already owns these definitions.
 	return c, nil
-}
-
-func newParserDocument(raw []byte) (libopenapi.Document, error) {
-	return libopenapi.NewDocumentWithConfiguration(raw, &datamodel.DocumentConfiguration{
-		AllowFileReferences: false, AllowRemoteReferences: false,
-		SkipExternalRefResolution: true,
-		// Recursive arrays can terminate with an empty array, including IA's
-		// required SecurityLevelRuleNode.children. Validate actual values later.
-		IgnoreArrayCircularReferences: true,
-		Logger:                        slog.New(slog.NewTextHandler(io.Discard, nil)),
-	})
 }
 
 func (c *Catalog) pathDefinitions(path string) (map[string]json.RawMessage, error) {
@@ -354,13 +348,16 @@ func (c *Catalog) Describe(keyOrAlias string) (Description, error) {
 }
 
 func (c *Catalog) gaps(op Operation) []string {
-	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
-	definition := item.GetOperations().GetOrZero(strings.ToLower(op.Method))
+	item, err := c.requestContract(op)
+	if err != nil {
+		return []string{"The operation contract could not be resolved."}
+	}
+	definition := item.Operation
 	if op.Method != "GET" && op.Method != "HEAD" && definition.RequestBody == nil {
 		return []string{"No request body contract is declared; use api raw explicitly to send a body."}
 	}
 	if body := definition.RequestBody; body != nil && body.Content != nil {
-		for _, media := range body.Content.FromOldest() {
+		for _, media := range body.Content {
 			if media.Schema == nil {
 				return []string{"A request media type has no schema; only transport checks are available for that encoding."}
 			}
@@ -377,7 +374,7 @@ func (c *Catalog) gaps(op Operation) []string {
 // X-Ignition-API-Token is presence-only: pass a marker, never the credential.
 // The Gateway owns authentication; token value assertions are not evaluated.
 // Concurrent calls are supported; schema compilation within one catalog is
-// serialized because the upstream renderer mutates shared schema nodes.
+// serialized while compiling and caching selected schemas.
 func (c *Catalog) Validate(key string, request *http.Request) ([]Issue, error) {
 	result, err := c.ValidateRequest(key, request)
 	return result.Issues, err
@@ -403,19 +400,29 @@ func (c *Catalog) validateRequest(key string, request *http.Request) ([]Issue, s
 	}
 	c.validationMu.Lock()
 	defer c.validationMu.Unlock()
-	c.once.Do(func() {
-		// The default eagerly compiles every request/response schema. A CLI
-		// invocation needs only the selected contract, and unrelated vendor
-		// schema defects must not interfere with that operation.
-		// The index retains original 3.0 reference/rendering behavior. Only the
-		// validator's shallow document view selects the prepared schema dialect.
-		model := c.model.Model
-		if strings.HasPrefix(model.Version, "3.0.") {
-			model.Version = "3.1.0"
+	item, err := c.requestContract(op)
+	if err != nil {
+		return nil, "", ErrIncompleteContract
+	}
+	cookies := make(map[string]*parameter)
+	for _, list := range [][]*parameter{item.Parameters, item.Operation.Parameters} {
+		for _, p := range list {
+			if p.In == "cookie" {
+				cookies[p.Name] = p
+			}
 		}
-		c.validator = validator.NewValidatorFromV3Model(&model, validatorconfig.WithoutSecurityValidation(), validatorconfig.WithSchemaCache(nil))
-	})
-	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
+	}
+	cookieNames := make([]string, 0, len(cookies))
+	for name := range cookies {
+		cookieNames = append(cookieNames, name)
+	}
+	sort.Strings(cookieNames)
+	for _, name := range cookieNames {
+		p := cookies[name]
+		if p.Required != nil && *p.Required {
+			return []Issue{{Kind: "parameter", Rule: "required", Parameter: p.Name}}, "", nil
+		}
+	}
 	item, bindingIssues, err := c.pathValidationView(item, request, op.Path)
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, "", err
@@ -436,52 +443,9 @@ func (c *Catalog) validateRequest(key string, request *http.Request) ([]Issue, s
 	if err != nil || len(bindingIssues) != 0 {
 		return bindingIssues, "", err
 	}
-	// Body presence and encoding were checked above. Prevent the upstream
-	// decoder from either reinterpreting it or silently skipping validation.
-	item, operation := operationValidationView(item, request.Method)
-	operation.RequestBody = nil
-	req := *request
-	req.Body, req.GetBody, req.ContentLength = nil, nil, 0
-	valid, failures := c.validator.ValidateHttpRequestSyncWithPathItem(&req, item, op.Path)
-	if valid {
-		return nil, coverage, nil
-	}
-	if len(failures) == 0 {
-		return nil, "", ErrSchemaCompilation
-	}
-	issues, err := validationIssues(failures)
-	return issues, "", err
-}
-
-func validationIssues(failures []*validatorerrors.ValidationError) ([]Issue, error) {
-	issues := make([]Issue, 0, len(failures))
-	for _, failure := range failures {
-		if len(failure.SchemaValidationErrors) == 0 && (strings.Contains(failure.Message, "failed schema compilation") || failure.Message == "schema compilation failed") {
-			return nil, ErrSchemaCompilation
-		}
-		issue := Issue{Kind: failure.ValidationType, Rule: failure.ValidationSubType, Parameter: failure.ParameterName}
-		if len(failure.SchemaValidationErrors) == 0 {
-			issues = append(issues, issue)
-		}
-		for _, field := range failure.SchemaValidationErrors {
-			copy := issue
-			copy.Field, copy.Schema = field.FieldPath, field.KeywordLocation
-			issues = append(issues, copy)
-		}
-	}
-	sort.Slice(issues, func(i, j int) bool {
-		a, b := issues[i], issues[j]
-		return cmp.Or(cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Rule, b.Rule), cmp.Compare(a.Parameter, b.Parameter), cmp.Compare(a.Field, b.Field), cmp.Compare(a.Schema, b.Schema)) < 0
-	})
-	return issues, nil
+	// All declared inputs have been bound and validated above.
+	return nil, coverage, nil
 }
 
 // Close requires all users of the catalog to have finished.
-func (c *Catalog) Close() {
-	if c.validator != nil {
-		c.validator.Release()
-	}
-	if c.document != nil {
-		c.document.Release()
-	}
-}
+func (c *Catalog) Close() {}

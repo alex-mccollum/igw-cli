@@ -77,11 +77,7 @@ func contractDigestForPolicy(value any, policy string) (string, error) {
 		p.scopes = keyboardIdentityScopes(value)
 	}
 	p.references(value, value, "", "")
-	b, err := json.Marshal(p.project(value, "document", ""))
-	if err != nil {
-		return "", err
-	}
-	return digest(append([]byte(policy+"\n"), b...)), nil
+	return canonicalDigest(p.project(value, "document", ""), policy+"\n")
 }
 
 // Only the reviewed vendor embedding establishes these additional local
@@ -116,6 +112,11 @@ func pointerChild(path, key string) string { return path + "/" + pointerEscape(k
 // OpenAPI root. Unresolved/anchor/dynamic references preserve that resource.
 // This intentionally errs toward extra review rather than false equivalence.
 func (p contractProjection) references(value, resource any, path, resourcePath string) {
+	// Once a whole resource is retained, its local references cannot retain
+	// anything more. Nested resources are also already included verbatim.
+	if p.frozen[resourcePath] {
+		return
+	}
 	switch v := value.(type) {
 	case map[string]any:
 		if _, ok := v["$id"].(string); ok || p.scopes[path] {
@@ -236,6 +237,16 @@ func (p contractProjection) project(value any, kind, path string) any {
 	}
 	out := make(map[string]any, len(m))
 	for key, child := range m {
+		// Scalar assertions are retained verbatim. They have no children to
+		// project and cannot be reordered, regardless of reference targeting.
+		if !documentationField(key) {
+			switch child.(type) {
+			case map[string]any, []any:
+			default:
+				out[key] = child
+				continue
+			}
+		}
 		childPath := pointerChild(path, key)
 		if documentationField(key) && removableDocumentation(kind, key) && !p.frozen[childPath] {
 			continue

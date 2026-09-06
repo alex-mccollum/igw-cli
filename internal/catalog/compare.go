@@ -55,7 +55,12 @@ func Compare(before, after *Catalog) Comparison {
 	sort.Strings(result.Removed)
 	sort.Strings(result.ChangedOperationDocuments)
 	for _, field := range []string{"components", "security", "paths"} {
-		if !sameDocumentJSON(before.root[field], after.root[field]) {
+		old, next := before.root[field], after.root[field]
+		if field == "paths" {
+			old, _ = json.Marshal(before.paths)
+			next, _ = json.Marshal(after.paths)
+		}
+		if !sameDocumentJSON(old, next) {
 			result.SharedOrPathDocumentChanged = true
 		}
 	}

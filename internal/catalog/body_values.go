@@ -5,18 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"mime"
 	"net/http"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
-
-	validatorconfig "github.com/pb33f/libopenapi-validator/config"
-	"github.com/pb33f/libopenapi-validator/requests"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 const MaxJSONBodyBytes = 32 << 20
@@ -26,14 +20,10 @@ const ValidationTransport = "declared_transport"
 
 var ErrUnsupportedBodyEncoding = errors.New("the request body encoding has no supported schema decoder")
 
-// validateBody owns presence, media selection, decoding, and coverage. It
-// bypasses both lossy stages of upstream JSON body decoding:
-// JSONDecoder uses float64, and Canonicalize converts json.Number to float64.
-// Use the exported request-specific compiler with an exact decoded value, then
-// remove only this body declaration from the remaining private validation view.
-// Caller holds Catalog.validationMu because schema rendering is not read-only.
-func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string, []Issue, error) {
-	op := item.GetOperations().GetOrZero(strings.ToLower(request.Method))
+// validateBody owns body presence, media selection, exact decoding, schema
+// validation, and coverage. The caller serializes schema compiler access.
+func (c *Catalog) validateBody(item *requestContract, request *http.Request) (string, []Issue, error) {
+	op := item.Operation
 	refuse := func(rule string) (string, []Issue, error) {
 		return "", []Issue{{Kind: "requestBody", Rule: rule}}, nil
 	}
@@ -120,28 +110,9 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	if media.Schema.Schema() == nil {
 		return "", nil, ErrSchemaCompilation
 	}
-	compilerRaw := raw
-	if len(compilerRaw) == 0 {
-		// Presence and decoding already succeeded for an empty string or form.
-		// The upstream request compiler otherwise short-circuits on byte count,
-		// even with ValueDecoded. Supply its JSON diagnostic representation;
-		// DecodedValue remains exact and wire bytes stay empty.
-		compilerRaw = []byte(`""`)
-		if encoding == "urlencoded" {
-			compilerRaw = []byte(`{}`)
-		}
-	}
-	valid, failures := requests.ValidateRequestSchema(&requests.ValidateRequestSchemaInput{
-		Request: request, Schema: media.Schema.Schema(), Version: validationSchemaVersion,
-		Options:      []validatorconfig.Option{validatorconfig.WithSchemaCache(nil), validatorconfig.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))},
-		BodyRequired: required, DecodedValue: value, RawBody: compilerRaw, ValueDecoded: true,
-	})
-	if !valid {
-		issues, err := validationIssues(failures)
-		if err != nil || len(issues) == 0 {
-			return "", nil, ErrSchemaCompilation
-		}
-		return "", issues, nil
+	issues, err := c.validateSchema(media.Schema.Schema(), value, true)
+	if err != nil || len(issues) > 0 {
+		return "", issues, err
 	}
 	return ValidationSchema, nil, nil
 }
@@ -167,14 +138,14 @@ func decodeExactJSON(raw []byte) (any, string) {
 // Prefer the most specific matching range, regardless of document order.
 // JSON suffixes identify decoding, not compatibility: application/json does
 // not implicitly declare application/problem+json or vice versa.
-func requestBodyMedia(body *v3.RequestBody, contentType string) (*v3.MediaType, bool) {
+func requestBodyMedia(body *requestBody, contentType string) (*mediaType, bool) {
 	if body.Content == nil {
 		return nil, false
 	}
 	top, _, _ := strings.Cut(contentType, "/")
-	var selected *v3.MediaType
+	var selected *mediaType
 	rank, ambiguous := 0, false
-	for declared, media := range body.Content.FromOldest() {
+	for declared, media := range body.Content {
 		normalized := strings.ToLower(declared)
 		current := 0
 		switch normalized {
@@ -197,7 +168,7 @@ func requestBodyMedia(body *v3.RequestBody, contentType string) (*v3.MediaType, 
 	return selected, ambiguous
 }
 
-func bodyEncoding(contentType string, media *v3.MediaType) string {
+func bodyEncoding(contentType string, media *mediaType) string {
 	if media.Schema == nil {
 		return "opaque"
 	}
@@ -220,18 +191,18 @@ func bodyEncoding(contentType string, media *v3.MediaType) string {
 // Raw binary has no JSON instance to validate. Recognize only the captured
 // unconstrained octet-stream and legacy string/binary forms (plus annotations).
 // Any additional assertion requires explicit support; never silently discard it.
-// Caller holds validationMu because resolving a schema can populate caches.
-func binaryBodySchema(proxy *base.SchemaProxy, allowEmpty bool) bool {
+// Schema binding views resolve only local references.
+func binaryBodySchema(proxy *schemaRef, allowEmpty bool) bool {
 	schema := proxy.Schema()
-	if schema == nil || schema.GoLow() == nil {
+	if schema == nil {
 		return false
 	}
-	node := schema.GoLow().RootNode
-	if node == nil || node.Tag != "!!map" {
+	fields, ok := schema.value.(map[string]any)
+	if !ok {
 		return false
 	}
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		switch node.Content[i].Value {
+	for key := range fields {
+		switch key {
 		case "title", "description", "example", "examples", "$comment", "deprecated", "readOnly", "writeOnly", "default":
 		case "type":
 			if len(schema.Type) != 1 || schema.Type[0] != "string" {

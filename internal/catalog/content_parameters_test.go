@@ -176,7 +176,12 @@ func TestContentParameterReferencesAndBounds(t *testing.T) {
 	}
 	// The shared decoder's work bound is checked before allocating JSON views.
 	c, _, _ := contentParameterRequest(t, "3.1.0", "query", "application/json", `{"type":"string"}`, `""`)
-	p := c.model.Model.Paths.PathItems.GetOrZero("/values").Get.Parameters[0]
+	op, _ := c.Resolve("GET /values")
+	view, err := c.requestContract(op)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := view.Operation.Parameters[0]
 	if _, _, rule := parameterContentValue(p, strings.Repeat("x", MaxJSONBodyBytes+1)); rule != "parameter_limit" {
 		t.Fatalf("oversized parameter entered decoding: %s", rule)
 	}

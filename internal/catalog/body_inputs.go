@@ -20,18 +20,21 @@ type BodyInput struct {
 func (c *Catalog) bodyInputs(op Operation) []BodyInput {
 	c.validationMu.Lock()
 	defer c.validationMu.Unlock()
-	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
-	definition := item.GetOperations().GetOrZero(strings.ToLower(op.Method))
+	item, err := c.requestContract(op)
+	if err != nil {
+		return nil
+	}
+	definition := item.Operation
 	body := definition.RequestBody
 	if body == nil || body.Content == nil {
 		return nil
 	}
 	names := make(map[string]int)
-	for name := range body.Content.FromOldest() {
+	for name := range body.Content {
 		names[strings.ToLower(name)]++
 	}
-	inputs := make([]BodyInput, 0, body.Content.Len())
-	for name, media := range body.Content.FromOldest() {
+	inputs := make([]BodyInput, 0, len(body.Content))
+	for name, media := range body.Content {
 		input := BodyInput{MediaType: name, Required: body.Required != nil && *body.Required,
 			SchemaDeclared: media.Schema != nil, Encoding: "unsupported", Validation: "unsupported", Streaming: "unsupported"}
 		normalized, parameters, err := mime.ParseMediaType(name)

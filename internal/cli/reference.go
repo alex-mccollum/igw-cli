@@ -114,13 +114,6 @@ func (i *invocation) discovery(cmd *cobra.Command) (*catalog.Catalog, result.Met
 	}
 	defer cancel()
 	bundle := reference.Select(selector)
-	m, err := bundle.Read(ctx)
-	if err != nil {
-		return nil, result.Metadata{}, referenceProblem(err)
-	}
-	if err := i.referencePin(m); err != nil {
-		return nil, result.Metadata{}, err
-	}
 	m, c, err := bundle.OpenCatalog(ctx)
 	if err != nil {
 		return nil, result.Metadata{}, referenceProblem(err)

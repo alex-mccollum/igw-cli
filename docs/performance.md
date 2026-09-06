@@ -35,6 +35,27 @@ point, not a latency distribution. Reported p50/p95 use nearest-rank empirical
 quantiles. A separate full CLI race-test run sampled about 2.91 GiB resident
 memory; that is an observation, not a measured peak or a portable memory bound.
 
+## JSON contract engine
+
+The JSON engine removes the full OpenAPI model, YAML rendering, duplicate
+operation metadata decoding, and repeated reference verification. Document and
+contract hashing avoid extra encoded-document copies. A paired process run with
+Go 1.27.1 under the unchanged 8 GiB/two-CPU guard observed:
+
+| Reference | Startup before / after | Peak RSS before / after |
+| --- | --- | --- |
+| ignition-8.3.0-core | 0.69 / 0.31 s | 148.5 / 71.5 MiB |
+| ignition-8.3.0-defaults | 1.12 / 0.49 s | 248.6 / 108.7 MiB |
+| ignition-8.3.9-core | 0.76 / 0.33 s | 161.0 / 77.8 MiB |
+| ignition-8.3.9-defaults | 1.63 / 0.80 s | 399.2 / 158.9 MiB |
+
+Each row uses five interleaved samples per binary and unchanged reference bytes.
+All operation inventories and raw/document/contract identities match. The
+[measurement record](qualification/catalog-json-engine.json) retains binary
+hashes, samples, and inventory checksums. These are local startup observations,
+not portable latency guarantees or fresh live-Gateway qualification. Earlier
+measurements below describe the superseded model backend.
+
 ## Parser 20 optimization
 
 Profiling the cutover parser attributed about 44% of sampled allocations to the

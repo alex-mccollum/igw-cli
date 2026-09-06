@@ -42,7 +42,7 @@ func TestSchema30ExactBodyConstraints(t *testing.T) {
 			if err != nil || (len(issues) == 0) != tt.valid {
 				t.Fatalf("valid=%t: %+v %v", tt.valid, issues, err)
 			}
-			if string(c.Raw()) != before || !strings.Contains(before, tt.schema) || c.model.Model.Version != "3.0.3" {
+			if string(c.Raw()) != before || !strings.Contains(before, tt.schema) || c.version != "3.0.3" {
 				t.Fatal("private schema adaptation changed vendor evidence or version")
 			}
 		})

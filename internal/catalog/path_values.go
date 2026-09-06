@@ -6,26 +6,21 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
-// Bind the selected operation's relative path, never the document's servers.
-// The transport owns the explicit Gateway target and its reverse-proxy prefix.
-// Validated declarations are removed only from a private view so upstream
-// segment indexing, coercion, and inheritance cannot reinterpret these values.
-func (c *Catalog) pathValidationView(item *v3.PathItem, request *http.Request, template string) (*v3.PathItem, []Issue, error) {
-	refuse := func(name, rule string) (*v3.PathItem, []Issue, error) {
+// Bind the selected operation's relative path. The transport owns the
+// explicit Gateway target and its reverse-proxy prefix.
+func (c *Catalog) pathValidationView(item *requestContract, request *http.Request, template string) (*requestContract, []Issue, error) {
+	refuse := func(name, rule string) (*requestContract, []Issue, error) {
 		return item, []Issue{{Kind: "parameter", Rule: rule, Parameter: name}}, nil
 	}
 	values, rule := bindPathValues(template, request.URL.EscapedPath())
 	if rule != "" {
 		return refuse("", rule)
 	}
-	op := item.GetOperations().GetOrZero(strings.ToLower(request.Method))
-	params := make(map[string]*v3.Parameter)
-	for _, list := range [][]*v3.Parameter{item.Parameters, op.Parameters} {
+	op := item.Operation
+	params := make(map[string]*parameter)
+	for _, list := range [][]*parameter{item.Parameters, op.Parameters} {
 		seen := make(map[string]bool)
 		for _, p := range list {
 			if p.In != "path" {
@@ -51,9 +46,9 @@ func (c *Catalog) pathValidationView(item *v3.PathItem, request *http.Request, t
 			return refuse(name, "required")
 		}
 		var value any
-		var schema *base.Schema
+		var schema *schemaView
 		var rule string
-		if p.Content != nil && p.Content.Len() != 0 {
+		if p.Content != nil && len(p.Content) != 0 {
 			value, schema, rule = parameterContentValue(p, values[name])
 		} else {
 			if p.Schema == nil || p.Schema.Schema() == nil || (p.Style != "" && p.Style != "simple") {
@@ -77,8 +72,8 @@ func (c *Catalog) pathValidationView(item *v3.PathItem, request *http.Request, t
 	if len(params) != len(values) {
 		return refuse("", "unbound_path_parameter")
 	}
-	without := func(list []*v3.Parameter) []*v3.Parameter {
-		out := make([]*v3.Parameter, 0, len(list))
+	without := func(list []*parameter) []*parameter {
+		out := make([]*parameter, 0, len(list))
 		for _, p := range list {
 			if p.In != "path" {
 				out = append(out, p)

@@ -33,7 +33,7 @@ flowchart TD
 | --- | --- |
 | `internal/cli` | One command definition source; input selection and rendering |
 | `internal/config` | Strict v1 configuration, precedence, local previews, revisions, migration, rollback |
-| `internal/catalog` | Full OpenAPI model, operation identity, validation, provenance, snapshots, freshness, pins |
+| `internal/catalog` | JSON contract index, selected-schema validation, provenance, snapshots, freshness, pins |
 | `internal/execute` | Typed preparation, target binding, shared workflow scopes, bounded batches, execution outcomes |
 | `internal/gateway` | HTTP origin/credential policy, cancellation, bounded responses, redirect/retry restrictions |
 | `internal/artifact` | Private upload snapshots, streamed downloads, hashes, complete publication |
@@ -43,9 +43,8 @@ flowchart TD
 | `internal/reference`, `referencebuild`, `testgateway` | Offline reference distribution and reproducible real-Gateway qualification |
 
 Keep Go and standard-library transport/filesystem primitives. Cobra removes
-separate registries for help, parser, completion, and schemas. Libopenapi and
-its validator sit behind the catalog boundary; their behavior is tested against
-retained vendor captures. Narrow version/hash-scoped vendor corrections stay
+separate registries for help, parser, completion, and schemas. The catalog uses one decoded JSON contract and compiles selected schemas
+with `jsonschema/v6`; behavior is tested against retained vendor captures. Narrow version/hash-scoped vendor corrections stay
 separate from original bytes and appear in inspection output.
 
 ## Authority and availability

@@ -10,15 +10,25 @@ is not the first JSON discovery candidate. Runtime state, permissions, custom
 validation, and operation effects require separate Gateway evidence. See the
 [IA API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi).
 
-The implementation retains the vendor's exact JSON bytes. It builds a complete
-OpenAPI 3.0/3.1 model using libopenapi, checks document structure, and provides
-request validation using libopenapi-validator. Descriptions retain operation
-definitions, inherited path parameters, shared components, and security
-requirements. External references are rejected without file or network reads;
-import a self-contained document instead. Custom JSON Schema dialects are also
-rejected because the validator otherwise enables external schema loading.
-Operation identity is `METHOD /path`;
-an operationId can be used only when it resolves to exactly one operation.
+The implementation retains the vendor's exact JSON bytes, one decoded JSON
+document, and compact route/raw-definition indexes. It validates OpenAPI 3.0/3.1
+structure with pinned embedded metaschemas and uses `jsonschema/v6` directly for
+selected request schemas. Compiled schemas are reused within an invocation;
+there is no YAML conversion or second full OpenAPI object model.
+
+Descriptions retain vendor definitions, inherited path parameters, shared
+components, security requirements, and documented gaps. The binding layer owns
+path/query/header serialization, exact JSON numbers, body presence, supported
+media decoders, and transport-only coverage. OpenAPI 3.0 nullable/exclusive-bound
+semantics and request-body read-only requirements are adapted without changing
+exports or contract pins. Ignition's document-root component references remain
+bound to the registered in-memory document, including inside resource schemas
+with relative identifiers.
+
+External references and custom dialects are rejected without file or network
+reads; import a self-contained document instead. Unsupported selected schemas
+fail closed. Operation identity is `METHOD /path`; an operationId is accepted
+only when it resolves to exactly one operation.
 
 Snapshots are partitioned by profile and normalized effective Gateway URL,
 including a reverse-proxy base path. Credentials are never stored in a snapshot.
@@ -84,9 +94,10 @@ publication leaves the fallback usable. It does not skip write verification,
 trust imported validators, or substitute contract equality for byte identity.
 See [revalidation measurements](performance.md#unchanged-catalog-revalidation).
 
-Library dependencies are pinned in go.mod/go.sum. The selected parser and
-validator require Go 1.25.7. The package boundary keeps vendor models out of the
-CLI and workflow contracts.
+Library dependencies are pinned in go.mod/go.sum. Go 1.25.7 remains the
+minimum supported toolchain. The catalog boundary exposes no library-specific
+models to the CLI or workflow services. See [performance](performance.md) for
+the JSON engine replacement measurements.
 
 ## Real Gateway qualification
 

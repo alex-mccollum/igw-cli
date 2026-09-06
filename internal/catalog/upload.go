@@ -3,8 +3,6 @@ package catalog
 import (
 	"mime"
 	"strings"
-
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 // OpaqueUpload reports a declared body needing only transport checks: no schema
@@ -17,21 +15,14 @@ func (c *Catalog) OpaqueUpload(key, contentType string) bool {
 	}
 	c.validationMu.Lock()
 	defer c.validationMu.Unlock()
-	item := c.model.Model.Paths.PathItems.GetOrZero(op.Path)
-	if item == nil {
+	if op.Method != "POST" && op.Method != "PUT" && op.Method != "PATCH" {
 		return false
 	}
-	var operation *v3.Operation
-	switch op.Method {
-	case "POST":
-		operation = item.Post
-	case "PUT":
-		operation = item.Put
-	case "PATCH":
-		operation = item.Patch
-	default:
+	item, err := c.requestContract(op)
+	if err != nil {
 		return false
 	}
+	operation := item.Operation
 	if operation == nil || operation.RequestBody == nil || operation.RequestBody.Content == nil {
 		return false
 	}

@@ -6,24 +6,21 @@ import (
 	"strings"
 
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
-// Validate the complete effective fields, then remove their declarations from
-// a private view. Header.Get loses empty/repeated values, and the upstream
-// parameter decoder skips content and several primitive/array assertions.
-func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request) (*v3.PathItem, *http.Request, []Issue, error) {
-	refuse := func(name, rule string) (*v3.PathItem, *http.Request, []Issue, error) {
+// Validate complete effective headers, preserving empty and repeated values.
+// Normalize names before body media selection; authentication is presence-only.
+func (c *Catalog) headerValidationView(item *requestContract, request *http.Request) (*requestContract, *http.Request, []Issue, error) {
+	refuse := func(name, rule string) (*requestContract, *http.Request, []Issue, error) {
 		return item, request, []Issue{{Kind: "parameter", Rule: rule, Parameter: name}}, nil
 	}
 	headers, err := gateway.NormalizeHeaders(request.Header)
 	if err != nil {
 		return refuse("", "invalid_header")
 	}
-	op := item.GetOperations().GetOrZero(strings.ToLower(request.Method))
-	params := make(map[string]*v3.Parameter)
-	for _, list := range [][]*v3.Parameter{item.Parameters, op.Parameters} {
+	op := item.Operation
+	params := make(map[string]*parameter)
+	for _, list := range [][]*parameter{item.Parameters, op.Parameters} {
 		seen := make(map[string]bool)
 		for _, p := range list {
 			if p.In != "header" {
@@ -76,9 +73,9 @@ func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request)
 			bytes += len(text)
 		}
 		var value any
-		var schema *base.Schema
+		var schema *schemaView
 		var rule string
-		if p.Content != nil && p.Content.Len() != 0 {
+		if p.Content != nil && len(p.Content) != 0 {
 			if len(input) != 1 {
 				return refuse(name, "duplicate_parameter")
 			}
@@ -102,7 +99,7 @@ func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request)
 						if text == "" {
 							return refuse(name, "ambiguous_parameter_binding")
 						}
-						member, rule := parameterPrimitive(querySchemaKind(schema.Items.A.Schema()), text)
+						member, rule := parameterPrimitive(querySchemaKind(schema.Items.Schema()), text)
 						if rule != "" {
 							return refuse(name, rule)
 						}
@@ -125,8 +122,8 @@ func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request)
 			return item, request, issues, err
 		}
 	}
-	without := func(list []*v3.Parameter) []*v3.Parameter {
-		out := make([]*v3.Parameter, 0, len(list))
+	without := func(list []*parameter) []*parameter {
+		out := make([]*parameter, 0, len(list))
 		for _, p := range list {
 			if p.In != "header" {
 				out = append(out, p)

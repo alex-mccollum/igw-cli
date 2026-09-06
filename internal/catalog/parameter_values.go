@@ -2,8 +2,6 @@ package catalog
 
 import (
 	"encoding/json"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -11,11 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	validatorconfig "github.com/pb33f/libopenapi-validator/config"
-	"github.com/pb33f/libopenapi-validator/schema_validation"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 // Bound exact numeric validation before the schema library constructs rational
@@ -26,24 +19,21 @@ const maxParameterNumberExponent = 4096
 var integerText = regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`)
 var numberText = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$`)
 
-// namedQueryValidationView validates complete typed values, including array
-// cardinality/uniqueness and primitive constraints. The upstream validator
-// splits each repeated array value again and omits some primitive assertions.
-// All supported query declarations are removed from a private validation view
-// so that header/path/body validation cannot repeat that lossy interpretation.
-func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Request) (*v3.PathItem, *http.Request, []Issue, error) {
+// Bind complete query values, preserving repeated arrays and primitive
+// assertions. The filter decoder has already removed its owned query keys.
+func (c *Catalog) namedQueryValidationView(item *requestContract, request *http.Request) (*requestContract, *http.Request, []Issue, error) {
 	if item == nil {
 		return item, request, nil, nil
 	}
-	op := item.GetOperations().GetOrZero(strings.ToLower(request.Method))
+	op := item.Operation
 	if op == nil {
 		return item, request, nil, nil
 	}
-	refuse := func(name, rule string) (*v3.PathItem, *http.Request, []Issue, error) {
+	refuse := func(name, rule string) (*requestContract, *http.Request, []Issue, error) {
 		return item, request, []Issue{{Kind: "parameter", Rule: rule, Parameter: name}}, nil
 	}
-	queries := make(map[string]*v3.Parameter)
-	for _, list := range [][]*v3.Parameter{item.Parameters, op.Parameters} {
+	queries := make(map[string]*parameter)
+	for _, list := range [][]*parameter{item.Parameters, op.Parameters} {
 		seen := make(map[string]bool)
 		for _, p := range list {
 			if p.In != "query" {
@@ -67,7 +57,7 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 	removed := make(map[string]bool, len(names))
 	for _, name := range names {
 		p := queries[name]
-		if p.Content != nil && p.Content.Len() != 0 {
+		if p.Content != nil && len(p.Content) != 0 {
 			input, present := values[name]
 			if !present {
 				if p.Required != nil && *p.Required {
@@ -108,7 +98,7 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 			if kind == "array" {
 				members := make([]any, 0, len(input))
 				for _, text := range input {
-					member, rule := parameterPrimitive(querySchemaKind(schema.Items.A.Schema()), text)
+					member, rule := parameterPrimitive(querySchemaKind(schema.Items.Schema()), text)
 					if rule != "" {
 						return refuse(name, rule)
 					}
@@ -137,7 +127,7 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 	return view, req, nil, nil
 }
 
-func querySchemaKind(schema *base.Schema) string {
+func querySchemaKind(schema *schemaView) string {
 	if schema == nil {
 		return ""
 	}
@@ -158,8 +148,8 @@ func querySchemaKind(schema *base.Schema) string {
 	case "string", "integer", "number", "boolean":
 		return kind
 	case "array":
-		if schema.Items != nil && schema.Items.IsA() && schema.Items.A != nil {
-			kind := querySchemaKind(schema.Items.A.Schema())
+		if schema.Items != nil {
+			kind := querySchemaKind(schema.Items.Schema())
 			if kind != "" && kind != "array" {
 				return "array"
 			}
@@ -202,42 +192,17 @@ func parameterPrimitive(kind, text string) (any, string) {
 	return nil, "unsupported_serialization"
 }
 
-// Caller holds Catalog.validationMu: rendering can mutate upstream schema state.
-func (c *Catalog) validateParameterValue(location, name string, schema *base.Schema, value any) ([]Issue, error) {
-	if value == nil {
-		// The generic upstream helper skips nil instead of validating JSON
-		// null. Use the same compiler and schema dialect without that shortcut.
-		compiled, err := schema_validation.CompileSchemaForValidation(schema,
-			schema_validation.SchemaValidationPurposeGeneric,
-			validatorconfig.NewValidationOptions(validatorconfig.WithSchemaCache(nil), validatorconfig.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))),
-			validationSchemaVersion)
-		if err != nil || compiled == nil || compiled.CompiledSchema == nil {
-			return nil, ErrSchemaCompilation
-		}
-		if err := compiled.CompiledSchema.Validate(nil); err != nil {
-			return []Issue{{Kind: "parameter", Rule: location, Parameter: name}}, nil
-		}
-		return nil, nil
-	}
-	v := schema_validation.NewSchemaValidatorWithLogger(slog.New(slog.NewTextHandler(io.Discard, nil)), validatorconfig.WithSchemaCache(nil))
-	defer v.Release()
-	valid, failures := v.ValidateSchemaObjectWithVersion(schema, value, validationSchemaVersion)
-	if valid {
-		return nil, nil
-	}
-	issues, err := validationIssues(failures)
-	if err != nil || len(issues) == 0 {
-		return nil, ErrSchemaCompilation
-	}
+func (c *Catalog) validateParameterValue(location, name string, schema *schemaView, value any) ([]Issue, error) {
+	issues, err := c.validateSchema(schema, value, false)
 	for i := range issues {
 		issues[i].Kind, issues[i].Rule, issues[i].Parameter = "parameter", location, name
 	}
-	return issues, nil
+	return issues, err
 }
 
-func queryValidationView(item *v3.PathItem, request *http.Request, removed map[string]bool, values url.Values) (*v3.PathItem, *http.Request) {
-	without := func(params []*v3.Parameter) []*v3.Parameter {
-		out := make([]*v3.Parameter, 0, len(params))
+func queryValidationView(item *requestContract, request *http.Request, removed map[string]bool, values url.Values) (*requestContract, *http.Request) {
+	without := func(params []*parameter) []*parameter {
+		out := make([]*parameter, 0, len(params))
 		for _, p := range params {
 			if p.In != "query" || !removed[p.Name] {
 				out = append(out, p)
@@ -253,27 +218,9 @@ func queryValidationView(item *v3.PathItem, request *http.Request, removed map[s
 	return view, &req
 }
 
-// Callers have already resolved this operation. Copy only the selected path
-// and operation; shared schemas stay protected by Catalog.validationMu.
-func operationValidationView(item *v3.PathItem, method string) (*v3.PathItem, *v3.Operation) {
-	view, op := *item, *item.GetOperations().GetOrZero(strings.ToLower(method))
-	switch method {
-	case http.MethodGet:
-		view.Get = &op
-	case http.MethodPost:
-		view.Post = &op
-	case http.MethodPut:
-		view.Put = &op
-	case http.MethodPatch:
-		view.Patch = &op
-	case http.MethodDelete:
-		view.Delete = &op
-	case http.MethodHead:
-		view.Head = &op
-	case http.MethodOptions:
-		view.Options = &op
-	case http.MethodTrace:
-		view.Trace = &op
-	}
+// Filter binding needs a private parameter view; schemas remain shared.
+func operationValidationView(item *requestContract, method string) (*requestContract, *operationContract) {
+	view, op := *item, *item.Operation
+	view.Operation = &op
 	return &view, &op
 }

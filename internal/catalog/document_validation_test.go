@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"github.com/pb33f/libopenapi-validator/schema_validation"
 )
 
 func TestDocumentValidationAgreesWithUpstream(t *testing.T) {
@@ -33,19 +31,9 @@ func TestDocumentValidationAgreesWithUpstream(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				private, err := json.MarshalIndent(value, "", "  ")
-				if err != nil {
-					t.Fatal(err)
-				}
-				doc, err := newParserDocument(private)
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer doc.Release()
-				upstream, _ := schema_validation.ValidateOpenAPIDocument(doc)
 				got := validDocumentValue(value, version)
-				if got != tc.valid || upstream != tc.valid {
-					t.Fatalf("direct=%t upstream=%t expected=%t", got, upstream, tc.valid)
+				if got != tc.valid {
+					t.Fatalf("direct=%t expected=%t", got, tc.valid)
 				}
 			})
 		}

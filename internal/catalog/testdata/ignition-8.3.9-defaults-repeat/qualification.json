@@ -12,6 +12,6 @@
   "contractSha256": "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea",
   "documentSha256": "38e832ee35f346a42f76f26ceb605c39164dd48160d3dbd6da39d27117315133",
   "operationCount": 687,
-  "parserVersion": "libopenapi/0.38.7+validator/0.14.0;igw/22",
+  "parserVersion": "jsonschema/6.0.2;igw/23",
   "rawSha256": "94e537dab80f0c9ba93b8cfe8b9c93754fa6e7e6b2127e6dbbc03500f25e51b3"
 }

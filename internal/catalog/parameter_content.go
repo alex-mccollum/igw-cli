@@ -4,22 +4,19 @@ import (
 	"mime"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 // Content parameters have one media representation, independent of the
 // schema/style serialization strategy. Callers establish presence, uniqueness,
 // and the effective text before decoding; this never changes the wire value.
-func parameterContentValue(p *v3.Parameter, text string) (any, *base.Schema, string) {
-	if p.Schema != nil || p.Content == nil || p.Content.Len() != 1 {
+func parameterContentValue(p *parameter, text string) (any, *schemaView, string) {
+	if p.Schema != nil || p.Content == nil || len(p.Content) != 1 {
 		return nil, nil, "unsupported_serialization"
 	}
 	if len(text) > MaxJSONBodyBytes {
 		return nil, nil, "parameter_limit"
 	}
-	for media, content := range p.Content.FromOldest() {
+	for media, content := range p.Content {
 		if content == nil || content.Schema == nil || content.Schema.Schema() == nil {
 			return nil, nil, "unsupported_serialization"
 		}
