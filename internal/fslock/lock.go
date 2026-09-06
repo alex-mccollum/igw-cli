@@ -9,7 +9,10 @@ import (
 
 func TryAcquire(path string) (*os.File, error) {
 	prior, err := os.Lstat(path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) || err == nil && !prior.Mode().IsRegular() {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	if err == nil && !prior.Mode().IsRegular() {
 		return nil, errors.New("file lock must be a regular file")
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
