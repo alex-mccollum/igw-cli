@@ -45,6 +45,9 @@ Completion requires the same observed `redundancy.localId`, either a changed
 `overview.processId` or a decreased `overview.uptime`, and no pending restart
 tasks. Uptime is reported in the API's units, which the captured document does
 not specify; the CLI does not infer seconds or elapsed wall time. Node identity
+and process identity come from the API; `processId` is not assumed to be a JVM
+PID (a preliminary 8.3.9 observation identified the `ignition-gateway` wrapper).
+Node identity
 is read before and after each overview/task observation. JSON evidence records
 `before`, `last`, `polls`, `acknowledged`, `proof`, and `correlation`.
 `meta.verification: "restart_observed"` means these checks passed. A reachable

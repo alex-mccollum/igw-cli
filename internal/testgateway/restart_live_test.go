@@ -68,7 +68,7 @@ func TestLiveRestart(t *testing.T) {
 
 	restarted := s.run("restart", nil, "gateway", "restart", "--yes", "--interval", "500ms")
 	r := s.last().Restart
-	if !restarted.OK || restarted.Outcome != "completed" || restarted.Meta.Verification != "restart_observed" || r == nil || r.Proof != "process_changed" || r.Polls < 1 || r.ConfirmedRequests != 1 || r.Before.ProcessID != before.ProcessID || r.Before.NodeSHA256 != p.Before.NodeSHA256 || r.Last.NodeSHA256 != r.Before.NodeSHA256 || r.Last.PendingCount != 0 {
+	if !restarted.OK || restarted.Outcome != "completed" || restarted.Meta.Verification != "restart_observed" || r == nil || (r.Proof != "process_changed" && r.Proof != "uptime_reset") || r.Polls < 1 || r.ConfirmedRequests != 1 || r.Before.ProcessID != before.ReportedProcessID || r.Before.NodeSHA256 != p.Before.NodeSHA256 || r.Last.NodeSHA256 != r.Before.NodeSHA256 || r.Last.PendingCount != 0 {
 		t.Fatalf("restart was not verified (kind=%v)", restarted.Error)
 	}
 	writes := 0
@@ -94,7 +94,7 @@ func TestLiveRestart(t *testing.T) {
 	s.require(s.run("doctor-after", nil, "gateway", "doctor"), 1)
 	s.require(s.run("preview-after", nil, "gateway", "restart", "--dry-run"), 4)
 	last := s.last().Restart
-	if last == nil || last.Before.ProcessID != after.ProcessID || last.Before.NodeSHA256 != r.Before.NodeSHA256 || last.Before.PendingCount != 0 || last.ConfirmedRequests != 0 {
+	if last == nil || last.Before.ProcessID != after.ReportedProcessID || last.Before.NodeSHA256 != r.Before.NodeSHA256 || last.Before.PendingCount != 0 || last.ConfirmedRequests != 0 {
 		t.Fatal("independent post-restart baseline disagreed")
 	}
 	s.completed = true

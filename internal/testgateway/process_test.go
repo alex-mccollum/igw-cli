@@ -87,7 +87,7 @@ func TestProcessObservationRequiresOwnershipAndContainment(t *testing.T) {
 			defer cancel()
 			out, err := s.ObserveJavaProcess(ctx, pid)
 			if scenario == "valid" {
-				if err != nil || out.ProcessID != 42 || out.StartTicks != 246810 || !out.ContainmentVerified || out.ContainerID != fixtureID || out.ObservedAt.IsZero() || procReads != 1 {
+				if err != nil || out.ProcessID != 42 || out.StartTicks != 246810 || !out.ContainmentVerified || out.ContainerID != fixtureID || out.ObservedAt.IsZero() || procReads != 2 {
 					t.Fatalf("missing independent evidence: %+v %v", out, err)
 				}
 			} else if err == nil || procReads != 0 {
