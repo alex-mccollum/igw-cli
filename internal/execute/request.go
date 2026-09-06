@@ -33,7 +33,8 @@ type Request struct {
 	PathParams   map[string]string
 	Query        url.Values
 	Headers      http.Header
-	Body         []byte // nil omits input; a non-nil empty slice supplies zero bytes.
+	Body         []byte     // nil omits input; a non-nil empty slice supplies zero bytes.
+	Form         url.Values // nil omits form input; values are literal field text.
 	Upload       *artifact.Upload
 	ContentType  string
 	DryRun       bool
@@ -89,6 +90,18 @@ func (e Engine) prepare(ctx context.Context, target catalog.Target, token string
 	}
 	if input.MaxBodyBytes < 0 {
 		return nil, result.Usage("--max-body-bytes must be nonnegative")
+	}
+	if input.Form != nil {
+		if input.Body != nil || input.Upload != nil || input.ContentType != "" {
+			return nil, result.Usage("URL-encoded fields cannot be combined with a body, upload, or content type")
+		}
+		var err error
+		input.Body, err = encodeForm(input.Form)
+		if err != nil {
+			return nil, err
+		}
+		input.Form = nil
+		input.ContentType = "application/x-www-form-urlencoded"
 	}
 	query := make(url.Values, len(input.Query))
 	for key, values := range input.Query {

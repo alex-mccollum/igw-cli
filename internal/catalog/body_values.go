@@ -83,6 +83,15 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	}
 	var value any
 	switch encoding {
+	case "urlencoded":
+		var rule string
+		value, rule = decodeFormBody(raw, media, parameters["charset"])
+		if rule == "unsupported_serialization" {
+			return "", nil, ErrUnsupportedBodyEncoding
+		}
+		if rule != "" {
+			return refuse(rule)
+		}
 	case "json":
 		var rule string
 		value, rule = decodeExactJSON(raw)
@@ -113,11 +122,14 @@ func (c *Catalog) validateBody(item *v3.PathItem, request *http.Request) (string
 	}
 	compilerRaw := raw
 	if len(compilerRaw) == 0 {
-		// Presence and decoding already succeeded for an empty text string.
+		// Presence and decoding already succeeded for an empty string or form.
 		// The upstream request compiler otherwise short-circuits on byte count,
 		// even with ValueDecoded. Supply its JSON diagnostic representation;
-		// DecodedValue remains the exact empty string and wire bytes stay empty.
+		// DecodedValue remains exact and wire bytes stay empty.
 		compilerRaw = []byte(`""`)
+		if encoding == "urlencoded" {
+			compilerRaw = []byte(`{}`)
+		}
 	}
 	valid, failures := requests.ValidateRequestSchema(&requests.ValidateRequestSchemaInput{
 		Request: request, Schema: media.Schema.Schema(), Version: validationSchemaVersion,
@@ -195,6 +207,9 @@ func bodyEncoding(contentType string, media *v3.MediaType) string {
 	}
 	if contentType == "text/plain" {
 		return "utf8"
+	}
+	if contentType == "application/x-www-form-urlencoded" {
+		return "urlencoded"
 	}
 	if binaryBodySchema(media.Schema, contentType == "application/octet-stream") {
 		return "binary"

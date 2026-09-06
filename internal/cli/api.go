@@ -81,6 +81,7 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 	var upload string
 	var multipartInput string
 	var formFields, formFiles []string
+	var urlencoded []string
 	var uploadLimit int64
 	var query, headers, pathParams []string
 	cmd := &cobra.Command{Use: "request OPERATION", Short: "Validate, preview, and execute an operation", Args: cobra.ExactArgs(1)}
@@ -96,6 +97,7 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 	_ = f.SetAnnotation("multipart", inputSchemaAnnotation, []string{multipartManifestSchema})
 	f.StringArrayVar(&formFields, "form-field", nil, "Multipart name=value; literal UTF-8 text, repeat for multiple fields")
 	f.StringArrayVar(&formFiles, "form-file", nil, "Multipart name=path; stream a regular file, repeat for multiple files")
+	f.StringArrayVar(&urlencoded, "urlencoded", nil, "URL-encoded name=value; literal UTF-8 text, repeat for multiple values")
 	f.StringVar(&request.ContentType, "content-type", "", "Request media type; defaults to application/json for a body")
 	for _, name := range []string{"multipart", "form-field", "form-file"} {
 		for _, other := range []string{"body", "upload", "content-type"} {
@@ -104,6 +106,9 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 	}
 	cmd.MarkFlagsMutuallyExclusive("multipart", "form-field")
 	cmd.MarkFlagsMutuallyExclusive("multipart", "form-file")
+	for _, other := range []string{"body", "upload", "content-type", "multipart", "form-field", "form-file"} {
+		cmd.MarkFlagsMutuallyExclusive("urlencoded", other)
+	}
 	f.StringArrayVar(&query, "query", nil, "Query key=value; repeat for multiple values")
 	f.StringArrayVar(&headers, "header", nil, "Request header name:value; authentication is managed")
 	f.BoolVar(&request.DryRun, "dry-run", false, "Show a preview without sending the proposed request")
@@ -150,6 +155,16 @@ func (i *invocation) requestCommand(raw bool) *cobra.Command {
 			request.PathParams[key] = value
 		}
 		var err error
+		if f.Changed("urlencoded") {
+			request.Form = make(url.Values)
+			for _, pair := range urlencoded {
+				name, value, ok := strings.Cut(pair, "=")
+				if !ok || name == "" {
+					return result.Usage("urlencoded requires name=value")
+				}
+				request.Form.Add(name, value)
+			}
+		}
 		request.Body, err = i.readInput(body, 32<<20)
 		if err != nil {
 			return err

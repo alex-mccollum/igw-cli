@@ -780,6 +780,19 @@ declares a query/path content parameter. Only current-parser expectations
 advance to 21. Original capture, reference, and live-receipt identities remain
 unchanged. This extends input support without claiming new Gateway acceptance.
 
+Parser 22 adds bounded URL-encoded form decoding and complete object-schema
+validation. Primitive fields, default JSON objects, explicit JSON content, and
+explicit exploded primitive arrays are supported. Other supplied bindings are
+refused before dispatch; complete original declarations remain inspectable.
+Explicit encoding-field presence follows the OpenAPI 3.0.4/3.1.1 clarification,
+including `allowReserved: false`. The typed request core constructs literal
+fields with deterministic escaping and a 4096-field/32 MiB encoded limit.
+See [the form input contract](commands.md) for exact support boundaries.
+The four retained captures contain no URL-encoded forms; the seven multipart
+declarations in each 8.3.9 default capture have no schemas. Only current-parser
+expectations advance to 22, preserving all other identity/compatibility fields.
+Original vendor bytes and historical live/reference receipts remain unchanged.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

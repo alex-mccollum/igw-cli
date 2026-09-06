@@ -301,8 +301,48 @@ Generic request results report actual coverage in `meta.validation`; previews
 also retain `data.validation`. `declared_schema` means the supported declared
 schema checks passed. `declared_transport` means the body received media-type
 and presence checks, with no validation of its contents. Raw requests report
-`not_requested`. Multipart schema decoding, URL-encoded form construction, and
-additional schema encodings remain unfinished.
+`not_requested`. Multipart schema decoding and additional schema encodings
+remain unfinished.
+
+For an operation that declares `application/x-www-form-urlencoded`, use
+`--urlencoded 'name=value'` on `api request` or `api raw`. Repeat it to provide
+more fields or multiple values under the same name. The name must be nonempty;
+`--urlencoded 'name='` supplies an empty string. Everything after the first `=`
+is literal UTF-8 text: the CLI escapes it once, preserves repeated-value order,
+and sorts field names. A literal `%2F` becomes `%252F`, `+` becomes `%2B`, and
+spaces become `+`. The preview digest covers the exact transmitted bytes.
+The limit is 4096 fields and 32 MiB after encoding. This option owns the content
+type and cannot be combined with `--body`, `--upload`, `--content-type`, or
+multipart options. `--form-field` continues to construct multipart text parts.
+
+Schema-assisted form requests decode the wire bytes and validate the complete
+object, including required properties, references, root assertions, and array
+constraints. Supported bindings are directly declared properties of an object:
+
+- Primitive properties use their exact string, integer, number, or Boolean
+  spelling. No value is implicitly converted to null.
+- Object properties default to one JSON value, supplied as literal JSON text.
+  An explicit JSON `encoding.contentType` also supports arrays and other JSON
+  values; their complete schema and the existing JSON limits apply.
+- Explicit `form` style with exploded primitive arrays uses repeated fields.
+  Commas inside a value stay literal. Explicit `style`, `explode`, or
+  `allowReserved: false` selects the style strategy and ignores `contentType`.
+- Other supplied bindings, implicit array encodings, packed arrays, exploded
+  objects, reserved expansion, binary content encodings, and unsupported media fail
+  locally. Absent optional fields require no decoder. Unknown field names are
+  refused because their serialization cannot be established from the schema.
+
+These rules follow the clarification in
+[OpenAPI 3.0.4](https://spec.openapis.org/oas/v3.0.4.html#encoding-object) and
+[OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html#encoding-object).
+The retained Gateway captures have no URL-encoded form declarations; this
+support has synthetic-contract and HTTP-fixture evidence. The seven multipart
+routes in the 8.3.9 default capture are a separate existing body contract.
+To supply a pre-encoded form or an explicit empty form, use
+`--body @form.txt --content-type application/x-www-form-urlencoded` or
+`--body '' --content-type application/x-www-form-urlencoded`. These bytes go
+through the same schema decoder. The decoder also accepts `charset=utf-8` or
+`charset=us-ascii`; ASCII requires ASCII field names and values after decoding.
 
 For an opaque binary body, use `--upload FILE --content-type MEDIA_TYPE`.
 The input must be a regular file; the CLI creates a private disk snapshot so

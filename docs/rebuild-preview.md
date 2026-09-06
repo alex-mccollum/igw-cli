@@ -103,8 +103,11 @@ vendor server URLs. Structured path/header encodings remain in the active plan.
 `api describe.bodyInputs` exposes these support boundaries, and generic request
 metadata reports the checks actually performed. Multipart construction supports
 literal text fields, streamed files, and ordered JSON part manifests with
-transport-only coverage for schema-less declarations. Multipart schema decoding,
-URL-encoded forms, parameter serialization beyond explicit path/query/header values,
+transport-only coverage for schema-less declarations. URL-encoded input now has
+bounded literal construction and object-schema validation for the supported
+primitive/JSON/explicit-array bindings documented in `docs/commands.md`.
+Multipart schema decoding, other form bindings, parameter serialization beyond
+explicit path/query/header values,
 singleton resources, broader tag format/policy verification,
 remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.

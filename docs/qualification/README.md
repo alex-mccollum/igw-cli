@@ -1,5 +1,15 @@
 # Local qualification evidence
 
+`urlencoded-input.json` records parser 22's bounded form construction and
+supported property decoding, from a precommit worktree at `cd91099`. The final
+full unit/build/33 smoke checks, focused catalog/core/CLI race checks, docs, and
+minimum-Go checks passed. The initial full-suite log retains a nil-property-map
+panic found before the correction; it is explicitly separate from passing
+final-source evidence. Regression cases now require unsupported bindings to fail
+without dispatch. All four captures retain their non-parser identities and
+declare no URL-encoded forms. These are synthetic-contract and HTTP-fixture
+checks, with no new live-Gateway, container, or host-lifecycle claim.
+
 `content-parameters.json` records parser 21's shared JSON/text decoding for
 query, path, and header parameters from a precommit worktree at `aa8ce7d`.
 It retains the initial refusal regressions, exact-value and HTTP wire checks,

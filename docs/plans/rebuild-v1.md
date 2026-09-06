@@ -49,13 +49,29 @@ is claimed. Original capture/reference/live identities stay unchanged.
 The [retained input evidence](../qualification/content-parameters.json) binds
 the source and executable to the check logs and capture inventory.
 
-Next verifiable slice: inventory the remaining form-body contracts, then add
-bounded URL-encoded form construction and complete schema validation through
-the typed request core. Define property/array encoding and ambiguity handling
-before adding CLI flags; verify exact wire bytes, preview non-dispatch, limits,
-and refusal of unsupported declarations. Remaining structured encodings, binary
-and multipart assertions, broader workflows, and final completed-source Gateway
-and release acceptance gates stay active. These slices are not v1 readiness.
+Parser 22 adds typed URL-encoded form construction and complete object-schema
+validation for declared primitive fields, JSON values, and explicit exploded
+primitive arrays. The CLI's `--urlencoded` option preserves literal values and
+repeated-field order, bounds the encoded body, and shares validation with
+pre-encoded `--body` input. Focused catalog/core/CLI tests pass for both OpenAPI
+3.0 and 3.1, including exact wire bytes, zero-write previews, one confirmed
+request, invalid-input redaction, and unsupported-declaration refusals.
+The inventory found no URL-encoded contracts in the four retained captures;
+their 8.3.9 multipart declarations are schema-less and already supported.
+Full unit tests, the native build/33 smoke checks, documentation checks, focused
+catalog/core/CLI race checks, and matching Go 1.25.7 checks passed. An initial
+full-suite run found a nil-property-map panic; the decoder now refuses that
+undefined binding, with regression coverage and the original failure retained.
+The [form qualification receipt](../qualification/urlencoded-input.json) binds
+the final source/executable to these checks without claiming live acceptance.
+
+Next verifiable slice: inspect captured singleton-resource contracts, then
+extend the typed resource workflow where read, mutation, signature, and readback
+contracts support it. Choose the command shape from that evidence and verify
+preview/refusal behavior before real-Gateway qualification. Remaining structured
+encodings, binary and multipart assertions, broader tag verification, and final
+completed-source Gateway and release acceptance gates stay active. These slices
+are not v1 readiness.
 
 Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,

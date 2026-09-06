@@ -52,7 +52,7 @@ func (c *Catalog) bodyInputs(op Operation) []BodyInput {
 				if op.Method == "POST" || op.Method == "PUT" || op.Method == "PATCH" {
 					input.Streaming = "supported"
 				}
-			case "json", "utf8":
+			case "json", "utf8", "urlencoded":
 				input.Validation = ValidationSchema
 			}
 		}
