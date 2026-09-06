@@ -21,6 +21,29 @@ run that test alone in a separate guarded invocation. It verifies applied
 limits, exclusive admission, a shortened lifetime, and exact-ID cleanup.
 Normal tests use fake Docker responses and never provide live Gateway evidence.
 
+`TestLiveRestart` uses a new `IGW_RESTART_EVIDENCE_DIR` with the same pinned
+image, module profile, clean test executable, lifecycle probe, and serialized
+bounded invocation as the input suites below. It tests confirmation refusal,
+conflicting flags, offline refusal, a read-only baseline preview, one full
+Gateway restart, and independent task/doctor/preview reads after completion.
+Only the Java Gateway process is restarted through the advertised API.
+
+Before and after that command, `ObserveJavaProcess` verifies the exact owned
+container, image, loopback binding, Docker limits, and running cgroup limits.
+It reads the API-reported PID's `comm` and `stat` inside that container, requiring
+a Java process with a later start time after restart. The start counter is
+[Linux `/proc/PID/stat` field 22](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html).
+No environment or command line is captured. The container ID/start time must
+remain unchanged and its Docker restart count must remain zero. No Docker,
+Docker Desktop, or WSL restart/recovery command is used.
+
+`restart.json` retains projected CLI evidence, hashed node identity, pending
+task counts, actual request counts, exact-confirmation counts, process evidence,
+catalog provenance, and cleanup status. The exact compressed vendor document
+is saved alongside it. Keep source/build/lifecycle/process results and an
+independent empty-container check with this receipt. A test binary that builds,
+a skipped test, or a prepared live harness is not Gateway qualification.
+
 Image qualification currently supports `linux/amd64`. The runner inspects the
 image platform/configuration digest, specifies that platform at creation, and
 checks the container's image ID before it starts. Capture v3 and workflow v2

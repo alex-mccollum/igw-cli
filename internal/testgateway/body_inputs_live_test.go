@@ -55,11 +55,12 @@ func (r *inputBodyReader) Read(p []byte) (int, error) {
 }
 
 type inputObserver struct {
-	base            http.RoundTripper
-	mu              sync.Mutex
-	wire            []inputWire
-	body            []*inputBodyReader
-	catalogRequests int
+	base              http.RoundTripper
+	mu                sync.Mutex
+	wire              []inputWire
+	body              []*inputBodyReader
+	catalogRequests   int
+	confirmedRestarts int
 }
 
 func (o *inputObserver) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -70,6 +71,9 @@ func (o *inputObserver) RoundTrip(r *http.Request) (*http.Response, error) {
 	} else {
 		body := &inputBodyReader{ReadCloser: r.Body, hash: sha256.New()}
 		o.mu.Lock()
+		if r.Method == "POST" && r.URL.Path == "/data/api/v1/restart-tasks/restart" && r.URL.RawQuery == "confirm=true" {
+			o.confirmedRestarts++
+		}
 		o.wire = append(o.wire, inputWire{Method: r.Method, Path: r.URL.EscapedPath(), ContentType: r.Header.Get("Content-Type"), ContentLength: r.ContentLength})
 		o.body = append(o.body, body)
 		o.mu.Unlock()
@@ -101,12 +105,14 @@ func (o *inputObserver) snapshot() []inputWire {
 
 type inputCheck struct {
 	transferCheck
-	CatalogRequests int                 `json:"catalogRequests,omitempty"`
-	Batch           *inputBatchEvidence `json:"batch,omitempty"`
-	Validation      string              `json:"validation,omitempty"`
-	Wire            []inputWire         `json:"wire,omitempty"`
-	Preview         *execute.Preview    `json:"preview,omitempty"`
-	Artifact        *inputArtifact      `json:"artifact,omitempty"`
+	CatalogRequests int                             `json:"catalogRequests,omitempty"`
+	Batch           *inputBatchEvidence             `json:"batch,omitempty"`
+	Validation      string                          `json:"validation,omitempty"`
+	Wire            []inputWire                     `json:"wire,omitempty"`
+	Preview         *execute.Preview                `json:"preview,omitempty"`
+	Artifact        *inputArtifact                  `json:"artifact,omitempty"`
+	Restart         *inputRestartEvidence           `json:"restart,omitempty"`
+	Process         *testgateway.ProcessObservation `json:"process,omitempty"`
 }
 
 type inputArtifact struct {
@@ -291,8 +297,16 @@ func (s *inputSuite) run(name string, input io.Reader, args ...string) transferR
 		check.ErrorKind, check.ExitCode = got.Error.Kind, got.Error.Code
 	}
 	batch := len(args) >= 2 && args[0] == "api" && args[1] == "batch"
+	restart := len(args) >= 2 && args[0] == "gateway" && args[1] == "restart"
 	if batch {
 		check.Batch = batchEvidence(got.Data)
+	} else if restart {
+		check.Restart = restartEvidence(got.Data)
+		if check.Restart != nil {
+			observer.mu.Lock()
+			check.Restart.ConfirmedRequests = observer.confirmedRestarts
+			observer.mu.Unlock()
+		}
 	} else if got.Outcome == "preview" {
 		var preview execute.Preview
 		if json.Unmarshal(got.Data, &preview) != nil {
