@@ -3,7 +3,7 @@
 The rebuilt command tree now runs through the single `cmd/igw` entrypoint.
 `cmd/igw-next` and the legacy CLI/RPC implementation have been removed. The
 source remains under qualification; cutover is not a published or release-ready
-v1. The complete gates remain in `docs/plans/rebuild-v1.md`, and migration
+v1. The workflow release gates remain in `docs/plans/rebuild-v1.md`, and migration
 guidance is in `docs/migration-v1.md`.
 
 Build and inspect the command tree:
@@ -36,6 +36,8 @@ Examples for this entrypoint are maintained in
   `restart`, with a read-only preview and observed restart completion.
 - `resource types`, `describe`, `list`, `get`, and named-resource
   `create`/`update`/`delete` with signatures, previews, and state verification.
+  Omitting the name selects a singleton; full singleton live qualification is
+  pending the recreation mismatch recorded in the release plan.
 - `project list`, `get`, `inspect`, `export`, and verified ZIP `import`, with a
   reviewed content digest required for replacement.
 - `tag export` and `import`, with explicit collision policies, import-report
@@ -99,18 +101,19 @@ Explicit empty text/files retain their presence and still receive the applicable
 schema checks; previews distinguish them from omitted bodies with `bodyPresent`.
 Simple path primitives retain exact values and complete constraints, including
 operation overrides; validation uses the selected operation independently of
-vendor server URLs. Structured path/header encodings remain in the active plan.
+vendor server URLs. Additional structured encodings are deferred unless a release journey needs them.
 `api describe.bodyInputs` exposes these support boundaries, and generic request
 metadata reports the checks actually performed. Multipart construction supports
 literal text fields, streamed files, and ordered JSON part manifests with
 transport-only coverage for schema-less declarations. URL-encoded input now has
 bounded literal construction and object-schema validation for the supported
 primitive/JSON/explicit-array bindings documented in `docs/commands.md`.
-Multipart schema decoding, other form bindings, parameter serialization beyond
-explicit path/query/header values,
-singleton-resource live qualification, broader tag format/policy verification,
-remote update-schedule activation, and final qualification
-of the completed implementation remain on the rebuild roadmap.
+The workflow release prioritizes configuration, project/tag deployment, and
+basic troubleshooting, including readable logs and useful failure guidance.
+Singleton recreation diagnosis and final candidate qualification remain open.
+Additional form/parameter encodings and broader tag policies are deferred unless
+these journeys need them. Activating the dedicated scheduled reference runner
+is a separate infrastructure follow-up; no active schedule is claimed.
 
 Catalog storage is under the platform user cache directory at
 `igw/catalog-v1`. This cache does not use the legacy CWD OpenAPI file. Local
@@ -137,6 +140,6 @@ a Gateway during request execution. The local reference updater has passed
 default-module and minimal-profile acceptance on 8.3.0 and 8.3.9; the minimum
 references explicitly record missing tag APIs. The initial four-cell matrix
 has evidence under the current qualification policy, with each receipt retaining
-its original source/parser identity. Remote schedule activation and final
-current-source acceptance remain unfinished. See `docs/reference-updates.md` for retained
+its original source/parser identity. Final current-source acceptance remains unfinished; remote schedule activation
+is a separate follow-up. See `docs/reference-updates.md` for retained
 evidence and `docs/compatibility-matrix.md` for coverage boundaries.

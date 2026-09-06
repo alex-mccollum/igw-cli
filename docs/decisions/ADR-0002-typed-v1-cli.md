@@ -3,8 +3,8 @@
 ## Status
 
 Accepted for the active v1 rebuild; supersedes ADR-0001's argument-parser and
-standard-library-only MVP choices. Release readiness still requires the full
-rebuild gates and final-source Gateway evidence.
+standard-library-only MVP choices. Release readiness still requires the workflow
+release gates and final-source Gateway evidence.
 
 ## Decision
 
@@ -28,4 +28,6 @@ There is one command surface to discover, test, complete, document, and package.
 Workflows can share prepared requests and catalog scope without parsing argv.
 The v1 interface intentionally breaks 0.x argv and JSON shapes; the migration
 guide makes these changes explicit. Complete schema inspection and real Gateway
-qualification remain substantial requirements, not claims implied by cutover.
+qualification of the selected release workflows remain required. Additional
+serialization coverage is deferred unless those workflows need it; the current
+release criteria are in `docs/plans/rebuild-v1.md`.

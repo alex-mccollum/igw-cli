@@ -94,12 +94,13 @@ Exit codes remain 0/2/6/7. Every mutation requires `--yes`.
 
 ## Scope and evidence
 
-The single-entrypoint cutover does not establish v1 readiness. Structured input
-encodings, broader workflow qualification, performance with actual captures and
-large artifacts, release artifacts, and final-source Gateway acceptance remain
-subject to `docs/plans/rebuild-v1.md`. Historical receipts retain their original
-source, parser, image, and timestamps; recompiling or renaming a package does
-not renew their qualification.
+Release readiness follows the six workflow journeys in
+`docs/plans/rebuild-v1.md`: setup/discovery, resource configuration, project and
+tag transfer, troubleshooting, and complete evidence artifacts. Additional
+serialization or workflow coverage is deferred unless those journeys need it.
+Final-source Gateway and artifact checks remain required. Historical receipts
+retain their original source, parser, image, and timestamps; recompiling or
+renaming a package does not renew their qualification.
 
 Persistent RPC, MCP, fleet control, and desired-state orchestration are excluded.
 Host tools spawn a bounded CLI process or use explicit sequential batches.
