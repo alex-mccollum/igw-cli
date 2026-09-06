@@ -115,23 +115,39 @@ func (s Store) Save(ctx context.Context, snapshot *Snapshot) error {
 	if previous != nil {
 		keep[previous.metadata.RawSHA256+".json"] = true
 	}
-	entries, err := os.ReadDir(filepath.Join(dir, "blobs"))
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.Type().IsRegular() && strings.HasSuffix(name, ".json") && validDigest(strings.TrimSuffix(name, ".json")) && !keep[name] {
-			if err := os.Remove(filepath.Join(dir, "blobs", name)); err != nil {
-				return err
+	for _, directory := range []string{dir, filepath.Join(dir, "blobs")} {
+		entries, err := os.ReadDir(directory)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			abandoned := strings.HasPrefix(name, ".igw-artifact-")
+			obsolete := directory != dir && strings.HasSuffix(name, ".json") && validDigest(strings.TrimSuffix(name, ".json")) && !keep[name]
+			if entry.Type().IsRegular() && (abandoned || obsolete) {
+				if err := os.Remove(filepath.Join(directory, name)); err != nil {
+					return err
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
+// Metadata checksums detect accidental damage before rotation can replace a
+// valid fallback. They provide integrity, not authenticity of a local cache.
+type storedMetadata struct {
+	Metadata Metadata `json:"metadata"`
+	SHA256   string   `json:"sha256"`
+}
+
 func publishMetadata(path string, m Metadata) error {
-	b, err := json.MarshalIndent(m, "", "  ")
+	checksum, err := canonicalDigest(m, "")
+	if err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(storedMetadata{Metadata: m, SHA256: checksum}, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -201,9 +217,14 @@ func readStored(dir, name string, target Target) (*storedSnapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	var m Metadata
-	if err := json.Unmarshal(b, &m); err != nil {
+	var record storedMetadata
+	if err := json.Unmarshal(b, &record); err != nil {
 		return nil, err
+	}
+	m := record.Metadata
+	checksum, err := canonicalDigest(m, "")
+	if err != nil || checksum != record.SHA256 {
+		return nil, errors.New("catalog metadata checksum mismatch")
 	}
 	if m.Version != SnapshotVersion || m.ContractPolicy != ContractPolicy || m.Target != target || m.VerifiedAt.IsZero() || !validDigest(m.RawSHA256) || !validDigest(m.DocumentSHA256) || !validDigest(m.ContractSHA256) {
 		return nil, errors.New("invalid snapshot metadata; run spec sync to rebuild the cache")

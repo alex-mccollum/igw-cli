@@ -37,7 +37,9 @@ raw documents. A short cross-process lock protects atomic metadata publication
 and copying bytes for readers. Network requests and schema parsing run outside
 the lock. Publication refuses to replace a later verification with an earlier
 one. A corrupt current snapshot produces a warning and falls back to the previous
-snapshot. Successful publication removes obsolete blobs; interrupted publication
+snapshot. Metadata checksums prevent damaged provenance from replacing a valid
+fallback. Successful publication removes obsolete blobs and abandoned private
+temporary files; interrupted publication
 leaves the last complete snapshot usable. This is a disposable cache, not an
 audit history.
 

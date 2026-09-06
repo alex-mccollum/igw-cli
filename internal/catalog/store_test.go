@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,12 +100,57 @@ func TestStoreRejectsObsoleteAndInvalidIdentities(t *testing.T) {
 		target, _ := NewTarget("dev", "http://gateway.test")
 		snapshot := saveTestSnapshot(t, store, target, 1)
 		mutate(&snapshot.Metadata)
-		raw, _ := json.Marshal(snapshot.Metadata)
-		if err := os.WriteFile(filepath.Join(store.targetDir(target), "current.json"), raw, 0600); err != nil {
+		if err := publishMetadata(filepath.Join(store.targetDir(target), "current.json"), snapshot.Metadata); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := store.Load(context.Background(), target); err == nil {
 			t.Fatal("invalid cache identity accepted")
+		}
+	}
+}
+
+func TestStoreDoesNotRotateDamagedMetadata(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	target, _ := NewTarget("dev", "http://gateway.test")
+	previous := saveTestSnapshot(t, store, target, 1)
+	current := saveTestSnapshot(t, store, target, 2)
+	path := filepath.Join(store.targetDir(target), "current.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	damaged := strings.Replace(string(raw), current.Metadata.ContractSHA256, strings.Repeat("0", 64), 1)
+	if err := os.WriteFile(path, []byte(damaged), 0600); err != nil {
+		t.Fatal(err)
+	}
+	saveTestSnapshot(t, store, target, 3)
+	if err := os.WriteFile(path, []byte("interrupted"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load(context.Background(), target)
+	if err != nil || got.Metadata.RawSHA256 != previous.Metadata.RawSHA256 {
+		t.Fatalf("metadata corruption replaced valid fallback: %+v %v", got, err)
+	}
+}
+
+func TestStoreCollectsInterruptedTemporaryFiles(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	target, _ := NewTarget("dev", "http://gateway.test")
+	saveTestSnapshot(t, store, target, 1)
+	for _, dir := range []string{store.targetDir(target), filepath.Join(store.targetDir(target), "blobs")} {
+		for _, name := range []string{".igw-artifact-abandoned", "unrelated.txt"} {
+			if err := os.WriteFile(filepath.Join(dir, name), []byte("partial"), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	saveTestSnapshot(t, store, target, 2)
+	for _, dir := range []string{store.targetDir(target), filepath.Join(store.targetDir(target), "blobs")} {
+		if _, err := os.Stat(filepath.Join(dir, ".igw-artifact-abandoned")); !os.IsNotExist(err) {
+			t.Fatal("abandoned temporary retained")
+		}
+		if _, err := os.Stat(filepath.Join(dir, "unrelated.txt")); err != nil {
+			t.Fatal("unrelated cache-directory file removed")
 		}
 	}
 }
