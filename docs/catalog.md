@@ -32,12 +32,14 @@ only when it resolves to exactly one operation.
 
 Snapshots are partitioned by profile and normalized effective Gateway URL,
 including a reverse-proxy base path. Credentials are never stored in a snapshot.
-Raw documents are immutable SHA-256-addressed blobs; immutable validation
-receipts record the target, source, fetch and verification times, HTTP validators,
-parser version, and three hashes. Atomic file publication coordinates concurrent
-writers. The newest complete valid receipt wins, so a slower older refresh
-cannot replace a newer one through a shared latest pointer. A corrupt newer
-receipt produces a warning and falls back to a valid older snapshot.
+Each target keeps `current.json`, `previous.json`, and at most two SHA-256-addressed
+raw documents. A short cross-process lock protects atomic metadata publication
+and copying bytes for readers. Network requests and schema parsing run outside
+the lock. Publication refuses to replace a later verification with an earlier
+one. A corrupt current snapshot produces a warning and falls back to the previous
+snapshot. Successful publication removes obsolete blobs; interrupted publication
+leaves the last complete snapshot usable. This is a disposable cache, not an
+audit history.
 
 The identities have distinct purposes:
 
@@ -64,17 +66,11 @@ requires review; it is not automatically a breaking change. The rules follow
 the [JSON Schema validation vocabulary](https://json-schema.org/draft/2020-12/json-schema-validation)
 and [reference semantics](https://json-schema.org/draft/2020-12/json-schema-core).
 
-New snapshot receipts use version 2. Version 1 receipts remain readable: the
-loader verifies their original canonical checksum, derives current identities,
-retains `legacyIdentity`, and emits a migration warning. It does not rewrite
-history or advance Gateway verification time. Old pins are not accepted as new
-contract identities; inspect the document and explicitly replace those pins.
-Version 2 receipts with policy 1 also remain readable: the loader verifies the
-original policy-1 hash before deriving policy 2. `legacyIdentity` records the
-prior parser, hash, and policy, preserving an earlier migration in `previous`
-when present. Neither load path rewrites a receipt or advances its fetch or
-verification times. All current hashes change because the policy name itself
-is hashed, even when the projected contract is otherwise unchanged.
+Snapshot format 3 uses the `igw/catalog-v2` cache namespace. Older development
+caches are left untouched and ignored. Run `spec sync` online, or import a raw
+OpenAPI document for offline use. Profile configuration and current
+`igw-contract/2` pins remain compatible; cache loading has no identity migration
+layer and never advances a Gateway verification timestamp.
 
 Discovery and reads refresh after 24 hours. A write revalidates during each
 invocation, using ETag or Last-Modified when supplied. A failed refresh retains
@@ -89,7 +85,7 @@ Every store load validates the retained bytes with the current parser. A
 conditional [HTTP 304](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5)
 can reuse that model only when the request sent its Gateway validator; an
 identical fresh response can also reuse it. Different bytes always reparse.
-Reuse transfers ownership after the new immutable receipt is saved, so failed
+Reuse transfers ownership after the new snapshot metadata is published, so failed
 publication leaves the fallback usable. It does not skip write verification,
 trust imported validators, or substitute contract equality for byte identity.
 See [revalidation measurements](performance.md#unchanged-catalog-revalidation).

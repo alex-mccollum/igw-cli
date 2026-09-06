@@ -63,7 +63,7 @@ func (i *invocation) specCommands() *cobra.Command {
 				now = i.app.Now().UTC()
 			}
 			snapshot := &catalog.Snapshot{Metadata: catalog.Metadata{Version: catalog.SnapshotVersion, Target: target, Source: args[0], SourceKind: "import", VerifiedAt: now, RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(), ParserVersion: catalog.ParserVersion}, Catalog: c, Stale: true}
-			if err := svc.Store.Save(snapshot); err != nil {
+			if err := svc.Store.Save(cmd.Context(), snapshot); err != nil {
 				return sourceProblem(err)
 			}
 			i.withSnapshot(snapshot, map[string]string{"contractSha256": c.ContractHash()})

@@ -1,8 +1,9 @@
 //go:build linux || darwin || freebsd || openbsd || netbsd || dragonfly
 
-package config
+package fslock
 
 import (
+	"errors"
 	"os"
 	"runtime"
 	"syscall"
@@ -11,5 +12,8 @@ import (
 func lockFile(f *os.File) error {
 	err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 	runtime.KeepAlive(f)
+	if errors.Is(err, syscall.EWOULDBLOCK) {
+		return ErrBusy
+	}
 	return err
 }

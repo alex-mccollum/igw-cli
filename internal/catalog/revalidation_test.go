@@ -81,7 +81,7 @@ func TestRevalidationTransfersOnlyUnchangedCatalog(t *testing.T) {
 				cached.Close() // Acquire closes the consumed snapshot before returning.
 			}
 			assertRevalidatedCatalogUsable(t, fresh.Catalog)
-			saved, err := svc.Store.Load(target)
+			saved, err := svc.Store.Load(context.Background(), target)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -152,7 +152,7 @@ func TestRevalidationRefusesUnsolicitedNotModified(t *testing.T) {
 				t.Fatal("unsolicited 304 changed fallback ownership or verification")
 			}
 			assertRevalidatedCatalogUsable(t, cached.Catalog)
-			if saved, err := svc.Store.Load(target); err == nil {
+			if saved, err := svc.Store.Load(context.Background(), target); err == nil {
 				saved.Close()
 				t.Fatal("unsolicited 304 published a new receipt")
 			}

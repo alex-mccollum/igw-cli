@@ -1,4 +1,4 @@
-package config
+package fslock
 
 import (
 	"os"
@@ -16,6 +16,9 @@ func lockFile(f *os.File) error {
 	runtime.KeepAlive(&overlapped)
 	runtime.KeepAlive(f)
 	if ok == 0 {
+		if err == syscall.Errno(33) {
+			return ErrBusy
+		}
 		return err
 	}
 	return nil

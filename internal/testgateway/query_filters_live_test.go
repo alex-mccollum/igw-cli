@@ -167,7 +167,7 @@ func TestLiveQueryFilters(t *testing.T) {
 		t.Fatal("query catalog provenance missing")
 	}
 	receipt.Catalog = synced.Meta.Catalog
-	snapshot, err := (catalog.Store{Dir: cache}).Load(*synced.Meta.Target)
+	snapshot, err := (catalog.Store{Dir: cache}).Load(context.Background(), *synced.Meta.Target)
 	if err != nil {
 		t.Fatal(err)
 	}

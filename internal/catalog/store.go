@@ -1,49 +1,39 @@
 package catalog
 
 import (
-	"bytes"
-	"crypto/rand"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
+	"github.com/alex-mccollum/igw-cli/internal/fslock"
 )
 
-const SnapshotVersion = 2
-
-type LegacyIdentity struct {
-	ParserVersion  string          `json:"parserVersion"`
-	ContractSHA256 string          `json:"contractSha256"`
-	ContractPolicy string          `json:"contractPolicy,omitempty"`
-	Previous       *LegacyIdentity `json:"previous,omitempty"`
-}
+const SnapshotVersion = 3
 
 type Metadata struct {
-	Version        int             `json:"version"`
-	Target         Target          `json:"target"`
-	Source         string          `json:"source"`
-	SourceKind     string          `json:"sourceKind"`
-	FetchedAt      time.Time       `json:"fetchedAt"`
-	VerifiedAt     time.Time       `json:"verifiedAt"`
-	RawSHA256      string          `json:"rawSha256"`
-	DocumentSHA256 string          `json:"documentSha256"`
-	ContractSHA256 string          `json:"contractSha256"`
-	ContractPolicy string          `json:"contractPolicy"`
-	ParserVersion  string          `json:"parserVersion"`
-	ETag           string          `json:"etag,omitempty"`
-	LastModified   string          `json:"lastModified,omitempty"`
-	GatewayVersion string          `json:"gatewayVersion,omitempty"`
-	Modules        []string        `json:"modules,omitempty"`
-	Compatibility  *Compatibility  `json:"compatibility,omitempty"`
-	LegacyIdentity *LegacyIdentity `json:"legacyIdentity,omitempty"`
+	Version        int            `json:"version"`
+	Target         Target         `json:"target"`
+	Source         string         `json:"source"`
+	SourceKind     string         `json:"sourceKind"`
+	FetchedAt      time.Time      `json:"fetchedAt"`
+	VerifiedAt     time.Time      `json:"verifiedAt"`
+	RawSHA256      string         `json:"rawSha256"`
+	DocumentSHA256 string         `json:"documentSha256"`
+	ContractSHA256 string         `json:"contractSha256"`
+	ContractPolicy string         `json:"contractPolicy"`
+	ParserVersion  string         `json:"parserVersion"`
+	ETag           string         `json:"etag,omitempty"`
+	LastModified   string         `json:"lastModified,omitempty"`
+	GatewayVersion string         `json:"gatewayVersion,omitempty"`
+	Modules        []string       `json:"modules,omitempty"`
+	Compatibility  *Compatibility `json:"compatibility,omitempty"`
 }
 
 type Snapshot struct {
@@ -59,61 +49,97 @@ func (s *Snapshot) Close() {
 	}
 }
 
-// Store uses immutable content-addressed blobs and immutable validation
-// receipts. Atomic no-clobber publication coordinates writers without lock
-// files or a mutable latest pointer that can roll back after a concurrent sync.
+// Store keeps at most two snapshots per target. Locks protect publication and
+// copying bytes for readers; HTTP and schema compilation never hold the lock.
 type Store struct{ Dir string }
 
-func (s Store) Save(snapshot *Snapshot) error {
+func (s Store) targetDir(target Target) string {
+	return filepath.Join(s.Dir, "targets", target.Key())
+}
+
+func (s Store) Save(ctx context.Context, snapshot *Snapshot) error {
 	if s.Dir == "" {
 		return errors.New("catalog store directory is required")
 	}
+	if snapshot == nil || snapshot.Catalog == nil {
+		return errors.New("invalid snapshot metadata")
+	}
 	m := &snapshot.Metadata
-	if m.Version != SnapshotVersion || m.VerifiedAt.IsZero() || snapshot.Catalog == nil {
+	if m.Version != SnapshotVersion || m.VerifiedAt.IsZero() {
 		return errors.New("invalid snapshot metadata")
 	}
 	if m.RawSHA256 != snapshot.Catalog.RawHash() || m.ContractSHA256 != snapshot.Catalog.ContractHash() {
 		return errors.New("snapshot hashes do not match document")
 	}
-	m.Compatibility = snapshot.Catalog.Compatibility()
-	m.DocumentSHA256 = snapshot.Catalog.DocumentHash()
-	m.ContractPolicy = ContractPolicy
-	m.ParserVersion = ParserVersion
 	if target, err := NewTarget(m.Target.Profile, m.Target.URL); err != nil || target != m.Target {
 		return errors.New("snapshot target must be normalized")
 	}
-	blobs := filepath.Join(s.Dir, "blobs")
-	receipts := filepath.Join(s.Dir, "targets", m.Target.Key())
-	for _, dir := range []string{blobs, receipts} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			return err
+	m.Compatibility = snapshot.Catalog.Compatibility()
+	m.DocumentSHA256, m.ContractPolicy, m.ParserVersion = snapshot.Catalog.DocumentHash(), ContractPolicy, ParserVersion
+	dir := s.targetDir(m.Target)
+	if err := os.MkdirAll(filepath.Join(dir, "blobs"), 0700); err != nil {
+		return err
+	}
+	lock, err := fslock.Acquire(ctx, filepath.Join(dir, ".lock"))
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	current, currentErr := readStored(dir, "current.json", m.Target)
+	previous, _ := readStored(dir, "previous.json", m.Target)
+	for _, old := range []*storedSnapshot{current, previous} {
+		if old != nil && old.metadata.VerifiedAt.After(m.VerifiedAt) {
+			return nil
 		}
 	}
-	raw := snapshot.Catalog.Raw()
-	blobPath := filepath.Join(blobs, m.RawSHA256+".json")
-	if err := publish(blobPath, raw); err != nil {
-		if !errors.Is(err, os.ErrExist) {
+	// Replace a corrupt blob with the freshly validated bytes as well. The path
+	// is derived only from the digest, and publication is atomic for all readers.
+	if err := publish(filepath.Join(dir, "blobs", m.RawSHA256+".json"), snapshot.Catalog.Raw()); err != nil {
+		return err
+	}
+	if currentErr == nil {
+		if err := publishMetadata(filepath.Join(dir, "previous.json"), current.metadata); err != nil {
 			return err
 		}
-		existing, readErr := readBounded(blobPath, MaxDocumentBytes)
-		if readErr != nil || !bytes.Equal(existing, raw) {
-			return errors.New("stored catalog blob is corrupt")
+		previous = current
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := publishMetadata(filepath.Join(dir, "current.json"), *m); err != nil {
+		return err
+	}
+	// A crash before publication leaves the old current intact. A crash after
+	// publication can leave orphan blobs; the next successful save collects them.
+	keep := map[string]bool{m.RawSHA256 + ".json": true}
+	if previous != nil {
+		keep[previous.metadata.RawSHA256+".json"] = true
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, "blobs"))
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.Type().IsRegular() && strings.HasSuffix(name, ".json") && validDigest(strings.TrimSuffix(name, ".json")) && !keep[name] {
+			if err := os.Remove(filepath.Join(dir, "blobs", name)); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
+}
+
+func publishMetadata(path string, m Metadata) error {
 	b, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}
-	var nonce [8]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return err
-	}
-	name := fmt.Sprintf("%020d-%s.json", m.VerifiedAt.UnixNano(), hex.EncodeToString(nonce[:]))
-	return publish(filepath.Join(receipts, name), b)
+	return publish(path, b)
 }
 
 func publish(path string, b []byte) error {
-	w, err := artifact.New(path, false)
+	w, err := artifact.New(path, true)
 	if err != nil {
 		return err
 	}
@@ -125,36 +151,53 @@ func publish(path string, b []byte) error {
 	return err
 }
 
-func (s Store) Load(target Target) (*Snapshot, error) {
-	dir := filepath.Join(s.Dir, "targets", target.Key())
-	entries, err := os.ReadDir(dir)
+type storedSnapshot struct {
+	metadata Metadata
+	raw      []byte
+}
+
+func (s Store) Load(ctx context.Context, target Target) (*Snapshot, error) {
+	dir := s.targetDir(target)
+	lock, err := fslock.Acquire(ctx, filepath.Join(dir, ".lock"))
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() > entries[j].Name() })
-	corrupt := false
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+	// Copy both candidates before releasing the lock so cleanup cannot race a
+	// reader. Only one is normally parsed, and each document has a fixed size cap.
+	current, currentErr := readStored(dir, "current.json", target)
+	previous, previousErr := readStored(dir, "previous.json", target)
+	lock.Close()
+	for i, stored := range []*storedSnapshot{current, previous} {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if stored == nil {
 			continue
 		}
-		snapshot, err := s.loadReceipt(filepath.Join(dir, entry.Name()), target)
+		c, err := Parse(stored.raw)
 		if err != nil {
-			corrupt = true
 			continue
 		}
-		if corrupt {
-			snapshot.Warnings = append(snapshot.Warnings, "Ignored an invalid newer cached snapshot; using the last valid snapshot.")
+		m := stored.metadata
+		if c.ContractHash() != m.ContractSHA256 || c.DocumentHash() != m.DocumentSHA256 {
+			c.Close()
+			continue
+		}
+		m.Compatibility, m.ParserVersion = c.Compatibility(), ParserVersion
+		snapshot := &Snapshot{Metadata: m, Catalog: c}
+		if i > 0 {
+			snapshot.Warnings = []string{"Ignored an invalid current cached snapshot; using the previous snapshot."}
 		}
 		return snapshot, nil
 	}
-	if corrupt {
-		return nil, errors.New("no valid snapshot remains in the target cache")
+	if errors.Is(currentErr, os.ErrNotExist) && errors.Is(previousErr, os.ErrNotExist) {
+		return nil, os.ErrNotExist
 	}
-	return nil, os.ErrNotExist
+	return nil, errors.New("no valid snapshot remains in the target cache; run spec sync or import a snapshot")
 }
 
-func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
-	b, err := readBounded(path, 1<<20)
+func readStored(dir, name string, target Target) (*storedSnapshot, error) {
+	b, err := readBounded(filepath.Join(dir, name), 1<<20)
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +205,8 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
-	if (m.Version != 1 && m.Version != SnapshotVersion) || m.Target != target || m.VerifiedAt.IsZero() || !validDigest(m.RawSHA256) {
-		return nil, errors.New("invalid snapshot receipt")
+	if m.Version != SnapshotVersion || m.ContractPolicy != ContractPolicy || m.Target != target || m.VerifiedAt.IsZero() || !validDigest(m.RawSHA256) || !validDigest(m.DocumentSHA256) || !validDigest(m.ContractSHA256) {
+		return nil, errors.New("invalid snapshot metadata; run spec sync to rebuild the cache")
 	}
 	if m.SourceKind == "gateway" {
 		expected, err := target.Endpoint("/openapi.json")
@@ -171,43 +214,14 @@ func (s Store) loadReceipt(path string, target Target) (*Snapshot, error) {
 			return nil, errors.New("snapshot source does not match target")
 		}
 	}
-	raw, err := readBounded(filepath.Join(s.Dir, "blobs", m.RawSHA256+".json"), MaxDocumentBytes)
+	raw, err := readBounded(filepath.Join(dir, "blobs", m.RawSHA256+".json"), MaxDocumentBytes)
 	if err != nil {
 		return nil, err
 	}
 	if digest(raw) != m.RawSHA256 {
 		return nil, errors.New("catalog blob checksum mismatch")
 	}
-	c, err := Parse(raw)
-	if err != nil {
-		return nil, err
-	}
-	var warnings []string
-	if m.Version == 1 {
-		// Verify the old identity before deriving the new one. The original
-		// immutable receipt is left untouched and its pin remains inspectable.
-		if c.DocumentHash() != m.ContractSHA256 {
-			c.Close()
-			return nil, errors.New("legacy catalog document checksum mismatch")
-		}
-		m.LegacyIdentity = &LegacyIdentity{ParserVersion: m.ParserVersion, ContractSHA256: m.ContractSHA256}
-		m.Version, m.DocumentSHA256, m.ContractSHA256, m.ContractPolicy = SnapshotVersion, c.DocumentHash(), c.ContractHash(), ContractPolicy
-		warnings = append(warnings, "Loaded a legacy snapshot with a new contract hash policy; review and replace old pins. Gateway verification time is unchanged.")
-	} else {
-		original, err := c.IdentityForPolicy(m.ContractPolicy)
-		if err != nil || original.ContractSHA256 != m.ContractSHA256 || original.DocumentSHA256 != m.DocumentSHA256 {
-			c.Close()
-			return nil, errors.New("catalog contract checksum mismatch")
-		}
-		if m.ContractPolicy != ContractPolicy {
-			m.LegacyIdentity = &LegacyIdentity{ParserVersion: m.ParserVersion, ContractSHA256: m.ContractSHA256, ContractPolicy: m.ContractPolicy, Previous: m.LegacyIdentity}
-			m.ContractSHA256, m.ContractPolicy = c.ContractHash(), ContractPolicy
-			warnings = append(warnings, "Loaded a previous contract identity policy; review and replace old pins. Gateway verification time is unchanged.")
-		}
-	}
-	m.Compatibility = c.Compatibility()
-	m.ParserVersion = ParserVersion
-	return &Snapshot{Metadata: m, Catalog: c, Warnings: warnings}, nil
+	return &storedSnapshot{metadata: m, raw: raw}, nil
 }
 
 func validDigest(value string) bool {
@@ -216,6 +230,13 @@ func validDigest(value string) bool {
 }
 
 func readBounded(path string, limit int64) ([]byte, error) {
+	prior, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !prior.Mode().IsRegular() {
+		return nil, errors.New("catalog file must be regular")
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -225,7 +246,7 @@ func readBounded(path string, limit int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !info.Mode().IsRegular() || info.Size() > limit {
+	if !info.Mode().IsRegular() || !os.SameFile(prior, info) || info.Size() > limit {
 		return nil, errors.New("catalog file exceeds limit or is not a regular file")
 	}
 	// Limit the read too: another local process could change the file after Stat.

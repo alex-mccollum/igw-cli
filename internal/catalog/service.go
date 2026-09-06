@@ -41,7 +41,7 @@ func (s Service) Acquire(ctx context.Context, target Target, token string, polic
 	if policy.Offline && policy.Refresh {
 		return nil, &igwerr.UsageError{Msg: "offline and refresh cannot be combined"}
 	}
-	cached, loadErr := s.Store.Load(target)
+	cached, loadErr := s.Store.Load(ctx, target)
 	if cached != nil {
 		age := s.now().Sub(cached.Metadata.VerifiedAt)
 		cached.Stale = age < 0 || age >= ReadTTL || cached.Metadata.SourceKind != "gateway" || len(cached.Warnings) > 0
@@ -104,6 +104,7 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 	}
 	client := &gateway.Client{BaseURL: target.URL, Token: token, HTTP: s.HTTP}
 	resp, err := client.Call(ctx, gateway.CallRequest{Method: http.MethodGet, Path: endpoint, Headers: headers, MaxBodyBytes: MaxDocumentBytes})
+	verifiedAt := s.now()
 	var metadata Metadata
 	var parsed *Catalog
 	var status *igwerr.StatusError
@@ -113,7 +114,7 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 		// validator. Store.Load already validated its bytes with the current parser.
 		parsed, err, reused = cached.Catalog, nil, true
 		metadata = cached.Metadata
-		metadata.VerifiedAt = s.now()
+		metadata.VerifiedAt = verifiedAt
 	} else if err == nil {
 		// Equal contract hashes can conceal documentation or representation
 		// changes. Reuse requires identical vendor bytes from this fresh response.
@@ -123,7 +124,7 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 			parsed, err = Parse(resp.Body)
 		}
 		metadata = Metadata{Version: SnapshotVersion, Target: target, Source: endpoint, SourceKind: "gateway",
-			FetchedAt: s.now(), VerifiedAt: s.now(), ETag: resp.Headers.Get("ETag"), LastModified: resp.Headers.Get("Last-Modified")}
+			FetchedAt: verifiedAt, VerifiedAt: verifiedAt, ETag: resp.Headers.Get("ETag"), LastModified: resp.Headers.Get("Last-Modified")}
 	}
 	if err != nil {
 		return nil, err
@@ -131,7 +132,7 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 	metadata.RawSHA256, metadata.ContractSHA256 = parsed.RawHash(), parsed.ContractHash()
 	metadata.ParserVersion = ParserVersion
 	snapshot := &Snapshot{Metadata: metadata, Catalog: parsed}
-	if err := s.Store.Save(snapshot); err != nil {
+	if err := s.Store.Save(ctx, snapshot); err != nil {
 		if !reused {
 			snapshot.Close()
 		}

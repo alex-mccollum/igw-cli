@@ -113,7 +113,7 @@ func BenchmarkCatalogRevalidation(b *testing.B) {
 	}
 	svc := catalog.Service{Store: catalog.Store{Dir: b.TempDir()}, HTTP: srv.Client()}
 	now := time.Now().UTC()
-	err = svc.Store.Save(&catalog.Snapshot{Catalog: c, Metadata: catalog.Metadata{
+	err = svc.Store.Save(context.Background(), &catalog.Snapshot{Catalog: c, Metadata: catalog.Metadata{
 		Version: catalog.SnapshotVersion, Target: target, SourceKind: "gateway", Source: target.URL + "/openapi.json",
 		FetchedAt: now, VerifiedAt: now, ETag: `"captured"`, RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(),
 	}})

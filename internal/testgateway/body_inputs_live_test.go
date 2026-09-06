@@ -212,7 +212,7 @@ func beginObservedSuite(t *testing.T, directoryVariable, kind, receiptName strin
 		t.Fatal("input catalog provenance missing")
 	}
 	s.receipt.Catalog = synced.Meta.Catalog
-	snapshot, err := (catalog.Store{Dir: s.cache}).Load(*synced.Meta.Target)
+	snapshot, err := (catalog.Store{Dir: s.cache}).Load(context.Background(), *synced.Meta.Target)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -163,7 +163,7 @@ func TestInvalidRefreshRetainsLastValidSnapshot(t *testing.T) {
 		snapshot.Close()
 		t.Fatal("invalid refresh succeeded")
 	}
-	cached, err := svc.Store.Load(target)
+	cached, err := svc.Store.Load(context.Background(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,10 +172,13 @@ func TestInvalidRefreshRetainsLastValidSnapshot(t *testing.T) {
 		t.Fatal("valid snapshot lost")
 	}
 	receipts := filepath.Join(svc.Store.Dir, "targets", target.Key())
-	if err := os.WriteFile(filepath.Join(receipts, "99999999999999999999-invalid.json"), []byte("broken"), 0600); err != nil {
+	if err := svc.Store.Save(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
-	recovered, err := svc.Store.Load(target)
+	if err := os.WriteFile(filepath.Join(receipts, "current.json"), []byte("broken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := svc.Store.Load(context.Background(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,13 +201,13 @@ func TestConcurrentStorePublicationNeverRollsBackNewerReceipt(t *testing.T) {
 			defer wg.Done()
 			m := Metadata{Version: SnapshotVersion, Target: target, SourceKind: "gateway", Source: "http://gateway.test/openapi.json",
 				FetchedAt: now, VerifiedAt: now.Add(time.Duration(index) * time.Second), RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(), ParserVersion: ParserVersion}
-			if err := store.Save(&Snapshot{Metadata: m, Catalog: c}); err != nil {
+			if err := store.Save(context.Background(), &Snapshot{Metadata: m, Catalog: c}); err != nil {
 				t.Error(err)
 			}
 		}(i)
 	}
 	wg.Wait()
-	latest, err := store.Load(target)
+	latest, err := store.Load(context.Background(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +215,7 @@ func TestConcurrentStorePublicationNeverRollsBackNewerReceipt(t *testing.T) {
 	if latest.Metadata.VerifiedAt != now.Add(7*time.Second) {
 		t.Fatal("older publication rolled back latest snapshot")
 	}
-	if _, err := os.Stat(filepath.Join(store.Dir, "blobs", c.RawHash()+".json")); err != nil {
+	if _, err := os.Stat(filepath.Join(store.targetDir(target), "blobs", c.RawHash()+".json")); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -229,7 +232,7 @@ func TestCanceledDiscoveryDoesNotPublish(t *testing.T) {
 		snapshot.Close()
 		t.Fatal("canceled discovery succeeded")
 	}
-	if _, err := svc.Store.Load(target); !errors.Is(err, os.ErrNotExist) {
+	if _, err := svc.Store.Load(context.Background(), target); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("canceled discovery left a snapshot: %v", err)
 	}
 }

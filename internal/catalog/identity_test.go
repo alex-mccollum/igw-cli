@@ -3,11 +3,8 @@ package catalog
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func identityValue(t *testing.T, raw string) any {
@@ -173,74 +170,5 @@ func TestProjectionCoversParametersHeadersBodiesAndCallbacks(t *testing.T) {
 	h3, _ := contractDigest(identityValue(t, strings.ReplaceAll(raw, `"keep"`, `"changed"`)))
 	if h1 == h3 {
 		t.Fatal("a property named summary was treated as annotation")
-	}
-}
-
-func TestLegacyReceiptRequalifiesWithoutRewritingHistory(t *testing.T) {
-	c := testCatalog(t)
-	target, _ := NewTarget("test", "http://gateway.test")
-	store := Store{Dir: t.TempDir()}
-	verified := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	dir := filepath.Join(store.Dir, "targets", target.Key())
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(store.Dir, "blobs"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(store.Dir, "blobs", c.RawHash()+".json"), c.Raw(), 0600); err != nil {
-		t.Fatal(err)
-	}
-	receipt := Metadata{Version: 1, Target: target, SourceKind: "gateway", Source: "http://gateway.test/openapi.json", VerifiedAt: verified, RawSHA256: c.RawHash(), ContractSHA256: c.DocumentHash(), ParserVersion: "previous-parser"}
-	b, err := json.Marshal(receipt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(dir, "0001.json")
-	if err := os.WriteFile(path, b, 0600); err != nil {
-		t.Fatal(err)
-	}
-	loaded, err := store.Load(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer loaded.Close()
-	m := loaded.Metadata
-	if m.Version != SnapshotVersion || m.ContractSHA256 != c.ContractHash() || m.DocumentSHA256 != c.DocumentHash() || m.ContractPolicy != ContractPolicy || !m.VerifiedAt.Equal(verified) || m.LegacyIdentity == nil || m.LegacyIdentity.ContractSHA256 != receipt.ContractSHA256 || len(loaded.Warnings) == 0 {
-		t.Fatalf("incorrect legacy requalification: %+v", m)
-	}
-	forPin, err := store.Load(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := checkPin(forPin, receipt.ContractSHA256); err == nil {
-		t.Fatal("legacy pin was silently accepted as new identity")
-	}
-	stored, err := os.ReadFile(path)
-	if err != nil || !bytes.Equal(stored, b) {
-		t.Fatal("immutable receipt was rewritten")
-	}
-	for _, tc := range []struct {
-		name    string
-		receipt Metadata
-	}{
-		{"legacy-checksum", func() Metadata { m := receipt; m.ContractSHA256 = strings.Repeat("0", 64); return m }()},
-		{"document-checksum", func() Metadata { m := loaded.Metadata; m.DocumentSHA256 = strings.Repeat("0", 64); return m }()},
-		{"contract-checksum", func() Metadata { m := loaded.Metadata; m.ContractSHA256 = strings.Repeat("0", 64); return m }()},
-		{"unrecognized-policy", func() Metadata { m := loaded.Metadata; m.ContractPolicy = "future/unknown"; return m }()},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			b, err := json.Marshal(tc.receipt)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(path, b, 0600); err != nil {
-				t.Fatal(err)
-			}
-			if invalid, err := store.Load(target); err == nil {
-				invalid.Close()
-				t.Fatal("invalid identity was accepted")
-			}
-		})
 	}
 }

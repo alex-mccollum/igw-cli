@@ -255,7 +255,7 @@ func (i *invocation) service() (catalog.Service, error) {
 		if err != nil {
 			return catalog.Service{}, &result.Problem{Kind: "config", Message: "could not resolve cache directory", Code: 2}
 		}
-		dir = filepath.Join(base, "igw", "catalog-v1")
+		dir = filepath.Join(base, "igw", "catalog-v2")
 	}
 	return catalog.Service{Store: catalog.Store{Dir: dir}, HTTP: i.app.HTTP, Now: i.app.Now}, nil
 }
