@@ -87,15 +87,21 @@ func (s Store) Save(ctx context.Context, snapshot *Snapshot) error {
 	defer lock.Close()
 	current, currentErr := readStored(dir, "current.json", m.Target)
 	previous, _ := readStored(dir, "previous.json", m.Target)
+	blobVerified := false
 	for _, old := range []*storedSnapshot{current, previous} {
 		if old != nil && old.metadata.VerifiedAt.After(m.VerifiedAt) {
 			return nil
 		}
+		if old != nil && old.metadata.RawSHA256 == m.RawSHA256 {
+			blobVerified = true
+		}
 	}
-	// Replace a corrupt blob with the freshly validated bytes as well. The path
-	// is derived only from the digest, and publication is atomic for all readers.
-	if err := publish(filepath.Join(dir, "blobs", m.RawSHA256+".json"), snapshot.Catalog.Raw()); err != nil {
-		return err
+	// readStored verifies the bytes, not just the metadata. Revalidation can
+	// reuse that blob; missing or corrupt bytes still need atomic replacement.
+	if !blobVerified {
+		if err := publish(filepath.Join(dir, "blobs", m.RawSHA256+".json"), snapshot.Catalog.Raw()); err != nil {
+			return err
+		}
 	}
 	if currentErr == nil {
 		if err := publishMetadata(filepath.Join(dir, "previous.json"), current.metadata); err != nil {

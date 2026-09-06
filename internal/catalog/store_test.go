@@ -154,3 +154,65 @@ func TestStoreCollectsInterruptedTemporaryFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestStoreReusesVerifiedBlob(t *testing.T) {
+	for _, source := range []string{"current", "previous"} {
+		t.Run(source, func(t *testing.T) {
+			store := Store{Dir: t.TempDir()}
+			target, _ := NewTarget("dev", "http://gateway.test")
+			snapshot := saveTestSnapshot(t, store, target, 1)
+			if source == "previous" {
+				saveTestSnapshot(t, store, target, 2)
+			}
+			path := filepath.Join(store.targetDir(target), "blobs", snapshot.Metadata.RawSHA256+".json")
+			stamp := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+			if err := os.Chtimes(path, stamp, stamp); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot.Metadata.VerifiedAt = snapshot.Metadata.VerifiedAt.Add(time.Minute)
+			if err := store.Save(context.Background(), snapshot); err != nil {
+				t.Fatal(err)
+			}
+			after, err := os.Stat(path)
+			if err != nil || !os.SameFile(before, after) || !before.ModTime().Equal(after.ModTime()) {
+				t.Fatalf("verified blob was rewritten: %v", err)
+			}
+			loaded, err := store.Load(context.Background(), target)
+			if err != nil || !loaded.Metadata.VerifiedAt.Equal(snapshot.Metadata.VerifiedAt) || loaded.Catalog.RawHash() != snapshot.Catalog.RawHash() {
+				t.Fatalf("revalidation metadata not published: %+v %v", loaded, err)
+			}
+		})
+	}
+}
+
+func TestStoreRepairsUnusableBlobOnRevalidation(t *testing.T) {
+	for _, damage := range []string{"missing", "corrupt"} {
+		t.Run(damage, func(t *testing.T) {
+			store := Store{Dir: t.TempDir()}
+			target, _ := NewTarget("dev", "http://gateway.test")
+			snapshot := saveTestSnapshot(t, store, target, 1)
+			path := filepath.Join(store.targetDir(target), "blobs", snapshot.Metadata.RawSHA256+".json")
+			var err error
+			if damage == "missing" {
+				err = os.Remove(path)
+			} else {
+				err = os.WriteFile(path, []byte("broken"), 0600)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot.Metadata.VerifiedAt = snapshot.Metadata.VerifiedAt.Add(time.Minute)
+			if err := store.Save(context.Background(), snapshot); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := store.Load(context.Background(), target)
+			if err != nil || loaded.Catalog.RawHash() != snapshot.Catalog.RawHash() || !loaded.Metadata.VerifiedAt.Equal(snapshot.Metadata.VerifiedAt) {
+				t.Fatalf("blob not repaired: %+v %v", loaded, err)
+			}
+		})
+	}
+}
