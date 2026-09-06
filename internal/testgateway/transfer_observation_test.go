@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/alex-mccollum/igw-cli/internal/cli"
 	"github.com/alex-mccollum/igw-cli/internal/config"
-	"github.com/alex-mccollum/igw-cli/internal/nextcli"
 )
 
 func TestTransferObservationCountsActualCLIRequests(t *testing.T) {
@@ -37,7 +37,7 @@ func TestTransferObservationCountsActualCLIRequests(t *testing.T) {
 			}
 			client.Transport = transferTransport{base: client.Transport, operations: &observed}
 			var out bytes.Buffer
-			app := nextcli.App{In: strings.NewReader(""), Out: &out, Err: io.Discard, CacheDir: t.TempDir(), HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) {
+			app := cli.App{In: strings.NewReader(""), Out: &out, Err: io.Discard, CacheDir: t.TempDir(), HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) {
 				return config.File{GatewayURL: srv.URL, Token: "synthetic-test-token"}, nil
 			}}
 			if err := app.Run(context.Background(), []string{"api", "request", "GET /state", "--json"}); err != nil {

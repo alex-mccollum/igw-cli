@@ -14,8 +14,8 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/cli"
 	"github.com/alex-mccollum/igw-cli/internal/config"
-	"github.com/alex-mccollum/igw-cli/internal/nextcli"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
@@ -73,7 +73,7 @@ func TestLiveAPIResourceContract(t *testing.T) {
 	runWithToken := func(name, credential string, args ...string) envelope {
 		t.Helper()
 		var out, stderr bytes.Buffer
-		app := nextcli.App{In: strings.NewReader(""), Out: &out, Err: &stderr, CacheDir: cache, HTTP: s.HTTPClient(), Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) {
+		app := cli.App{In: strings.NewReader(""), Out: &out, Err: &stderr, CacheDir: cache, HTTP: s.HTTPClient(), Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) {
 			return config.File{GatewayURL: s.URL, Token: credential}, nil
 		}}
 		err := app.Run(ctx, append(args, "--json", "--timeout", "90s"))

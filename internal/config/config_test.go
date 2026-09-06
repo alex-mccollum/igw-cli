@@ -20,7 +20,10 @@ func TestResolvePrecedence(t *testing.T) {
 		}
 	}
 
-	resolved := Resolve(fileCfg, getenv, "http://from-flag:8088", "flag-token")
+	resolved, err := ResolveWithProfile(fileCfg, getenv, "http://from-flag:8088", "flag-token", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if resolved.GatewayURL != "http://from-flag:8088" {
 		t.Fatalf("gateway precedence failed: got %q", resolved.GatewayURL)
 	}

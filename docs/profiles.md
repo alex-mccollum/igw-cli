@@ -1,6 +1,6 @@
 # Profiles and v1 configuration migration
 
-The development CLI manages its own profiles through `profile set`, `use`,
+The v1 CLI manages its own profiles through `profile set`, `use`,
 `remove`, `list`, and `show`. Canonical examples are in `docs/commands.md`.
 Every local change requires either `--dry-run` or `--yes`, exclusively. Profile
 commands never contact a Gateway, commission it, or change host configuration.
@@ -41,12 +41,12 @@ Both files live under the platform user configuration directory in `igw`:
 | File | Purpose |
 | --- | --- |
 | `config.json` | Legacy defaults, active selection, and named profiles |
-| `config.v1.json` | Versioned configuration used by the development CLI |
+| `config.v1.json` | Versioned configuration used by the v1 CLI |
 | `config.v1.lock` | Persistent file used for cooperative process locking |
 | `config.v1.rollback-REVISION.json` | Preserved v1 bytes from explicit rollback |
 
 With no files, profile setup creates v1 directly. With only a legacy file,
-the development CLI can read it, but profile edits require explicit migration.
+the v1 CLI can read it, but profile edits require explicit migration.
 Migration copies all recognized default and profile fields into a v1 document
 without changing the legacy bytes. It preserves existing active selection and
 per-field resolution; it does not automatically name or select legacy defaults.
@@ -56,7 +56,8 @@ and `configuration` with the existing fields. A migrated document also retains
 the private SHA-256 of the original legacy bytes for rollback checks. That hash
 is never emitted in command reports. The default runtime prefers v1 whenever
 present; an invalid v1 file does not silently fall back to legacy credentials.
-The legacy executable continues to use `config.json` until entrypoint cutover.
+A separately retained 0.x executable continues to read `config.json`. It does
+not read or update the v1 copy; avoid editing either file during migration.
 
 Migration copies settings only. It does not promote a legacy CWD OpenAPI file
 or import it as a fresh Gateway contract. V1 catalogs retain their separate

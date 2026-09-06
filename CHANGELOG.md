@@ -4,15 +4,14 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
-### Added
-- Add the development `cmd/igw-next` entrypoint with a typed execution core, versioned JSON results, full Gateway catalogs, true request previews, and offline schema inspection. Workflow migration and real-Gateway qualification are still in progress.
-
-### Fixed
-- Reject legacy `--dry-run`/`dryRun` forwarding without making a request. Genuine previews are implemented in the v1 development entrypoint.
-- Make the legacy `doctor` command read-only. The removed `--check-write` option now fails with a usage error instead of triggering an unconfirmed project scan.
-- Reject request URLs outside the configured Gateway origin and stop cross-origin redirects before forwarding the API token.
-- Stream `--json --out` downloads to atomic files with SHA-256 metadata. Require `--overwrite` for existing destinations and preserve them on failed transfers.
-- Fail with exit code `7` when a successful HTTP response exceeds `--max-body-bytes`, instead of reporting a truncated transfer as successful.
+### Changed
+- Cut over to one `cmd/igw` command tree and typed execution core. Remove the development entrypoint, legacy argument parser, persistent RPC, old OpenAPI index, and WSL address helper. This breaking interface is intended for v1; release qualification remains in progress.
+- Use one `igw/v1` JSON envelope for discovery, requests, workflow results, and errors. Preserve exit codes 0/2/6/7 and the release version/artifact naming contracts.
+- Discover the target Gateway's complete OpenAPI contract with immutable snapshots, provenance, freshness, pins, and explicit offline references; remove implicit CWD spec lookup.
+- Require deliberate previews/confirmation and supported resource/project preconditions. Distinguish accepted requests from verified workflow outcomes and uncertain writes.
+- Add bounded batch requests, streamed artifacts, resource/project/tag workflows, operational diagnostics, and observed Gateway restart.
+- Add versioned profiles, private local writes, explicit reversible migration, revision checks, and token input through stdin. Preserve environment names and per-field configuration precedence.
+- Generate help, command schemas, and shell completion from the same command tree. See `docs/migration-v1.md` for old-to-new commands and remaining qualification limits.
 
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 

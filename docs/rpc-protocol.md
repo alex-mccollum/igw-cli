@@ -1,95 +1,12 @@
-# RPC Protocol Contract
+# RPC migration
 
-`igw rpc` exposes a newline-delimited JSON (NDJSON) request/response stream for host applications that need many calls in a single process.
+Persistent RPC is removed in v1. There is no NDJSON handshake, queue, worker,
+cancel operation, or compatibility fallback server in the rebuilt CLI.
 
-## Transport
+Use one bounded `igw` process or an explicit sequential `api batch`. Preserve
+uncertain mutation outcomes; do not replay a request when changing transports.
+See `docs/host-integration.md` for the process contract and
+`docs/migration-v1.md` for command and result migration.
 
-- Input: one JSON object per line on `stdin`.
-- Output: one JSON object per line on `stdout`.
-- Request order is accepted serially; response order may differ when `--workers > 1`.
-- Empty input lines are ignored.
-
-## Request Envelope
-
-```json
-{"id":"req-1","op":"hello","args":{"name":"rpcWorkers"}}
-```
-
-- `id` is optional and echoed back when provided.
-- `op` is required.
-- `args` is optional and operation-specific.
-
-## Response Envelope
-
-```json
-{"id":"req-1","ok":true,"code":0,"status":200,"data":{"...": "..."}}
-```
-
-- `ok`: operation success.
-- `code`: CLI contract exit code class (`0`, `2`, `6`, `7`).
-- `status`: optional HTTP status for API-backed operations.
-- `data`: operation payload.
-- `error`: present when `ok=false`.
-
-## Built-In Operations
-
-- `hello`: protocol/version/features handshake.
-- `capability`: feature query (`args.name` optional).
-- `call`: execute one API call (same core behavior as `igw call` and `igw call --batch`).
-- `cancel`: cancel one in-flight `call` by request id (`args.id` or `args.requestId`).
-- `reload_config`: clear runtime caches for config/spec resolution.
-- `shutdown`: acknowledge and stop reading further input.
-
-## Handshake Contract
-
-`hello` returns:
-
-- `protocol`: stable protocol family (`igw-rpc-v1`).
-- `protocolSemver`: RPC schema version (`MAJOR.MINOR.PATCH`).
-- `minHostSemver`: minimum host compatibility floor.
-- `version`: CLI build version.
-- `features`: capability map for additive feature detection.
-- `ops`: operation list for quick probing.
-
-Hosts should:
-
-1. Verify `protocol` is recognized.
-2. Parse `protocolSemver` and reject incompatible future major versions.
-3. Gate optional behavior via `features` or `capability`.
-
-## Compatibility Rules
-
-- Breaking wire changes require a new protocol family (`protocol`) and major semver bump.
-- Additive fields and operations are allowed in minor/patch versions.
-- Existing fields (`id`, `ok`, `code`, `status`, `data`, `error`) are stable.
-- Unknown fields must be ignored by hosts.
-
-## Cancellation Behavior
-
-- `cancel` only targets in-flight `call` operations.
-- If the target request id is active, `data.cancelled=true` and the matching `call` returns a cancellation transport error.
-- If no active request matches, `data.cancelled=false` and the stream continues.
-
-## Call Stats Schema
-
-`call` responses include `data.stats` with the same base fields used by one-shot and batch execution:
-
-- `version` (stats schema version, currently `1`)
-- `timingMs`
-- `bodyBytes`
-- `http` (when HTTP timing collection is enabled)
-- `truncated` (when body truncation occurred)
-
-RPC adds queue telemetry under `data.stats.rpc`:
-
-- `queueWaitMs`: time spent waiting in the RPC work queue.
-- `queueDepth`: queue depth observed when the request was dequeued.
-
-## Load Governance
-
-`rpc` supports bounded execution controls:
-
-- `--workers`: concurrent request workers (`>=1`).
-- `--queue-size`: bounded in-memory queue capacity (`>=1`).
-
-These controls provide predictable throughput and memory bounds for high-frequency hosts.
+Historical 0.x protocol behavior remains in repository history and applies
+only to those older releases.

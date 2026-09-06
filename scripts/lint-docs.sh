@@ -73,6 +73,6 @@ if [[ $missing_refs -ne 0 ]]; then
 fi
 
 # Ensure documented command examples use known CLI command names/subcommands.
-go test ./internal/cli -run '^TestDocsCommandsUseKnownRegistryCommandShapes$' -count=1
+go test ./internal/cli -run '^TestDocsCommandsMatchCommandTree$' -count=1
 
 echo "ok: docs lint checks passed"

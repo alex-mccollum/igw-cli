@@ -20,10 +20,10 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/cli"
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
-	"github.com/alex-mccollum/igw-cli/internal/nextcli"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
 
@@ -278,7 +278,7 @@ func (s *inputSuite) run(name string, input io.Reader, args ...string) transferR
 	observer := &inputObserver{base: client.Transport}
 	client.Transport = observer
 	var out, stderr bytes.Buffer
-	app := nextcli.App{In: input, Out: &out, Err: &stderr, CacheDir: s.cache, HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) { return config.File{GatewayURL: s.session.URL, Token: s.token}, nil }}
+	app := cli.App{In: input, Out: &out, Err: &stderr, CacheDir: s.cache, HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) { return config.File{GatewayURL: s.session.URL, Token: s.token}, nil }}
 	err := app.Run(s.ctx, append(args, "--json", "--timeout", "90s"))
 	_, secret, _ := strings.Cut(s.token, ":")
 	if strings.Contains(out.String()+stderr.String(), s.token) || (secret != "" && strings.Contains(out.String()+stderr.String(), secret)) {

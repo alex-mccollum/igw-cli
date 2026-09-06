@@ -1,20 +1,21 @@
-# v1 development CLI
+# v1 implementation status
 
-The rebuild has an executable development entrypoint in `cmd/igw-next`. The
-released `cmd/igw` remains available while workflows and real Gateway
-compatibility are qualified. This is an implementation preview, not a v1
-release. The accepted completion gates are in `docs/plans/rebuild-v1.md`.
+The rebuilt command tree now runs through the single `cmd/igw` entrypoint.
+`cmd/igw-next` and the legacy CLI/RPC implementation have been removed. The
+source remains under qualification; cutover is not a published or release-ready
+v1. The complete gates remain in `docs/plans/rebuild-v1.md`, and migration
+guidance is in `docs/migration-v1.md`.
 
 Build and inspect the command tree:
 
 ```bash
-bash scripts/bounded-run.sh -- go build -o bin/igw-next ./cmd/igw-next
-bin/igw-next --help
-bin/igw-next schema --json
-bin/igw-next completion bash
+bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
+bin/igw --help
+bin/igw schema --json
+bin/igw completion bash
 ```
 
-Examples for this entrypoint are maintained in the development section of
+Examples for this entrypoint are maintained in
 `docs/commands.md`. The command tree currently provides:
 
 - `profile list`, `show`, `set`, `use`, `remove`, `migrate`, and `rollback`, with
@@ -105,7 +106,7 @@ literal text fields, streamed files, and ordered JSON part manifests with
 transport-only coverage for schema-less declarations. Multipart schema decoding,
 URL-encoded forms, parameter serialization beyond explicit path/query/header values,
 singleton resources, broader tag format/policy verification,
-entrypoint cutover, remote update-schedule activation, and final qualification
+remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at

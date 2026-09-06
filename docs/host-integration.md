@@ -1,81 +1,32 @@
-# Host Integration Contract
+# Host and agent integration
 
-This guide defines the recommended contract for host applications that call `igw` as an external tool.
+Spawn one `igw` process for a bounded request or use an explicit sequential
+`api batch`. Persistent RPC, worker queues, and automatic compatibility fallback
+are removed in v1. The shared execution core is inside the CLI; host applications
+consume its versioned process contract.
 
-## Goals
+At startup, inspect `version --json`, `exit-codes --json`, and `schema --json`.
+Require `version: "igw/v1"` on result envelopes. The application version is in
+`data.version` for the version command. Pin an appropriate binary/release and
+use operation-level catalog inspection before making assumptions about a
+particular Gateway's version or installed modules.
 
-- Deterministic startup checks.
-- Stable machine-readable behavior.
-- Predictable fallback when persistent RPC is unavailable.
+Pass arguments as an array without a shell. Set a deliberate target/profile,
+pass the complete token through the environment or private profile stdin setup,
+and drain both output streams. Avoid command-line tokens and logging secret
+input. Use CLI deadlines plus an outer process deadline with cleanup for only
+the child your adapter created.
 
-## Install/Update Channels
+Interpret the exit code and JSON envelope together. A successful process with
+an invalid envelope is an adapter error; a failed or disconnected mutation can
+have taken effect. Keep `uncertain` and partial results. Never turn a handshake,
+parse, or transport failure into an automatic second write.
 
-- Production/stable hosts: pin explicit versions (`vMAJOR.MINOR.PATCH`).
-- Fast-moving/dev hosts: use `latest` alias artifacts from:
-  - `https://github.com/<owner>/<repo>/releases/latest/download/igw_<os>_<arch>.<ext>`
+Use current previews and supported preconditions, then inspect verification
+metadata. Resource signatures, project content digests, and local profile
+revisions protect their documented scopes; none is a universal server transaction
+or job identifier. Generic HTTP acceptance is not workflow verification.
 
-Recommended bootstrap verification:
-
-1. Download artifact + `checksums.txt`.
-2. Verify SHA-256.
-3. Run `igw version` and require success.
-
-## Startup Handshake
-
-On process startup, hosts should run an RPC handshake before workload requests:
-
-1. Send `hello`.
-2. Verify `protocol == "igw-rpc-v1"`.
-3. Parse `protocolSemver`; reject unsupported future major versions.
-4. Check required features with `features` or `capability`.
-
-Minimum recommended feature checks:
-
-- `call`
-- `rpcWorkers`
-- `rpcQueueSize`
-- `callStatsV1`
-
-## Runtime Strategy
-
-1. Prefer `igw rpc` for repeated requests.
-2. Configure bounded controls:
-   - `--workers` for concurrency.
-   - `--queue-size` for backpressure.
-3. Use one-shot fallback (`igw call --json`) when RPC startup/handshake fails.
-
-## Machine Contracts
-
-Hosts should treat these as stable automation contracts:
-
-- Exit code classes:
-  - `0` success
-  - `2` usage/config
-  - `6` auth
-  - `7` network/non-auth HTTP
-- JSON stats schema:
-  - `stats.version == 1`
-  - `stats.timingMs`
-  - `stats.bodyBytes`
-- Reject or safely degrade when `stats.version` is unknown.
-- RPC queue telemetry for `call`:
-  - `stats.rpc.queueWaitMs`
-  - `stats.rpc.queueDepth`
-
-## Recommended Session Pattern
-
-1. Open `igw rpc` process.
-2. Handshake (`hello`, optional `capability` checks).
-3. Execute calls.
-4. Optionally issue `cancel` for in-flight request IDs.
-5. Send `shutdown` and close stdin.
-
-If the stream fails, restart a fresh RPC session and re-run handshake.
-
-## Compatibility Fallback
-
-If handshake or capability checks fail:
-
-1. Mark RPC unavailable for the current run.
-2. Fall back to one-shot `igw call --json`.
-3. Preserve the same output/exit-code handling path in host code.
+Use returned artifact metadata for files and a lossless JSON decoder for large
+numbers. Do not assume fields from the 0.x envelope or RPC protocol remain.
+See `docs/automation.md`, `docs/migration-v1.md`, and `docs/commands.md`.

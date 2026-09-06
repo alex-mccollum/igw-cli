@@ -1,8 +1,8 @@
 # Gateway catalog architecture
 
 The v1 catalog implementation lives in `internal/catalog` and powers the
-development CLI in `cmd/igw-next`. The existing released `igw api sync` command
-still uses the legacy loader until command cutover.
+single CLI in `cmd/igw`. The legacy OpenAPI loader and CWD cache lookup have
+been removed; see `docs/migration-v1.md` for command and cache migration.
 
 The target Gateway's `/openapi.json` describes the documented routes provided
 by its installed version and modules. IA's `/openapi` endpoint is a UI, so it

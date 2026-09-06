@@ -1,96 +1,34 @@
-# Examples
+# Practical workflows
 
-All commands below are examples. Replace placeholders for your environment.
+Executable examples are canonical in `docs/commands.md`. Use the command tree's
+help or `schema COMMAND... --json` to inspect flags for a particular task.
 
-## Health and Connectivity
+For a new Gateway, configure its explicit address and full token, inspect the
+effective profile, run the read-only doctor, then inspect the Gateway catalog.
+Use a named profile for each target. Existing 0.x settings have an explicit
+preview/migration/rollback path in `docs/profiles.md`.
 
-```bash
-igw doctor
-igw doctor --json --select ok --raw
-```
+For a configuration resource, discover its type and defaults, read current
+state, and preview the proposed writable fields. Keep the reviewed signature
+for replacement or deletion. Apply with confirmation and inspect the readback
+result; stored configuration verification does not certify operational health.
 
-## Gateway Metadata
+For projects, inspect and export a ZIP, then use the import workflow and reviewed
+content digest for replacement. For tags, inspect catalog capability and format/
+collision policy support before import; readback verification has explicit
+coverage limits. See `docs/compatibility-matrix.md` for actual qualified cases.
 
-```bash
-igw gateway info --json
-igw call --path /data/api/v1/gateway-info --json
-```
+For diagnostics, inspect status first, explicitly preview/confirm collection,
+and let the workflow poll completion before downloading a bounded artifact.
+Gateway restart likewise requires an explicit baseline, one mutation, and
+read-only observation under a deadline. It does not infer success from HTTP
+availability alone.
 
-## API Discovery
+For an API without a dedicated workflow, describe its complete operation, prepare
+its encoded inputs, and use `api request`. When the vendor contract is incomplete,
+`api raw` is an explicit escape hatch; it does not claim schema validation or
+final-state verification. Keep those limits in automation result handling.
 
-```bash
-igw api list --path-contains gateway
-igw api show /data/api/v1/gateway-info
-igw api tags --json
-igw api stats --json
-igw api sync --json
-```
-
-## Wrapper Operations
-
-```bash
-igw logs list --query limit=5 --json
-igw diagnostics bundle status --json
-igw restart tasks --json
-```
-
-## Host Integration Pattern (RPC Primary, CLI Fallback)
-
-For a stricter host contract (startup checks, feature gating, and fallback rules), see `docs/host-integration.md`.
-
-Shell adapter:
-
-```bash
-# 1) Probe protocol/capabilities on startup.
-printf '%s\n' \
-  '{"id":"h1","op":"hello"}' \
-  '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
-  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
-
-# 2) Prefer rpc for repeated calls.
-printf '%s\n' \
-  '{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}' \
-  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev --workers 2 --queue-size 64
-
-# 3) Fallback to one-shot call if rpc is unavailable.
-igw call --profile dev --path /data/api/v1/gateway-info --json
-```
-
-Node.js adapter sketch:
-
-```js
-import { spawn } from "node:child_process";
-
-const rpc = spawn("igw", ["rpc", "--profile", "dev", "--workers", "2"]);
-rpc.stdin.write('{"id":"h1","op":"hello"}\n');
-rpc.stdin.write('{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info"}}\n');
-rpc.stdin.write('{"id":"s1","op":"shutdown"}\n');
-```
-
-Go adapter sketch:
-
-```go
-cmd := exec.Command("igw", "rpc", "--profile", "dev", "--workers", "2")
-stdin, _ := cmd.StdinPipe()
-stdout, _ := cmd.StdoutPipe()
-_ = cmd.Start()
-_, _ = io.WriteString(stdin, "{\"id\":\"h1\",\"op\":\"hello\"}\n")
-_, _ = io.WriteString(stdin, "{\"id\":\"c1\",\"op\":\"call\",\"args\":{\"method\":\"GET\",\"path\":\"/data/api/v1/gateway-info\"}}\n")
-_, _ = io.WriteString(stdin, "{\"id\":\"s1\",\"op\":\"shutdown\"}\n")
-_ = stdin.Close()
-_ = cmd.Wait()
-_ = stdout.Close()
-```
-
-## Mutating Operations
-
-Mutating commands require explicit `--yes`:
-
-```bash
-igw scan projects --yes
-igw scan config --yes
-igw tags import --in tags.json --yes --json
-igw backup restore --in gateway.gwbk --yes --json
-```
-
-For the canonical command reference, see `docs/commands.md`.
+For offline work, inspect bundled references or exported snapshots. References
+retain exact evidence and remain available without a live Gateway, but they do
+not silently become the current target's contract or authorize writes.

@@ -63,5 +63,5 @@ igw version
 ## Next
 
 1. Configure gateway URL and token: `docs/configuration.md`.
-2. Run your first health check: `igw doctor`.
+2. Run your first health check: `igw gateway doctor`.
 3. Use canonical command examples: `docs/commands.md`.

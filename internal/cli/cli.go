@@ -1,267 +1,477 @@
+// Package cli defines the command tree shared by parsing, help, and schemas.
 package cli
 
 import (
-	"flag"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/alex-mccollum/igw-cli/internal/buildinfo"
+	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/config"
-	"github.com/alex-mccollum/igw-cli/internal/igwerr"
-	"github.com/alex-mccollum/igw-cli/internal/wsl"
+	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/operations"
+	"github.com/alex-mccollum/igw-cli/internal/reference"
+	"github.com/alex-mccollum/igw-cli/internal/resource"
+	"github.com/alex-mccollum/igw-cli/internal/result"
 )
 
-type CLI struct {
-	In              io.Reader
-	Out             io.Writer
-	Err             io.Writer
-	Getenv          func(string) string
-	ReadConfig      func() (config.File, error)
-	WriteConfig     func(config.File) error
-	DetectWSLHostIP func() (string, string, error)
-	HTTPClient      *http.Client
-	runtime         *runtimeState
+type App struct {
+	In          io.Reader
+	Out         io.Writer
+	Err         io.Writer
+	Getenv      func(string) string
+	ReadConfig  func() (config.File, error)
+	ConfigStore *config.Store
+	CacheDir    string
+	HTTP        *http.Client
+	Now         func() time.Time
 }
 
-func New() *CLI {
-	return &CLI{
-		In:              os.Stdin,
-		Out:             os.Stdout,
-		Err:             os.Stderr,
-		Getenv:          os.Getenv,
-		ReadConfig:      config.Read,
-		WriteConfig:     config.Write,
-		DetectWSLHostIP: wsl.DetectWindowsHostIP,
-		runtime:         newRuntimeState(),
+type invocation struct {
+	app                      App
+	root                     *cobra.Command
+	output                   result.Result
+	json                     bool
+	showVersion              bool
+	profile, gatewayURL, pin string
+	offline, allowStale      bool
+	timeout                  time.Duration
+}
+
+func (a App) Run(ctx context.Context, args []string) error {
+	if a.In == nil {
+		a.In = os.Stdin
 	}
-}
-
-type rootCommand struct {
-	Name        string
-	Summary     string
-	Subcommands []string
-	Run         func(*CLI, []string) error
-}
-
-var rootCommandSummaries = map[string]string{
-	"api":         "Query local OpenAPI documentation",
-	"backup":      "Gateway backup export/restore",
-	"call":        "Execute generic Ignition Gateway API request",
-	"completion":  "Output shell completion script",
-	"config":      "Manage local configuration",
-	"diagnostics": "Diagnostics bundle helpers",
-	"doctor":      "Check connectivity and auth",
-	"exit-codes":  "Print stable machine exit code contract",
-	"gateway":     "Convenience gateway commands",
-	"logs":        "Gateway log helpers",
-	"restart":     "Restart task/gateway helpers",
-	"rpc":         "Persistent NDJSON RPC mode for machine callers",
-	"scan":        "Convenience scan commands",
-	"schema":      "Print machine-readable CLI command schema",
-	"tags":        "Tag import/export helpers",
-	"wait":        "Wait for operational readiness conditions",
-	"version":     "Print build version information",
-}
-
-var rootCommands = []rootCommand{
-	{Name: "api", Summary: rootCommandSummaries["api"], Subcommands: []string{"list", "show", "search", "tags", "stats", "capability", "sync", "refresh"}, Run: (*CLI).runAPI},
-	{Name: "backup", Summary: rootCommandSummaries["backup"], Subcommands: []string{"export", "restore"}, Run: (*CLI).runBackup},
-	{Name: "call", Summary: rootCommandSummaries["call"], Run: (*CLI).runCall},
-	{Name: "completion", Summary: rootCommandSummaries["completion"], Run: (*CLI).runCompletion},
-	{Name: "config", Summary: rootCommandSummaries["config"], Subcommands: []string{"set", "show", "profile"}, Run: (*CLI).runConfig},
-	{Name: "diagnostics", Summary: rootCommandSummaries["diagnostics"], Subcommands: []string{"bundle"}, Run: (*CLI).runDiagnostics},
-	{Name: "doctor", Summary: rootCommandSummaries["doctor"], Run: (*CLI).runDoctor},
-	{Name: "exit-codes", Summary: rootCommandSummaries["exit-codes"], Run: (*CLI).runExitCodes},
-	{Name: "gateway", Summary: rootCommandSummaries["gateway"], Subcommands: []string{"info"}, Run: (*CLI).runGateway},
-	{Name: "logs", Summary: rootCommandSummaries["logs"], Subcommands: []string{"list", "download", "loggers", "logger", "level-reset"}, Run: (*CLI).runLogs},
-	{Name: "restart", Summary: rootCommandSummaries["restart"], Subcommands: []string{"tasks", "gateway"}, Run: (*CLI).runRestart},
-	{Name: "rpc", Summary: rootCommandSummaries["rpc"], Run: (*CLI).runRPC},
-	{Name: "scan", Summary: rootCommandSummaries["scan"], Subcommands: scanSubcommands, Run: (*CLI).runScan},
-	{Name: "schema", Summary: rootCommandSummaries["schema"], Run: (*CLI).runSchema},
-	{Name: "tags", Summary: rootCommandSummaries["tags"], Subcommands: []string{"export", "import"}, Run: (*CLI).runTags},
-	{Name: "wait", Summary: rootCommandSummaries["wait"], Subcommands: []string{"gateway", "diagnostics-bundle", "restart-tasks"}, Run: (*CLI).runWait},
-	{Name: "version", Summary: rootCommandSummaries["version"], Run: (*CLI).runVersion},
-}
-
-var completionRootCommands = []string{
-	"api", "backup", "call", "completion", "config", "diagnostics", "doctor", "exit-codes", "gateway", "help", "logs", "restart", "rpc", "scan", "schema", "tags", "wait", "version",
-}
-
-var completionSubcommands = map[string][]string{
-	"api":         {"list", "show", "search", "tags", "stats", "capability", "sync", "refresh"},
-	"backup":      {"export", "restore"},
-	"config":      {"set", "show", "profile"},
-	"diagnostics": {"bundle"},
-	"gateway":     {"info"},
-	"logs":        {"list", "download", "loggers", "logger", "level-reset"},
-	"restart":     {"tasks", "gateway"},
-	"scan":        scanSubcommands,
-	"tags":        {"export", "import"},
-	"wait":        {"gateway", "diagnostics-bundle", "restart-tasks"},
-}
-
-var nestedCompletionCommands = map[string][]string{
-	"config profile":     {"add", "use", "list"},
-	"diagnostics bundle": {"generate", "status", "download"},
-	"logs logger":        {"set"},
-}
-
-var completionFlags = []string{
-	"--profile", "--gateway-url", "--api-key", "--api-key-stdin", "--timeout", "--json", "--timing", "--json-stats", "--include-headers",
-	"--spec-file", "--op", "--method", "--path", "--query", "--header", "--body", "--content-type", "--yes",
-	"--dry-run", "--retry", "--retry-backoff", "--out", "--overwrite", "--batch", "--batch-output", "--parallel", "--select", "--raw", "--compact", "--in", "--provider", "--type", "--collision-policy", "--prefix-depth",
-	"--interval", "--wait-timeout", "--openapi-path",
-	"--workers", "--queue-size",
-	"--command",
-	"--name", "--level", "--restore-disabled", "--disable-temp-project-backup", "--rename-enabled", "--include-peer-local",
-	"--recursive", "--include-udts",
-}
-
-func (c *CLI) Execute(args []string) error {
-	if len(args) == 0 {
-		c.printRootUsage()
-		return &igwerr.UsageError{Msg: "required command"}
+	if a.Out == nil {
+		a.Out = os.Stdout
 	}
-
-	command := strings.TrimSpace(args[0])
-	switch command {
-	case "help", "-h", "--help":
-		c.printRootUsage()
-		return nil
-	case "-v", "--version":
-		return c.runVersion(args[1:])
+	if a.Err == nil {
+		a.Err = os.Stderr
 	}
-
-	cmd, ok := findRootCommand(command)
-	if !ok {
-		c.printRootUsage()
-		return &igwerr.UsageError{Msg: fmt.Sprintf("unknown command %q", command)}
+	if a.Getenv == nil {
+		a.Getenv = os.Getenv
 	}
-
-	return cmd.Run(c, args[1:])
-}
-
-func findRootCommand(name string) (rootCommand, bool) {
-	for _, cmd := range rootCommands {
-		if cmd.Name == name {
-			return cmd, true
+	if a.ReadConfig == nil {
+		if a.ConfigStore == nil {
+			a.ConfigStore = &config.Store{}
+		}
+		a.ReadConfig = func() (config.File, error) {
+			state, err := a.ConfigStore.Read()
+			return state.Config, err
 		}
 	}
-	return rootCommand{}, false
+	i := &invocation{app: a}
+	root := i.commands()
+	root.SetIn(a.In)
+	root.SetOut(a.Out)
+	root.SetErr(a.Err)
+	root.SetArgs(args)
+	wantJSON := jsonRequested(root, args)
+	var generated bytes.Buffer
+	if wantJSON {
+		root.SetOut(&generated)
+	}
+	// Cobra captures the output writer when creating completion commands.
+	root.InitDefaultCompletionCmd()
+	strictCommandGroups(root)
+	err := root.ExecuteContext(ctx)
+	if err != nil {
+		var problem *result.Problem
+		if errors.As(err, &problem) {
+			i.output = result.Failure(problem)
+		} else if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			i.output = result.Failure(err)
+		} else {
+			i.output = result.Failure(result.Usage(err.Error()))
+		}
+	}
+	if i.output.Version == "" && generated.Len() > 0 {
+		i.output = result.Success(map[string]string{"text": generated.String()})
+	}
+	if i.output.Version == "" {
+		return err
+	} // Text help and completion stream their own output.
+	if wantJSON || i.json {
+		enc := json.NewEncoder(a.Out)
+		enc.SetEscapeHTML(false)
+		if encodeErr := enc.Encode(i.output); encodeErr != nil {
+			return &result.Problem{Kind: "output", Message: "could not write JSON output", Code: 7}
+		}
+	} else {
+		if i.output.Error != nil {
+			_, batch := i.output.Data.(execute.BatchReport)
+			_, restart := i.output.Data.(operations.RestartEvidence)
+			if batch || restart {
+				if writeErr := human(a.Out, i.output); writeErr != nil {
+					return &result.Problem{Kind: "output", Message: "could not write workflow output", Code: 7}
+				}
+			}
+			_, _ = fmt.Fprintln(a.Err, i.output.Error.Message)
+		} else {
+			if writeErr := human(a.Out, i.output); writeErr != nil {
+				return &result.Problem{Kind: "output", Message: "could not write output", Code: 7}
+			}
+		}
+		for _, warning := range i.output.Meta.Warnings {
+			_, _ = fmt.Fprintln(a.Err, "warning:", warning)
+		}
+	}
+	if i.output.Error != nil {
+		return i.output.Error
+	}
+	return err
 }
 
-func (c *CLI) printRootUsage() {
-	fmt.Fprintln(c.Err, "Usage: igw <command> [flags]")
-	fmt.Fprintln(c.Err, "")
-	fmt.Fprintln(c.Err, "Commands:")
-	for _, cmd := range rootCommands {
-		fmt.Fprintf(c.Err, "  %-10s %s\n", cmd.Name, cmd.Summary)
+func (i *invocation) commands() *cobra.Command {
+	root := &cobra.Command{Use: "igw", Short: "Inspect and operate an Ignition Gateway", SilenceUsage: true, SilenceErrors: true,
+		RunE: func(*cobra.Command, []string) error {
+			if i.showVersion {
+				i.output = result.Success(versionInfo())
+				return nil
+			}
+			return result.Usage("choose a command; use --help or schema for discovery")
+		}}
+	i.root = root
+	root.Flags().BoolVarP(&i.showVersion, "version", "v", false, "Show build version")
+	f := root.PersistentFlags()
+	f.BoolVar(&i.json, "json", false, "Emit one versioned JSON result, including errors")
+	f.StringVar(&i.profile, "profile", "", "Use a configured profile")
+	_ = root.RegisterFlagCompletionFunc("profile", i.completeProfiles)
+	f.StringVar(&i.gatewayURL, "gateway-url", "", "Override the profile Gateway URL")
+	f.DurationVar(&i.timeout, "timeout", 30*time.Second, "Total deadline for discovery and execution")
+	f.BoolVar(&i.offline, "offline", false, "Use a local catalog for discovery and previews")
+	f.StringVar(&i.pin, "spec-pin", "", "Require this canonical catalog SHA-256")
+	f.BoolVar(&i.allowStale, "allow-stale-spec", false, "Explicitly permit a target-matched stale catalog for a write")
+	root.AddCommand(i.specCommands(), i.apiCommands(), i.profileCommands(), i.resourceCommands(), i.projectCommands(), i.tagCommands(), i.backupCommands(), i.logsCommands(), i.diagnosticsCommands())
+	root.AddCommand(&cobra.Command{Use: "version", Short: "Show build metadata", Args: cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
+			i.output = result.Success(versionInfo())
+			return nil
+		}})
+	root.AddCommand(&cobra.Command{Use: "exit-codes", Short: "Show the stable automation exit codes", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
+		i.output = result.Success(map[string]string{"0": "success", "2": "usage or configuration error", "6": "authentication or permission failure (401/403)", "7": "transport, non-auth HTTP, artifact, cancellation, or verification failure"})
+		return nil
+	}})
+	root.AddCommand(&cobra.Command{Use: "schema [COMMAND...]", Short: "Describe commands and typed flags without connectivity", Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			target, rest, err := root.Find(args)
+			if err != nil || len(rest) != 0 {
+				return result.Usage("unknown command path for schema")
+			}
+			i.output = result.Success(commandSchema(target))
+			return nil
+		}})
+	root.AddCommand(i.gatewayCommands())
+	root.InitDefaultHelpCmd()
+	help, _, _ := root.Find([]string{"help"})
+	// Keep Cobra's help completion while making unknown paths ordinary usage
+	// errors. The default Run prints unknown topics but returns success.
+	help.Run = nil
+	help.RunE = func(cmd *cobra.Command, args []string) error {
+		target, rest, err := root.Find(args)
+		if err != nil || target == nil || len(rest) != 0 {
+			return result.Usage("unknown command path for help")
+		}
+		target.SetContext(cmd.Context())
+		target.InitDefaultHelpFlag()
+		return target.Help()
+	}
+	defaultHelp := root.HelpFunc()
+	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if i.json {
+			i.output = result.Success(commandSchema(cmd))
+			return
+		}
+		defaultHelp(cmd, args)
+	})
+	strictCommandGroups(root)
+	return root
+}
+
+// Cobra shows help before argument validation on a non-runnable group. Make
+// groups runnable so unknown nested commands fail instead of exiting zero.
+func strictCommandGroups(cmd *cobra.Command) {
+	if !cmd.Runnable() && cmd.HasAvailableSubCommands() {
+		cmd.Args = cobra.NoArgs
+		cmd.RunE = func(cmd *cobra.Command, _ []string) error { return cmd.Help() }
+	}
+	for _, child := range cmd.Commands() {
+		strictCommandGroups(child)
 	}
 }
 
-func (c *CLI) runCompletion(args []string) error {
-	if len(args) != 1 {
-		return &igwerr.UsageError{Msg: "usage: igw completion <bash>"}
+func (i *invocation) runtime() (catalog.Target, string, error) {
+	file, err := i.app.ReadConfig()
+	if err != nil {
+		if i.app.ConfigStore != nil {
+			return catalog.Target{}, "", result.Usage(err.Error())
+		}
+		return catalog.Target{}, "", result.Usage("could not read configuration")
 	}
+	effective, err := config.ResolveWithProfile(file, i.app.Getenv, i.gatewayURL, "", i.profile)
+	if err != nil {
+		return catalog.Target{}, "", result.Usage(err.Error())
+	}
+	if effective.GatewayURL == "" {
+		return catalog.Target{}, "", result.Usage("configure IGNITION_GATEWAY_URL, a profile, or --gateway-url")
+	}
+	target, err := catalog.NewTarget(effective.Profile, effective.GatewayURL)
+	if err != nil {
+		return catalog.Target{}, "", result.Usage(err.Error())
+	}
+	return target, effective.Token, nil
+}
 
-	switch strings.TrimSpace(args[0]) {
-	case "bash":
-		_, err := io.WriteString(c.Out, bashCompletionScript())
+func (i *invocation) service() (catalog.Service, error) {
+	dir := i.app.CacheDir
+	if dir == "" {
+		base, err := os.UserCacheDir()
 		if err != nil {
-			return igwerr.NewTransportError(err)
+			return catalog.Service{}, &result.Problem{Kind: "config", Message: "could not resolve cache directory", Code: 2}
+		}
+		dir = filepath.Join(base, "igw", "catalog-v1")
+	}
+	return catalog.Service{Store: catalog.Store{Dir: dir}, HTTP: i.app.HTTP, Now: i.app.Now}, nil
+}
+
+func (i *invocation) snapshot(cmd *cobra.Command, refresh bool) (*catalog.Snapshot, error) {
+	target, token, err := i.runtime()
+	if err != nil {
+		return nil, err
+	}
+	svc, err := i.service()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel, err := execute.Deadline(cmd.Context(), i.timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	snapshot, err := svc.Acquire(ctx, target, token, catalog.Policy{Offline: i.offline, Refresh: refresh, Pin: i.pin})
+	if err != nil {
+		return nil, sourceProblem(err)
+	}
+	return snapshot, nil
+}
+
+func sourceProblem(err error) *result.Problem {
+	p := result.FromError(err)
+	if p.Kind == "local" {
+		p.Kind, p.Message = "catalog", "catalog unavailable or invalid; check the selected target and spec source"
+	}
+	return p
+}
+
+func (i *invocation) withSnapshot(snapshot *catalog.Snapshot, data any) {
+	i.output = result.Success(data)
+	i.output.Meta = result.Metadata{Target: &snapshot.Metadata.Target, Catalog: &snapshot.Metadata, Stale: snapshot.Stale, Warnings: snapshot.Warnings}
+}
+
+func referenceProfile(ref reference.Summary) string {
+	if ref.ModuleProfile != nil {
+		return ref.ModuleProfile.Name
+	}
+	return "legacy all-active"
+}
+
+func human(out io.Writer, r result.Result) error {
+	if version, ok := r.Data.(versionData); ok {
+		_, err := fmt.Fprintln(out, "igw version "+version.text)
+		return err
+	}
+	if batch, ok := r.Data.(execute.BatchReport); ok {
+		for _, item := range batch.Items {
+			kind := ""
+			if item.Result.Error != nil {
+				kind = item.Result.Error.Kind
+			}
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n", item.ID, item.Result.Outcome, kind); err != nil {
+				return err
+			}
+			if item.Result.Outcome == "preview" {
+				if err := human(out, item.Result); err != nil {
+					return err
+				}
+			}
+		}
+		_, err := fmt.Fprintf(out, "%d succeeded, %d failed, %d not run\n", batch.Succeeded, batch.Failed, batch.NotRun)
+		return err
+	}
+	if references, ok := r.Data.([]reference.Summary); ok {
+		for _, item := range references {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%d modules (%d active)\t%s\n", item.Selector, item.Image.GatewayVersion, referenceProfile(item), item.ModuleCount, item.ActiveModuleCount, item.Catalog.ContractSHA256); err != nil {
+				return err
+			}
 		}
 		return nil
-	default:
-		return &igwerr.UsageError{Msg: "unsupported shell (supported: bash)"}
 	}
+	if ref := r.Meta.Reference; ref != nil {
+		if _, err := fmt.Fprintf(out, "Reference: %s (%s; %s; %d modules, %d active)\n", ref.Selector, ref.Image.GatewayVersion, referenceProfile(*ref), ref.ModuleCount, ref.ActiveModuleCount); err != nil {
+			return err
+		}
+	}
+	if exported, ok := r.Data.(referenceExport); ok {
+		_, err := fmt.Fprintf(out, "saved reference bundle to %s (%d files)\n", exported.Directory, exported.FileCount)
+		return err
+	}
+	if r.Meta.Validation == catalog.ValidationTransport {
+		if _, err := fmt.Fprintln(out, "Catalog body checks: media type and presence only."); err != nil {
+			return err
+		}
+	}
+	if types, ok := r.Data.([]resource.Type); ok {
+		for _, item := range types {
+			if _, err := fmt.Fprintf(out, "%s\t%s\n", item.ID, item.Summary); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if r.Artifact != nil {
+		_, err := fmt.Fprintf(out, "saved %s (%d bytes, sha256 %s)\n", r.Artifact.Path, r.Artifact.Bytes, r.Artifact.SHA256)
+		return err
+	}
+	if operations, ok := r.Data.([]catalog.Operation); ok {
+		for _, op := range operations {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n", op.Key, op.OperationID, op.Summary); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if capabilities, ok := r.Data.([]catalog.CapabilityAssessment); ok {
+		for _, item := range capabilities {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n", item.ID, item.Status, item.Description); err != nil {
+				return err
+			}
+			for _, operation := range item.MissingOperations {
+				if _, err := fmt.Fprintf(out, "  missing: %s\n", operation); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if r.Outcome == "preview" {
+		if _, err := fmt.Fprintln(out, "Preview: no proposed request was sent."); err != nil {
+			return err
+		}
+	}
+	if r.Outcome == "accepted" {
+		if _, err := fmt.Fprintln(out, "Gateway accepted the request; final state has not been verified."); err != nil {
+			return err
+		}
+	}
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(r.Data)
 }
 
-func (c *CLI) runVersion(args []string) error {
-	fs := flag.NewFlagSet("version", flag.ContinueOnError)
-	fs.SetOutput(c.Err)
-	if err := fs.Parse(args); err != nil {
-		return &igwerr.UsageError{Msg: err.Error()}
-	}
-	if fs.NArg() > 0 {
-		return &igwerr.UsageError{Msg: "usage: igw version"}
-	}
-	fmt.Fprintf(c.Out, "igw version %s\n", buildinfo.Long())
-	return nil
+type versionData struct {
+	Version            string `json:"version"`
+	Commit             string `json:"commit"`
+	Date               string `json:"date"`
+	DevelopmentPreview bool   `json:"developmentPreview"`
+	text               string
 }
 
-func bashCompletionScript() string {
-	secondLevel := strings.Builder{}
-	secondKeys := make([]string, 0, len(completionSubcommands))
-	for key := range completionSubcommands {
-		secondKeys = append(secondKeys, key)
-	}
-	sort.Strings(secondKeys)
-	for _, key := range secondKeys {
-		fmt.Fprintf(&secondLevel, "    %s)\n", key)
-		fmt.Fprintf(&secondLevel, "      COMPREPLY=( $(compgen -W \"%s\" -- \"${cur}\") )\n", strings.Join(completionSubcommands[key], " "))
-		fmt.Fprintf(&secondLevel, "      return 0\n")
-		fmt.Fprintf(&secondLevel, "      ;;\n")
-	}
-
-	nestedKeys := make([]string, 0, len(nestedCompletionCommands))
-	for key := range nestedCompletionCommands {
-		nestedKeys = append(nestedKeys, key)
-	}
-	sort.Strings(nestedKeys)
-
-	nested := strings.Builder{}
-	for _, key := range nestedKeys {
-		fmt.Fprintf(&nested, "    \"%s\")\n", key)
-		fmt.Fprintf(&nested, "      COMPREPLY=( $(compgen -W \"%s\" -- \"${cur}\") )\n", strings.Join(nestedCompletionCommands[key], " "))
-		fmt.Fprintf(&nested, "      return 0\n")
-		fmt.Fprintf(&nested, "      ;;\n")
-	}
-
-	flags := strings.Join(completionFlags, " ")
-
-	return fmt.Sprintf(`# bash completion for igw
-_igw_profiles() {
-  igw config profile list 2>/dev/null | awk 'NR>1 {print $2}'
+func versionInfo() versionData {
+	return versionData{Version: buildinfo.Short(), Commit: buildinfo.Commit, Date: buildinfo.Date, DevelopmentPreview: true, text: buildinfo.Long()}
 }
 
-_igw_completion() {
-  local cur prev cmd1 cmd2
-  COMPREPLY=()
-  cur="${COMP_WORDS[COMP_CWORD]}"
-  prev="${COMP_WORDS[COMP_CWORD-1]}"
-  cmd1="${COMP_WORDS[1]}"
-  cmd2="${COMP_WORDS[2]}"
-
-  case "${prev}" in
-    --profile)
-      COMPREPLY=( $(compgen -W "$(_igw_profiles)" -- "${cur}") )
-      return 0
-      ;;
-    --method)
-      COMPREPLY=( $(compgen -W "GET POST PUT PATCH DELETE HEAD OPTIONS" -- "${cur}") )
-      return 0
-      ;;
-    completion)
-      COMPREPLY=( $(compgen -W "bash" -- "${cur}") )
-      return 0
-      ;;
-%s  esac
-
-  case "${cmd1} ${cmd2}" in
-%s  esac
-
-  if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "%s" -- "${cur}") )
-    return 0
-  fi
-
-  COMPREPLY=( $(compgen -W "%s" -- "${cur}") )
+type flagSchema struct {
+	Name        string          `json:"name"`
+	Type        string          `json:"type"`
+	Default     string          `json:"default"`
+	Description string          `json:"description"`
+	Required    bool            `json:"required"`
+	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
 }
 
-complete -F _igw_completion igw
-`, secondLevel.String(), nested.String(), strings.Join(completionRootCommands, " "), flags)
+const inputSchemaAnnotation = "igw.inputSchema"
+
+type commandInfo struct {
+	Name        string        `json:"name"`
+	Usage       string        `json:"usage"`
+	Description string        `json:"description"`
+	Flags       []flagSchema  `json:"flags"`
+	Commands    []commandInfo `json:"commands,omitempty"`
+}
+
+func commandSchema(cmd *cobra.Command) commandInfo {
+	cmd.InitDefaultHelpFlag()
+	info := commandInfo{Name: cmd.Name(), Usage: cmd.UseLine(), Description: cmd.Short}
+	flags := make(map[string]*pflag.Flag)
+	for _, set := range []*pflag.FlagSet{cmd.InheritedFlags(), cmd.LocalFlags()} {
+		set.VisitAll(func(flag *pflag.Flag) {
+			if !flag.Hidden {
+				flags[flag.Name] = flag
+			}
+		})
+	}
+	for _, flag := range flags {
+		entry := flagSchema{Name: flag.Name, Type: flag.Value.Type(), Default: flag.DefValue, Description: flag.Usage, Required: len(flag.Annotations[cobra.BashCompOneRequiredFlag]) > 0}
+		if schema := flag.Annotations[inputSchemaAnnotation]; len(schema) == 1 {
+			entry.InputSchema = json.RawMessage(schema[0])
+		}
+		info.Flags = append(info.Flags, entry)
+	}
+	sort.Slice(info.Flags, func(a, b int) bool { return info.Flags[a].Name < info.Flags[b].Name })
+	for _, child := range cmd.Commands() {
+		if !child.Hidden {
+			info.Commands = append(info.Commands, commandSchema(child))
+		}
+	}
+	return info
+}
+
+// Find output mode even if parsing fails before --json. Known value-taking
+// flags are skipped so literal request bodies cannot change the output mode.
+func jsonRequested(root *cobra.Command, args []string) bool {
+	values := make(map[string]bool)
+	var walk func(*cobra.Command)
+	walk = func(cmd *cobra.Command) {
+		for _, fs := range []*pflag.FlagSet{cmd.Flags(), cmd.PersistentFlags()} {
+			fs.VisitAll(func(f *pflag.Flag) { values["--"+f.Name] = f.NoOptDefVal == "" })
+		}
+		for _, child := range cmd.Commands() {
+			walk(child)
+		}
+	}
+	walk(root)
+	wanted := false
+	for n := 0; n < len(args); n++ {
+		arg := args[n]
+		if arg == "--" {
+			break
+		}
+		name, value, hasValue := strings.Cut(arg, "=")
+		if name == "--json" {
+			wanted = true
+			if hasValue {
+				parsed, err := strconv.ParseBool(value)
+				wanted = err != nil || parsed
+			}
+			continue
+		}
+		if !hasValue && values[name] {
+			n++
+		}
+	}
+	return wanted
 }

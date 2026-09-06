@@ -70,7 +70,7 @@ and refuses public or unexpected policies. A temporary API key receives that
 level; the returned credential is the complete `name:key` value and stays in
 memory. Browser authentication and CSRF tokens are confined to bootstrap.
 
-All subsequent requests run through `nextcli.App` with an API token and no
+All subsequent requests run through `cli.App` with an API token and no
 cookie jar. Checks cover denied anonymous/bare-key access, catalog acquisition,
 preview without mutation, basic-schedule creation, partial update, stale
 signature rejection, and deletion with independent state reads. The extended

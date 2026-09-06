@@ -1,140 +1,84 @@
-# Automation Patterns
+# Automation
 
-This guide is for scripts, CI jobs, and coding agents.
+Use `--json` and the process exit code. A CLI invocation emits one JSON result;
+human-readable output is intended for interactive use. The same command tree
+supplies help, completion, and `schema [COMMAND...] --json` without connectivity.
+Canonical executable examples are maintained in `docs/commands.md`.
 
-The commands below describe the released entrypoint. The development CLI's
-`api batch` shares one catalog across bounded sequential requests and retains
-per-item outcomes on failure. Its manifest, preview, and continuation contracts
-are documented in [the canonical command guide](commands.md); see
-[the rebuild preview](rebuild-preview.md) for the staged replacement surface.
+## Result contract
 
-For host-application adapter guidance, see `docs/host-integration.md`.
+| Field | Meaning |
+| --- | --- |
+| `version` | Envelope contract, currently `igw/v1` |
+| `ok` | Whether this invocation succeeded under its reported scope |
+| `outcome` | Such as `preview`, `accepted`, `completed`, `failed`, or `uncertain` |
+| `data` | Structured API data or a typed workflow report |
+| `error` | Redacted `kind`, `message`, `exitCode`, and optional `details` |
+| `meta` | Target, catalog/reference provenance, freshness, validation, verification, warnings |
+| `artifact` | A completed output file with path, bytes, and SHA-256 when applicable |
 
-## Core Contract
+Generic HTTP success does not prove a change was applied as intended. Workflow
+verification is limited to its stated observations. In particular, Gateway
+restart observation is not module-health certification or unique node identity
+proof. Preserve `uncertain` results and partial batch reports for review.
 
-- Prefer `--json` whenever supported.
-- Use exit codes for control flow:
-  - `0`: success
-  - `2`: usage/config error
-  - `6`: auth failure (`401`, `403`)
-  - `7`: network/transport or non-auth HTTP failure
+Exit codes remain 0/2/6/7. Auth failures are 6; usage/configuration errors are 2;
+transport, non-auth HTTP, output, artifact, cancellation, and verification errors
+are 7. Do not retry a mutation because its process failed or output was missing.
+Read state first and deliberately decide whether another change is appropriate.
 
-## Common Flow
+## Agent workflow
 
-1. Configure or select runtime context.
-2. Run read-only health checks.
-3. Execute API calls with explicit confirmation for mutations.
-4. Write artifacts to files when needed.
+1. Inspect the command schema and profile target without exposing credentials.
+2. Discover and describe the operation on the selected Gateway, or inspect an
+   explicit qualified reference when working offline.
+3. Read relevant state and prepare the proposed change using `--dry-run`.
+4. Review supported preconditions such as resource signatures, project content
+   digests, or local profile revisions. They bind different kinds of state.
+5. Apply the explicit change with `--yes` and its required preconditions.
+6. Check the result's outcome and verification evidence, including warnings.
 
-## Host-App Bootstrap Contract
+The full token comes from the environment or private profile storage. Do not
+put credentials in argv, URLs, tracked files, diagnostic logs, or prompts.
+Previews omit sensitive values; request-body/file identities can still describe
+private data and should be retained only where appropriate.
 
-For applications that call `igw` as an external tool:
+## Batches and process integration
 
-1. Pin a release tag (`vMAJOR.MINOR.PATCH`).
-2. Resolve/download the matching artifact for OS/arch from GitHub Releases.
-3. Verify archive SHA-256 with `checksums.txt` (or the `sha256` value in `release-manifest.json`).
-4. Install `igw` in an app-managed bin directory.
-5. Run `igw version` and require success before enabling gateway-backed features.
-6. Probe capabilities with `igw api list --json` if your app gates behavior on available operations.
-7. If using persistent mode, start `igw rpc` and run a `hello`/`capability` handshake before sending workload requests.
-8. Use `rpc` as the primary execution path for frequent requests, with `call --json` as a compatibility fallback.
-9. Read machine contracts directly from the CLI when bootstrapping:
-   - `igw exit-codes --json`
-   - `igw schema`
+`api batch` accepts a bounded JSON array and produces ordered per-item results.
+It prepares the batch against one catalog scope and sends no proposed mutation
+in preview mode. Default execution stops on failure; explicit continuation still
+stops on auth, cancellation, and uncertain outcomes. It is sequential and not a
+transaction. For independent processes, bound concurrency in the caller.
 
-## Recommended Commands
+Persistent RPC and implicit one-shot fallback are removed. Spawn `igw` directly
+with an argv array, provide secret input via environment/stdin, drain stdout and
+stderr, apply a parent deadline, and terminate only the owned child when needed.
+A missing or invalid result is a failed observation, not permission to replay.
+See `docs/host-integration.md` for adapter expectations.
 
-Config and profiles:
+Use `--out` for large artifacts and verify returned size/hash metadata. Preserve
+exact JSON numbers in host decoders when they can exceed IEEE-754 integer
+precision. Use a JSON selector in the host or tools such as `jq`; the CLI no
+longer maintains a separate output-selection language.
 
-```bash
-igw config set --gateway-url http://127.0.0.1:8088 --json
-igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --json < token.txt
-igw config profile use dev --json
-```
+## Catalog and freshness
 
-Connectivity and auth:
+The target's OpenAPI defines its documented wire contract. Keep its original
+bytes and evidence separate from imported or bundled references. Writes refresh
+within the invocation, while offline inspection is explicit. A failed refresh
+preserves the last valid local snapshot but does not silently make it fresh.
+Pins constrain contract identity. See `docs/catalog.md` and
+`docs/reference-updates.md` for cache, distribution, and update behavior.
 
-```bash
-igw doctor --json
-```
+## Verification scripts
 
-API execution:
-
-```bash
-igw api sync --json
-igw call --path /data/api/v1/gateway-info --json
-igw api capability file-write --json
-igw call --method POST --path /data/api/v1/scan/projects --yes --json
-igw call --batch @batch.ndjson --batch-output ndjson
-igw scan config --yes --json
-```
-
-Single-value extraction (for shell variables or quick checks):
-
-```bash
-igw call --path /data/api/v1/gateway-info --json --select response.status --raw
-igw doctor --json --select checks.2.ok --raw
-```
-
-Subset extraction and compact JSON:
-
-```bash
-igw call --path /data/api/v1/gateway-info --json --select ok --select response.status
-igw doctor --json --select ok --select checks.0.name --compact
-```
-
-Artifacts:
-
-```bash
-igw logs download --out gateway-logs.zip --json
-igw diagnostics bundle download --out diagnostics.zip --json
-igw backup export --out gateway.gwbk --json
-```
-
-`--out` streams atomically even with `--json`. A successful response reports
-the file path, byte count, and SHA-256 at `response.artifact`. Add `--overwrite`
-to replace an existing destination; failed or truncated transfers preserve it.
-
-Persistent machine mode:
-
-```bash
-igw rpc --profile dev
-```
-
-Persistent machine mode with handshake:
-
-```bash
-printf '%s\n' \
-  '{"id":"h1","op":"hello"}' \
-  '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
-  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
-```
-
-Operational wait checks:
-
-```bash
-igw wait gateway --interval 2s --wait-timeout 2m --json
-igw wait diagnostics-bundle --interval 2s --wait-timeout 5m --json
-igw wait restart-tasks --interval 2s --wait-timeout 3m --json --select attempts --raw
-```
-
-## Notes
-
-- `doctor` is read-only. It does not run scans to test write permissions.
-- `call` defaults `--method` to `GET` when `--path` is provided.
-- `call --stream` can reduce memory overhead for large payload workflows.
-- `call --batch` can reduce process startup/flag parsing overhead for many independent requests.
-- `rpc` should be preferred for high-frequency host integrations because it amortizes process startup and supports bounded worker/queue controls.
-- `call` retry handling honors `Retry-After` on `429` responses; otherwise it falls back to `--retry-backoff`.
-- `rpc` supports in-flight cancellation via `{"op":"cancel","args":{"id":"<request-id>"}}`.
-- `./scripts/perf-gate.sh` enforces benchmark thresholds for hot execution paths.
-- Default thresholds are tracked in `scripts/perf-thresholds.env` and can be overridden with `IGW_PERF_MAX_*` env vars.
-- `--select` requires `--json`; dot paths support objects and array indexes (`checks.0.name`).
-- Repeat `--select` for multiple selections.
-- `--raw` requires exactly one `--select`.
-- `--compact` requires `--json` and removes pretty indentation.
-- `--timing` and `--json-stats` expose latency/runtime stats for automation diagnostics.
-- Call-style stats payloads expose a stable schema version at `stats.version` (currently `1`).
-- API discovery defaults to `openapi.json` in CWD, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
-- If no default spec is present, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
-- If you omit `--profile`, the active profile is used (when set).
+`bash scripts/smoke.sh` runs isolated local executable checks on Linux, using
+temporary XDG configuration paths and a loopback HTTP fixture. It requires
+Python 3. Other platforms retain native Go unit/contract checks; this smoke
+refuses to modify their real user configuration for isolation.
+`IGW_SMOKE_LIVE=1 bash scripts/smoke.sh` additionally performs explicit read-only
+checks against the configured Gateway. Neither mode triggers mutations.
+Real workflow qualification uses the guarded disposable-Gateway suites described
+in `docs/catalog.md` and `docs/compatibility-matrix.md`.
+Performance scope and remaining optimization work are in `docs/performance.md`.

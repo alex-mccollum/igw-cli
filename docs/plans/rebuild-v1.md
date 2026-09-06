@@ -2,7 +2,25 @@
 
 Status: active. Accepted scope and goal: 2026-09-05.
 
-Current slice: profile setup and explicit reversible migration is implemented
+The single `igw` entrypoint cutover is implemented and locally verified. The
+superseded CLI/RPC/OpenAPI-index/WSL-helper code is removed. Version aliases,
+exit codes, and configuration precedence remain intact; command docs, migration
+guidance, executable smoke checks, and performance checks use the new tree.
+Full unit tests, native builds, command/docs checks, CLI/config race checks,
+the final focused command race checks, and 33 executable smoke checks passed.
+All six artifact targets and the local release dry-run also passed; packaging
+evidence is being recorded as its own delivery slice. Historical Gateway
+receipts retain their original source and labels.
+
+Next verifiable slice: profile the full captured-catalog parse/open path and
+real process discovery, then reduce measured startup and allocation costs
+without weakening validation, identity checks, freshness, or reference trust.
+Current full-reference inspection takes about 2.2 seconds per process. The
+remaining structured-input/workflow/performance and final completed-source
+Gateway and release acceptance gates stay active; cutover alone is not v1
+readiness.
+
+Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,
 named profiles, and resolution precedence. Local writes require a preview or
 confirmation, serialize CLI writers, reject stale reviewed revisions, and
@@ -10,10 +28,10 @@ preserve v1 bytes during rollback. Isolated configuration tests, focused race
 checks, full unit tests, both entrypoint builds, command/docs checks, and 16
 real-executable checks passed. Windows amd64 and macOS arm64 configuration test
 binaries compile; native filesystem behavior on those systems is not yet
-qualified. No user configuration or host settings changed. Next planned work
-is entrypoint cutover and migration of the remaining legacy command/docs/test
-contracts, with the full structured-input/workflow/performance/release and
-current-source Gateway acceptance gates still active.
+qualified. No user configuration or host settings changed. Its planned
+entrypoint cutover is now implemented above; the full structured-input,
+workflow, performance, release, and current-source Gateway acceptance gates
+remain active.
 
 Previous slice: verified Gateway restart, now qualified against both pinned core
 images from source `8084cd0`. The typed workflow, fixture checks, clean build,
@@ -199,7 +217,8 @@ tests whose asserted behavior contradicts the accepted new contract.
 - [x] New typed command/execution architecture introduced alongside legacy CLI.
 - [ ] Complete catalog lifecycle and discovery.
 - [ ] Validated task workflows and end-to-end verification.
-- [ ] Migration, cutover, and release-artifact qualification.
+- [x] Reversible profile migration and single-entrypoint cutover.
+- [ ] Final completed-source release-artifact and Gateway qualification.
 
 Initial environment evidence: no Go executable, no configured Gateway or local
 OpenAPI snapshot. Docker's WSL shim reports integration unavailable; docker.exe

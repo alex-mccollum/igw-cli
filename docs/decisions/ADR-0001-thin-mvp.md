@@ -1,7 +1,7 @@
 # ADR-0001: Thin MVP CLI
 
 ## Status
-Accepted
+Superseded for v1 by `docs/decisions/ADR-0002-typed-v1-cli.md`. Historical MVP decision.
 
 ## Context
 This repository started from zero and needed a practical, automatable API wrapper with minimal operational overhead.

@@ -20,8 +20,8 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/artifact"
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/cli"
 	"github.com/alex-mccollum/igw-cli/internal/config"
-	"github.com/alex-mccollum/igw-cli/internal/nextcli"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
@@ -115,7 +115,7 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 		var requests atomic.Int64
 		client := s.HTTPClient()
 		client.Transport = transferTransport{base: http.DefaultTransport, operations: &requests}
-		app := nextcli.App{In: strings.NewReader(""), Out: &out, Err: &stderr, CacheDir: cache, HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) { return config.File{GatewayURL: s.URL, Token: token}, nil }}
+		app := cli.App{In: strings.NewReader(""), Out: &out, Err: &stderr, CacheDir: cache, HTTP: client, Getenv: func(string) string { return "" }, ReadConfig: func() (config.File, error) { return config.File{GatewayURL: s.URL, Token: token}, nil }}
 		err := app.Run(ctx, append(args, "--json", "--timeout", "90s"))
 		if strings.Contains(out.String(), secret) || strings.Contains(stderr.String(), secret) {
 			t.Fatal("credential leaked")

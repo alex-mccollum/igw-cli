@@ -1,212 +1,81 @@
 # igw
 
-`igw` is a lightweight CLI wrapper for the Ignition Gateway API.
+`igw` lets people and shell agents discover and operate an Ignition 8.3+
+Gateway: inspect its actual API contract, preview a change, apply it explicitly,
+and verify the outcome.
 
-The [v1 development CLI](docs/rebuild-preview.md) adds Gateway-specific API
-catalogs, consistent JSON results, and resource commands with change previews,
-reviewed signatures, and readback verification. It is available as `igw-next`
-while the remaining [rebuild gates](docs/plans/rebuild-v1.md) are completed.
+The rebuilt CLI now uses the single `cmd/igw` entrypoint. V1 qualification is
+still in progress; see the [implementation status](docs/rebuild-preview.md).
+Existing 0.x users should read the [migration guide](docs/migration-v1.md).
 
-## Principles
-- Default to the Go standard library; add third-party dependencies only when they provide clear, durable value.
-- Generic API execution first (`call`).
-- Stable exit codes for automation.
+## Start here
 
-## Install
-
-For developers (Go toolchain):
+Build from this checkout with the [workstation safeguards](docs/development-safety.md):
 
 ```bash
-go install github.com/alex-mccollum/igw-cli/cmd/igw@vX.Y.Z
+bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
 ```
 
-For operators and CI (release artifacts):
-
-- Download the archive for your OS/architecture.
-- Verify artifact integrity with `checksums.txt`.
-- Extract it and place `igw` (or `igw.exe`) on your `PATH`.
-
-For host apps/agents (scripted install):
-
-- Linux/macOS: `scripts/install.sh`
-- Windows: `scripts/install.ps1`
-- Machine-readable release metadata: `release-manifest.json` asset
-
-Verify install:
+The following examples assume `igw` is on PATH; use `bin/igw` for that local
+build. To install a published version, see [installation](docs/installation.md).
+No v1 tag or release is published by the local rebuild process.
 
 ```bash
 igw version
+igw schema --json
+igw profile set dev --url http://127.0.0.1:8088 --use --dry-run --json
+igw profile set dev --url http://127.0.0.1:8088 --use --yes --json
+igw profile set dev --token-stdin --yes --json < private-token.txt
+igw gateway doctor --json
+igw api list --search gateway --json
+igw api describe 'GET /data/api/v1/gateway-info' --json
 ```
+
+Use the full API token (`name:key`), including its name and colon. Tokens can
+also come from `IGNITION_API_TOKEN`; the target can come from
+`IGNITION_GATEWAY_URL`. Per-field precedence remains flags > environment >
+configuration. [Profiles](docs/profiles.md) provide explicit migration and
+rollback while preserving existing settings.
+
+## Discover, preview, apply, verify
+
+Use `api list` and `api describe` to learn what the selected Gateway advertises.
+Resource, project, tag, and operational commands share a typed execution core
+and add workflow-specific checks. Every mutation requires `--yes`; previews
+send no proposed mutation. Replacement/deletion requires supported reviewed
+preconditions, such as resource signatures.
+
+`--json` emits one `igw/v1` result, including errors. Read `outcome` and
+`meta.verification` as well as `ok`: an accepted generic request does not prove
+its final state, and a disconnected write can be uncertain. Exit codes remain
+0 (success), 2 (usage/configuration), 6 (auth/permission), and 7 (transport,
+non-auth HTTP, artifact, or verification failure).
+
+The target's OpenAPI document supplies its documented wire contract. The CLI
+preserves exact vendor bytes with provenance, immutable snapshots, freshness,
+pins, and explicit offline references. Bundled references remain available
+without connectivity and do not silently authorize writes to another Gateway.
+See the [catalog design](docs/catalog.md) and [update pipeline](docs/reference-updates.md).
 
 ## Documentation
-- `docs/installation.md`: install options and verification.
-- `docs/configuration.md`: runtime configuration and profile behavior.
-- `docs/examples.md`: practical usage flows.
-- `docs/troubleshooting.md`: common error diagnosis.
-- `docs/commands.md`: canonical command reference.
-- `docs/automation.md`: machine-oriented workflows.
-- `docs/releasing.md`: release workflow and artifact expectations.
 
-## Quickstart (60 Seconds)
+- [Commands](docs/commands.md): canonical examples and input contracts.
+- [Automation](docs/automation.md): result handling, previews, batches, and artifacts.
+- [Migration](docs/migration-v1.md): 0.x command changes and configuration recovery.
+- [Compatibility](docs/compatibility-matrix.md): actual Gateway evidence and limits.
+- [Architecture](docs/architecture.md): package boundaries and design decisions.
+- [Troubleshooting](docs/troubleshooting.md): configuration, API, and transport failures.
+- [Releasing](docs/releasing.md): version, artifact, and verification contracts.
+- [Rebuild plan](docs/plans/rebuild-v1.md): complete goal, remaining gates, and evidence.
 
-The commands in this section are examples. Replace placeholder values for your environment.
-
-Assumptions:
-- You can reach your Ignition Gateway.
-- You have the full Ignition API token (`name:key`) with the permissions you
-  need. Preserve the name and colon when copying it into your token file or
-  `IGNITION_API_TOKEN`; the generated key component alone cannot authenticate.
-- Commands below use `bash` syntax.
+Run contributor tests through the bounded runner, one job at a time:
 
 ```bash
-# Example values (replace these)
-export IGW_GATEWAY_URL="http://127.0.0.1:8088"
-export IGW_TOKEN_FILE="$HOME/.config/igw/token.txt"
-
-# 1) Set your gateway URL
-igw config set --gateway-url "$IGW_GATEWAY_URL"
-
-# 2) Set your API key from a local file
-igw config set --api-key-stdin < "$IGW_TOKEN_FILE"
-
-# 3) Verify connectivity and permissions
-igw doctor
-
-# 4) Run a read call
-igw gateway info
+bash scripts/bounded-run.sh -- go test ./...
+bash scripts/bounded-run.sh -- bash scripts/smoke.sh
 ```
 
-Note:
-- `IGW_GATEWAY_URL` and `IGW_TOKEN_FILE` above are shell-local helper variables used in examples.
-- The runtime environment variables recognized by `igw` are `IGNITION_GATEWAY_URL` and `IGNITION_API_TOKEN`.
-
-If you are in WSL and Ignition is running on Windows host:
-
-```bash
-igw config set --auto-gateway
-```
-
-### Automation note (`--json`)
-
-For scripts and agent workflows, use JSON output plus exit codes as the primary contract.
-
-- `igw doctor --json` for read-only environment checks.
-- `igw call --path /data/api/v1/gateway-info --json` for machine-readable API responses.
-- Use repeatable `--select` with `--json` to extract a subset object (for example: `igw doctor --json --select ok --select checks.0.name`).
-- Add `--raw` when you want one plain-value result (for example: `igw call --path /data/api/v1/gateway-info --json --select response.status --raw`).
-- Add `--compact` for one-line JSON output.
-
-For the full automation workflow and patterns, see `docs/automation.md`.
-
-## Commands
-- `igw api list|show|search|tags|stats|sync|refresh`: query local OpenAPI docs and refresh cached spec.
-- `igw call`: generic HTTP executor for Ignition endpoints (or `--op` by operationId).
-- `igw config set|show|profile`: local config + profile management.
-- `igw doctor`: read-only connectivity and auth checks (URL, TCP, read access).
-- `igw gateway info`: convenience read wrapper.
-- `igw scan projects|config`: convenience write wrappers.
-- `igw logs ...`: list/download logs and manage logger levels.
-- `igw diagnostics bundle ...`: generate/status/download diagnostics bundles.
-- `igw backup export|restore`: download or restore gateway backups.
-- `igw tags export|import`: tag import/export helpers.
-- `igw restart tasks|gateway`: restart task status and gateway restart trigger.
-- `igw wait gateway|diagnostics-bundle|restart-tasks`: poll operational readiness checks.
-
-## Defaults
-- `igw call` defaults `--method` to `GET` when `--path` is provided.
-- `igw call` and `igw doctor` support repeatable `--select` for subset extraction from `--json` envelopes.
-- `--raw` requires exactly one `--select` and prints a plain value.
-- `--compact` is available on JSON-capable wrapper flows and requires `--json`.
-- `igw tags export` defaults `--provider` to `default` and `--type` to `json`.
-- `igw tags import` defaults `--provider` to `default`, infers `--type` from the import file extension (`.json`, `.xml`, `.csv`, fallback `json`), and defaults `--collision-policy` to `Abort`.
-- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default `--out` filenames even when `--out` is omitted.
-- API discovery defaults to `openapi.json` in the current directory, then falls back to `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
-- If no default spec is found, `igw` auto-syncs and caches OpenAPI from the gateway before resolving `api` and `call --op`.
-
-## Mutation Safety
-- Mutating operations require explicit `--yes` confirmation.
-- This includes commands like `scan projects`, `scan config`, `logs logger set`, `logs level-reset`, `diagnostics bundle generate`, `backup restore`, `tags import`, and `restart gateway`.
-
-## Configuration Sources
-Precedence is strict:
-1. CLI flags
-2. Environment variables
-3. Config file
-
-Environment variables:
-- `IGNITION_GATEWAY_URL`
-- `IGNITION_API_TOKEN`
-
-Profiles:
-- If `--profile` is omitted and an active profile is set, that active profile is used.
-- The first profile created by `igw config profile add` becomes active automatically if no active profile exists.
-- `config set`, `config profile add`, and `config profile use` support `--json` for machine-readable success/error output.
-
-Config file path:
-- Linux/macOS: `${XDG_CONFIG_HOME:-~/.config}/igw/config.json`
-- Windows: `%AppData%\\igw\\config.json`
-
-## Examples
-All commands below are examples. Replace placeholders for your environment.
-
-Get gateway metadata:
-
-```bash
-igw gateway info --json
-```
-
-Run health/auth checks:
-
-```bash
-igw doctor
-igw wait gateway --wait-timeout 2m
-```
-
-Run a generic API call:
-
-```bash
-igw call --method GET --path /data/api/v1/gateway-info --json
-```
-
-For full command examples (wrappers, profiles, API discovery, completions, and smoke checks), use `docs/commands.md`.
-
-## Auth and Connectivity Troubleshooting
-- `401 Unauthorized`: token missing/invalid.
-- `403 Forbidden`: authentication or permission was denied. Check the full
-  `name:key` token, its secure-connection requirement, and security-level mapping.
-- Timeout from WSL2 to Windows host: verify gateway host IP and Windows firewall inbound access for port `8088`.
-
-## Exit Codes
-- `0`: success (`2xx`)
-- `2`: usage/config errors
-- `6`: auth failures (`401`, `403`)
-- `7`: network/transport and non-auth HTTP failures
-
-## Compatibility Policy
-
-- Exit codes are stable within minor releases.
-- JSON output field names are stable within minor releases.
-- Breaking CLI or output contract changes are introduced only in a major release.
-
-## Versioning Policy
-
-- Releases follow semantic versioning: `vMAJOR.MINOR.PATCH`.
-- `PATCH`: bug fixes and non-breaking internal/doc changes.
-- `MINOR`: new backward-compatible commands/flags/behavior.
-- `MAJOR`: breaking behavior or output contract changes.
-
-## Build
-
-```bash
-go build -trimpath -ldflags="-s -w" -o bin/igw ./cmd/igw
-```
-
-## Test
-
-```bash
-go test ./...
-```
-
-## Releasing
-
-See `docs/releasing.md` for tag-based release steps and artifact naming.
+The smoke script separates local executable checks from explicit live reads.
+Real Gateway qualification uses owned disposable containers with independently
+verified limits and cleanup. Repository work never controls WSL or Docker
+Desktop lifecycle or alters host memory settings.

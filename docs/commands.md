@@ -1,44 +1,49 @@
 # Commands
 
-## v1 Development Entrypoint
+## Command discovery
 
-The staged rebuild is available through `cmd/igw-next`; current release commands
-remain below. Scope and limitations are in `docs/rebuild-preview.md`.
+This file is the canonical command example reference for the v1 command tree
+in `cmd/igw`. The source is still completing the gates in
+`docs/rebuild-preview.md`; cutover does not imply a published v1 release.
+Examples assume `igw` is on PATH; use `bin/igw` after a local build.
 
 ```bash
-go build -o bin/igw-next ./cmd/igw-next
-bin/igw-next schema --json
-bin/igw-next profile show --json
-bin/igw-next spec sync --json
-bin/igw-next api list --search gateway --json
-bin/igw-next api describe 'GET /data/api/v1/gateway-info' --json
-bin/igw-next api request 'GET /data/api/v1/gateway-info' --json
-bin/igw-next gateway doctor --json
-bin/igw-next gateway restart-tasks --json
-bin/igw-next gateway restart --dry-run --json
-bin/igw-next gateway restart --yes --timeout 3m --json
-bin/igw-next api raw --method POST --path /data/api/v1/scan/projects --dry-run --json
-bin/igw-next spec export --out gateway-openapi.json --json
-bin/igw-next spec inspect gateway-openapi.json --json
-bin/igw-next spec inspect gateway-openapi.json --summary --json
-bin/igw-next spec import gateway-openapi.json --json
-bin/igw-next api list --offline --json
-bin/igw-next spec diff before-openapi.json after-openapi.json --json
+bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
+igw version
+igw exit-codes --json
+igw schema --json
+igw schema resource update --json
+igw profile show --json
+igw spec sync --json
+igw api list --search gateway --json
+igw api describe 'GET /data/api/v1/gateway-info' --json
+igw api request 'GET /data/api/v1/gateway-info' --json
+igw gateway doctor --json
+igw gateway restart-tasks --json
+igw gateway restart --dry-run --json
+igw gateway restart --yes --timeout 3m --json
+igw api raw --method POST --path /data/api/v1/scan/projects --dry-run --json
+igw spec export --out gateway-openapi.json --json
+igw spec inspect gateway-openapi.json --json
+igw spec inspect gateway-openapi.json --summary --json
+igw spec import gateway-openapi.json --json
+igw api list --offline --json
+igw spec diff before-openapi.json after-openapi.json --json
 ```
 
 Configure a profile using explicit stored values. These commands are local and
 can run without a Gateway connection:
 
 ```bash
-bin/igw-next profile set dev --url http://localhost:8088 --use --dry-run --json
-bin/igw-next profile set dev --url http://localhost:8088 --use --yes --json
-bin/igw-next profile set dev --token-stdin --yes --json < private-token.txt
-bin/igw-next profile list --json
-bin/igw-next profile show --profile dev --json
-bin/igw-next profile set dev --clear-token --if-revision "$CONFIG_REVISION" --dry-run --json
-bin/igw-next profile set dev --clear-token --if-revision "$CONFIG_REVISION" --yes --json
-bin/igw-next profile use --default --yes --json
-bin/igw-next profile remove dev --yes --json
+igw profile set dev --url http://localhost:8088 --use --dry-run --json
+igw profile set dev --url http://localhost:8088 --use --yes --json
+igw profile set dev --token-stdin --yes --json < private-token.txt
+igw profile list --json
+igw profile show --profile dev --json
+igw profile set dev --clear-token --if-revision "$CONFIG_REVISION" --dry-run --json
+igw profile set dev --clear-token --if-revision "$CONFIG_REVISION" --yes --json
+igw profile use --default --yes --json
+igw profile remove dev --yes --json
 ```
 
 Use `--url` to store a target; runtime `--gateway-url`, `--profile`, and
@@ -51,11 +56,11 @@ An active profile must be deselected before removal.
 Existing users explicitly migrate the legacy settings before editing them:
 
 ```bash
-bin/igw-next profile migrate --dry-run --json
-bin/igw-next profile migrate --yes --json
-bin/igw-next profile list --json
-bin/igw-next profile rollback --if-revision "$CONFIG_REVISION" --dry-run --json
-bin/igw-next profile rollback --if-revision "$CONFIG_REVISION" --yes --json
+igw profile migrate --dry-run --json
+igw profile migrate --yes --json
+igw profile list --json
+igw profile rollback --if-revision "$CONFIG_REVISION" --dry-run --json
+igw profile rollback --if-revision "$CONFIG_REVISION" --yes --json
 ```
 
 Migration preserves `config.json` and activates a separate `config.v1.json`.
@@ -110,13 +115,13 @@ Qualified API references are available without Gateway configuration, credential
 network access, or a populated cache:
 
 ```bash
-bin/igw-next spec references list --json
-bin/igw-next spec references inspect ignition-8.3.9-defaults --json
-bin/igw-next spec references export ignition-8.3.9-defaults --out ./reference-8.3.9 --json
-bin/igw-next api list --reference ignition-8.3.9-defaults --search gateway --json
-bin/igw-next api describe 'GET /data/api/v1/gateway-info' --reference ./reference-8.3.9 --json
-bin/igw-next api capabilities --reference ignition-8.3.9-defaults --json
-bin/igw-next api capabilities --reference ignition-8.3.0-core --json
+igw spec references list --json
+igw spec references inspect ignition-8.3.9-defaults --json
+igw spec references export ignition-8.3.9-defaults --out ./reference-8.3.9 --json
+igw api list --reference ignition-8.3.9-defaults --search gateway --json
+igw api describe 'GET /data/api/v1/gateway-info' --reference ./reference-8.3.9 --json
+igw api capabilities --reference ignition-8.3.9-defaults --json
+igw api capabilities --reference ignition-8.3.0-core --json
 ```
 
 Bundled selectors cover 8.3.0 and 8.3.9 with suffixes `-defaults` and `-core`.
@@ -218,7 +223,7 @@ same key for each item in an exploded form array. A comma inside an array item
 remains part of that item. For example, this previews two session IDs:
 
 ```bash
-bin/igw-next api request 'DELETE /data/perspective/api/v1/sessions' --query sessionId=SESSION_1 --query sessionId=SESSION_2 --dry-run --json
+igw api request 'DELETE /data/perspective/api/v1/sessions' --query sessionId=SESSION_1 --query sessionId=SESSION_2 --dry-run --json
 ```
 
 The Gateway's complete parameter schema validates each primitive or whole
@@ -292,7 +297,7 @@ Additional binary value constraints are refused until supported. Use bounded
 `--body` for a supported schema decoder, or `api raw` explicitly.
 
 ```bash
-bin/igw-next api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
+igw api request 'POST /data/api/v1/projects/import/{name}' --path-param name=Example --upload project.zip --content-type application/zip --dry-run --json
 ```
 
 For multipart uploads, use repeatable `--form-field name=value` and
@@ -317,7 +322,7 @@ names and file formats required by that endpoint's documentation; the names
 above illustrate a manifest, not a vendor endpoint contract.
 
 ```bash
-bin/igw-next api request "$operation" --multipart @parts.json --dry-run --json
+igw api request "$operation" --multipart @parts.json --dry-run --json
 ```
 
 `--multipart` also accepts inline JSON or `-` for stdin. The manifest is limited
@@ -366,7 +371,7 @@ then prepare a files-only manifest such as:
 Save it as `files.json` and review the request:
 
 ```bash
-bin/igw-next api request 'PUT /data/api/v1/resources/datafile/ignition/translations' --query collection=core --query "signature=$signature" --multipart @files.json --dry-run --json
+igw api request 'PUT /data/api/v1/resources/datafile/ignition/translations' --query collection=core --query "signature=$signature" --multipart @files.json --dry-run --json
 ```
 
 Replace `--dry-run` with `--yes` to execute the reviewed inputs. Read back each
@@ -391,8 +396,8 @@ and writes against the selected Gateway:
 Save it as `batch.json`, preview every item, then execute deliberately:
 
 ```bash
-bin/igw-next api batch --input @batch.json --dry-run --json
-bin/igw-next api batch --input @batch.json --yes --json
+igw api batch --input @batch.json --dry-run --json
+igw api batch --input @batch.json --yes --json
 ```
 
 Each item requires a unique `id` (1..64 ASCII letters, digits, dots, underscores,
@@ -441,17 +446,17 @@ Named resource workflows discover their routes from the selected Gateway's
 catalog and verify successful changes with an independent read:
 
 ```bash
-bin/igw-next resource types --offline --json
-bin/igw-next resource describe ignition/schedule --json
-bin/igw-next resource list ignition/schedule --limit 50 --offset 0 --json
-bin/igw-next resource list ignition/schedule --filter 'name[eq]=Example' --json
-bin/igw-next resource get ignition/schedule Example --collection core --json
-bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --dry-run --json
-bin/igw-next resource create ignition/schedule Example --body @schedule-fields.json --yes --json
-bin/igw-next resource update ignition/schedule Example --body '{"description":"Day shift"}' --dry-run --json
-bin/igw-next resource update ignition/schedule Example --body '{"description":"Day shift"}' --if-signature REVIEWED_SIGNATURE --yes --json
-bin/igw-next resource delete ignition/schedule Example --dry-run --json
-bin/igw-next resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes --json
+igw resource types --offline --json
+igw resource describe ignition/schedule --json
+igw resource list ignition/schedule --limit 50 --offset 0 --json
+igw resource list ignition/schedule --filter 'name[eq]=Example' --json
+igw resource get ignition/schedule Example --collection core --json
+igw resource create ignition/schedule Example --body @schedule-fields.json --dry-run --json
+igw resource create ignition/schedule Example --body @schedule-fields.json --yes --json
+igw resource update ignition/schedule Example --body '{"description":"Day shift"}' --dry-run --json
+igw resource update ignition/schedule Example --body '{"description":"Day shift"}' --if-signature REVIEWED_SIGNATURE --yes --json
+igw resource delete ignition/schedule Example --dry-run --json
+igw resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes --json
 ```
 
 `resource list`, `project list`, and `logs list` accept repeatable
@@ -507,14 +512,14 @@ Project workflows transfer a complete project ZIP, inspect its file manifest,
 and verify the imported contents through a fresh export:
 
 ```bash
-bin/igw-next project list --limit 50 --offset 0 --json
-bin/igw-next project get Example --json
-bin/igw-next project export Example --out project.zip --json
-bin/igw-next project inspect project.zip --json
-bin/igw-next project import Copy --in project.zip --dry-run --json
-bin/igw-next project import Copy --in project.zip --yes --json
-bin/igw-next project import Copy --in project.zip --overwrite --dry-run --json
-bin/igw-next project import Copy --in project.zip --overwrite --if-project-sha256 REVIEWED_DIGEST --yes --json
+igw project list --limit 50 --offset 0 --json
+igw project get Example --json
+igw project export Example --out project.zip --json
+igw project inspect project.zip --json
+igw project import Copy --in project.zip --dry-run --json
+igw project import Copy --in project.zip --yes --json
+igw project import Copy --in project.zip --overwrite --dry-run --json
+igw project import Copy --in project.zip --overwrite --if-project-sha256 REVIEWED_DIGEST --yes --json
 ```
 
 `project inspect` is local and requires no Gateway configuration. Exports are
@@ -539,12 +544,12 @@ Tag imports default to the `Abort` collision policy and verify supported JSON
 inputs through independent tag exports:
 
 ```bash
-bin/igw-next api capabilities --json
-bin/igw-next tag export --provider default --path Example --out tags.json --json
-bin/igw-next tag import --provider default --in tags.json --dry-run --json
-bin/igw-next tag import --provider default --in tags.json --yes --json
-bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --dry-run --json
-bin/igw-next tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --yes --json
+igw api capabilities --json
+igw tag export --provider default --path Example --out tags.json --json
+igw tag import --provider default --in tags.json --dry-run --json
+igw tag import --provider default --in tags.json --yes --json
+igw tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --dry-run --json
+igw tag import --provider default --path Destination --in tags.json --collision-policy Overwrite --yes --json
 ```
 
 `api capabilities` currently assesses tag workflow prerequisites from the
@@ -589,14 +594,14 @@ Operational commands provide bounded log queries, complete downloads, and
 diagnostics collection through one invocation:
 
 ```bash
-bin/igw-next backup export --out gateway.gwbk --json
-bin/igw-next logs list --limit 50 --min-level WARN --since 1h --json
-bin/igw-next logs list --logger Gateway --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --json
-bin/igw-next logs download --out system-logs.idb --json
-bin/igw-next diagnostics bundle status --json
-bin/igw-next diagnostics bundle collect --out diagnostics.zip --dry-run --json
-bin/igw-next diagnostics bundle collect --out diagnostics.zip --yes --timeout 2m --json
-bin/igw-next diagnostics bundle download --out diagnostics-latest.zip --json
+igw backup export --out gateway.gwbk --json
+igw logs list --limit 50 --min-level WARN --since 1h --json
+igw logs list --logger Gateway --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --json
+igw logs download --out system-logs.idb --json
+igw diagnostics bundle status --json
+igw diagnostics bundle collect --out diagnostics.zip --dry-run --json
+igw diagnostics bundle collect --out diagnostics.zip --yes --timeout 2m --json
+igw diagnostics bundle download --out diagnostics-latest.zip --json
 ```
 
 All downloads require `--out`, default to a 1 GiB `--max-bytes` limit, and need
@@ -635,229 +640,3 @@ start a job or create a file. Bundle generation can consume Gateway resources;
 the CLI uses the Gateway's existing configuration and does not enable heap
 dumps. See the [vendor's diagnostics documentation](https://docs.inductiveautomation.com/docs/8.3/platform/gateway/web-interface/diagnostics)
 for bundle contents and generation settings.
-
-## Current Release Entrypoint
-
-This file is the canonical command example reference.
-For script/agent workflow guidance, see `docs/automation.md`.
-
-Defaults and behavior:
-- `igw call` defaults `--method` to `GET` when `--path` is provided.
-- `igw call --batch` supports JSON array or NDJSON input (`--batch @file|file|-`) with one response envelope per item.
-- `igw call --stream` streams successful response bodies directly in non-JSON mode.
-- Repeat `--select` to extract a subset JSON object from output (requires `--json`), with dot paths and array indexes (`checks.0.name`).
-- `--raw` prints one plain selected value and requires exactly one `--select`.
-- `--compact` prints one-line JSON (requires `--json`).
-- `--timing` and `--json-stats` expose latency/runtime stats on machine-facing commands.
-- `igw tags export` defaults `--provider=default` and `--type=json`.
-- `igw tags import` defaults `--provider=default`, infers `--type` from `--in` file extension (`.json`, `.xml`, `.csv`; fallback `json`), and defaults `--collision-policy=Abort`.
-- `igw logs download`, `igw diagnostics bundle download`, and `igw backup export` default output filenames whenever `--out` is omitted.
-- Mutating commands require `--yes`.
-- API discovery defaults to `openapi.json` in the current directory, then `${XDG_CONFIG_HOME:-~/.config}/igw/openapi.json`.
-- `igw api stats --prefix-depth N` groups path prefixes by exactly `N` path segments (`0` uses auto grouping).
-- If default spec files are missing, `api` and `call --op` auto-sync and cache OpenAPI from the gateway.
-
-Build:
-
-```bash
-go build ./cmd/igw
-```
-
-Test:
-
-```bash
-go test ./...
-```
-
-Version:
-
-```bash
-igw version
-```
-
-Machine contracts:
-
-```bash
-igw exit-codes
-igw exit-codes --json
-igw schema
-igw schema --command "config profile"
-igw schema --select command.subcommands.0.name --raw
-```
-
-API docs discovery:
-
-```bash
-igw api list --spec-file /path/to/openapi.json --path-contains gateway
-igw api show --spec-file /path/to/openapi.json --path /data/api/v1/gateway-info
-igw api show --spec-file /path/to/openapi.json /data/api/v1/gateway-info
-igw api search --spec-file /path/to/openapi.json --query scan
-igw api tags --spec-file /path/to/openapi.json
-igw api stats --spec-file /path/to/openapi.json --json
-igw api stats --spec-file /path/to/openapi.json --prefix-depth 2 --json
-igw api capability --spec-file /path/to/openapi.json --json file-write
-igw api sync --profile dev --json
-igw api refresh --profile dev --json --select operationCount --raw
-igw api sync --profile dev --openapi-path /openapi.json --json
-```
-
-Generic call:
-
-```bash
-igw call \
-  --gateway-url http://127.0.0.1:8088 \
-  --api-key "$IGNITION_API_TOKEN" \
-  --method GET \
-  --path /data/api/v1/gateway-info
-
-# Method defaults to GET when omitted.
-igw call \
-  --gateway-url http://127.0.0.1:8088 \
-  --api-key "$IGNITION_API_TOKEN" \
-  --path /data/api/v1/gateway-info
-```
-
-Call by operationId:
-
-```bash
-igw call \
-  --gateway-url http://127.0.0.1:8088 \
-  --api-key "$IGNITION_API_TOKEN" \
-  --spec-file /path/to/openapi.json \
-  --op gatewayInfo
-```
-
-Mutation safety + automation:
-
-```bash
-igw call --method POST --path /data/api/v1/scan/projects --yes
-igw call --method GET --path /data/api/v1/gateway-info --retry 2 --retry-backoff 250ms
-igw call --method GET --path /data/api/v1/gateway-info --out gateway-info.json
-igw call --method GET --path /data/api/v1/gateway-info --json --out gateway-info.json --overwrite
-igw call --method GET --path /data/api/v1/gateway-info --stream --max-body-bytes 1048576
-igw call --batch @batch.ndjson --batch-output ndjson
-igw call --batch @batch.json --batch-output json --parallel 4
-igw call --method GET --path /data/api/v1/gateway-info --json --select response.status --raw
-igw call --method GET --path /data/api/v1/gateway-info --json --select ok --select response.status --compact
-igw call --method GET --path /data/api/v1/gateway-info --json --json-stats
-```
-
-Downloads with `--out` stream into a private temporary file and publish the
-destination only after the complete response succeeds. Existing files require
-`--overwrite`. This also applies to backup, logs, diagnostics, tag exports, and
-gateway info. With `--json --out`, the response includes `artifact.path`,
-`artifact.bytes`, and `artifact.sha256` alongside `bodyFile`; binary content is
-kept out of the JSON body. Exceeding `--max-body-bytes` fails with exit code `7`
-and does not publish a partial file. A stream sent directly to stdout may
-already contain bytes when a transfer fails; check the exit code.
-
-The legacy `call --dry-run` forwarding behavior has been removed: adding a
-query parameter did not guarantee a safe preview. It now fails without sending
-a request, including through batch/RPC execution. Use the development
-entrypoint's genuine `api request --dry-run` or `api raw --dry-run` preview.
-
-Config:
-
-```bash
-igw config set --gateway-url http://127.0.0.1:8088
-igw config set --auto-gateway
-igw config set --api-key-stdin < token.txt
-igw config set --gateway-url http://127.0.0.1:8088 --json
-igw config show
-```
-
-Profiles:
-
-```bash
-igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --use
-igw config profile add stage --gateway-url http://10.0.1.5:8088 --api-key-stdin
-igw config profile add dev --gateway-url http://127.0.0.1:8088 --api-key-stdin --json
-igw config profile list
-igw config profile use stage
-igw config profile use stage --json
-```
-
-Profile behavior:
-- If there is no active profile yet, the first `config profile add` becomes active automatically.
-- If `--profile` is omitted at runtime, the active profile is used when set.
-
-Doctor:
-
-```bash
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN"
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select checks.0.name --raw
-igw doctor --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json --select ok --select checks.0.name --compact
-```
-
-Convenience wrappers:
-
-```bash
-igw gateway info --profile dev --json
-igw scan projects --profile dev --yes
-igw scan config --profile dev --yes
-```
-
-Admin wrappers:
-
-```bash
-# Logs
-igw logs list --profile dev --query limit=5 --json
-igw logs download --profile dev --out gateway-logs.zip
-# If --out is omitted, defaults to gateway-logs.zip.
-igw logs loggers --profile dev --json
-igw logs logger set --profile dev --name com.inductiveautomation --level DEBUG --yes --json
-igw logs level-reset --profile dev --yes --json
-
-# Diagnostics bundle
-igw diagnostics bundle generate --profile dev --yes --json
-igw diagnostics bundle status --profile dev --json
-igw diagnostics bundle download --profile dev --out diagnostics.zip
-# If --out is omitted, defaults to diagnostics.zip.
-
-# Backups
-igw backup export --profile dev --out gateway.gwbk
-# If --out is omitted, defaults to gateway.gwbk.
-igw backup restore --profile dev --in gateway.gwbk --yes --json
-
-# Tags
-igw tags export --profile dev --out tags.json
-igw tags import --profile dev --in tags.json --yes --json
-igw tags import --profile dev --in tags.json --collision-policy Overwrite --yes --json
-
-# Restart
-igw restart tasks --profile dev --json
-igw restart gateway --profile dev --yes --json
-
-# Wait / poll
-igw wait gateway --profile dev --interval 2s --wait-timeout 2m
-igw wait diagnostics-bundle --profile dev --interval 2s --wait-timeout 5m --json
-igw wait restart-tasks --profile dev --interval 2s --wait-timeout 3m --json --select attempts --raw
-```
-
-Shell completion:
-
-```bash
-source <(igw completion bash)
-```
-
-Persistent RPC mode:
-
-```bash
-igw rpc --profile dev
-igw rpc --profile dev --workers 4 --queue-size 128
-printf '%s\n' \
-  '{"id":"h1","op":"hello"}' \
-  '{"id":"c1","op":"call","args":{"method":"GET","path":"/data/api/v1/gateway-info","timeout":"30s"}}' \
-  '{"id":"x1","op":"cancel","args":{"id":"c1"}}' \
-  '{"id":"cap1","op":"capability","args":{"name":"rpcWorkers"}}' \
-  '{"id":"s1","op":"shutdown"}' | igw rpc --profile dev
-```
-
-Smoke test script:
-
-```bash
-IGW_PROFILE=dev ./scripts/smoke.sh
-ITERATIONS=25 IGW_PROFILE=dev ./scripts/perf-baseline.sh
-./scripts/perf-gate.sh
-# Thresholds live in scripts/perf-thresholds.env.
-```

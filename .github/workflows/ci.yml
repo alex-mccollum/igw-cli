@@ -55,6 +55,10 @@ jobs:
       - name: Build
         run: go build ./cmd/igw
 
+      - name: Verify isolated CLI process contracts
+        if: runner.os == 'Linux'
+        run: bash scripts/smoke.sh
+
   perf-gate:
     name: Performance Gate
     runs-on: ubuntu-latest

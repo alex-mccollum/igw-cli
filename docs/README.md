@@ -1,21 +1,23 @@
-# Project Docs
+# Project documentation
 
-- `docs/installation.md`: install options, installer scripts, checksum verification, and manifest usage.
-- `docs/configuration.md`: config precedence, env vars, profiles, and WSL helper.
-- `docs/examples.md`: practical command flows and wrapper examples.
-- `docs/troubleshooting.md`: common failures and remediation commands.
-- `docs/architecture.md`: architecture and contract notes.
-- `docs/development-safety.md`: bounded local validation and WSL/Docker incident safeguards.
-- `docs/plans/rebuild-v1.md`: accepted v1 rebuild goal, roadmap, and verification evidence.
-- `docs/catalog.md`: Gateway catalog authority, snapshot storage, and freshness policy.
-- `docs/compatibility-matrix.md`: qualified version/module cells, retained evidence, and remaining coverage.
-- `docs/reference-updates.md`: reproducible reference pipeline and scheduled-run requirements.
-- `docs/rebuild-preview.md`: development CLI entrypoint, implemented contracts, and remaining work.
-- `docs/automation.md`: machine-oriented automation patterns (`--json`, exit codes, workflow).
-- `docs/rpc-protocol.md`: persistent RPC wire contract, handshake fields, and compatibility rules.
-- `docs/host-integration.md`: recommended host adapter contract (rpc primary, fallback, startup checks).
-- `docs/commands.md`: canonical command examples.
-- Command example source of truth: update `docs/commands.md` first; keep `README.md` to a short onboarding subset that links back here.
-- `docs/releasing.md`: release process and artifact expectations.
+- `docs/installation.md`: source and release installation.
+- `docs/commands.md`: canonical command examples and input contracts.
+- `docs/configuration.md`: target selection and precedence.
+- `docs/profiles.md`: profile storage, migration, revision checks, and rollback.
+- `docs/migration-v1.md`: 0.x command/output migration and preserved contracts.
+- `docs/automation.md`: versioned results, explicit changes, batches, and artifacts.
+- `docs/host-integration.md`: bounded process integration for applications/agents.
+- `docs/examples.md`: practical workflow selection.
+- `docs/troubleshooting.md`: configuration, transport, and catalog failures.
+- `docs/architecture.md`: the single command tree and typed core boundaries.
+- `docs/catalog.md`: source authority, provenance, freshness, snapshots, and pins.
+- `docs/reference-updates.md`: reproducible captures, distribution, and update automation.
+- `docs/compatibility-matrix.md`: real Gateway evidence and qualification limits.
+- `docs/rebuild-preview.md`: current implementation status and remaining work.
+- `docs/plans/rebuild-v1.md`: complete goal, decisions, gates, and evidence.
+- `docs/development-safety.md`: workstation limits and host lifecycle safeguards.
+- `docs/releasing.md`: version, packaging, and release contracts.
 - `docs/decisions/`: architecture decision records.
-- `scripts/smoke.sh`: local end-to-end smoke validation script.
+
+Update the command examples first when behavior changes. Keep README onboarding
+short and linked to the canonical command guide.
