@@ -14,6 +14,9 @@ bin/igw-next api list --search gateway --json
 bin/igw-next api describe 'GET /data/api/v1/gateway-info' --json
 bin/igw-next api request 'GET /data/api/v1/gateway-info' --json
 bin/igw-next gateway doctor --json
+bin/igw-next gateway restart-tasks --json
+bin/igw-next gateway restart --dry-run --json
+bin/igw-next gateway restart --yes --timeout 3m --json
 bin/igw-next api raw --method POST --path /data/api/v1/scan/projects --dry-run --json
 bin/igw-next spec export --out gateway-openapi.json --json
 bin/igw-next spec inspect gateway-openapi.json --json
@@ -22,6 +25,41 @@ bin/igw-next spec import gateway-openapi.json --json
 bin/igw-next api list --offline --json
 bin/igw-next spec diff before-openapi.json after-openapi.json --json
 ```
+
+`gateway restart` is a full Gateway restart and interrupts its running services.
+Use a direct URL for the intended Gateway node. A preview reads node identity,
+process ID, uptime, and pending tasks, then prepares `POST
+/data/api/v1/restart-tasks/restart?confirm=true` without sending it. An actual
+restart requires `--yes` and refreshes the catalog before its baseline reads.
+`api capabilities` checks the four required routes against the selected catalog;
+advertised routes do not establish permission or qualify a Gateway's responses.
+
+The workflow sends one POST and polls only reads under the total `--timeout`
+budget (30 seconds by default). Use `--interval` to set polling between 100ms
+and 1m; the default is 1s. `--offline` is unavailable because baseline and
+verification require current state. `--yes` and `--dry-run` are mutually
+exclusive. Malformed or missing baseline identity/process/task fields prevent
+the restart, including when the vendor response schema omits required fields.
+
+Completion requires the same observed `redundancy.localId`, either a changed
+`overview.processId` or a decreased `overview.uptime`, and no pending restart
+tasks. Uptime is reported in the API's units, which the captured document does
+not specify; the CLI does not infer seconds or elapsed wall time. Node identity
+is read before and after each overview/task observation. JSON evidence records
+`before`, `last`, `polls`, `acknowledged`, `proof`, and `correlation`.
+`meta.verification: "restart_observed"` means these checks passed. A reachable
+API or an empty task list alone is insufficient.
+
+There is no restart job ID or atomic node precondition. Separate reads cannot
+guarantee affinity through a load balancer, establish exclusive causality, or
+prove every module's health. An observed node change stops verification.
+After a disconnect or server error on the POST, the CLI may continue read-only
+verification; it never replays the restart. Successful observation can therefore
+have `acknowledged: false`. Auth failures, invalid observations, cancellation,
+or a deadline after dispatch produce `uncertain` with the normal error exit
+code (auth 6, other failures 7). Inspect current state before considering another
+restart. Preview and local usage errors remain non-mutating. Live qualification
+of this new workflow is still pending; see `docs/rebuild-preview.md`.
 
 Qualified API references are available without Gateway configuration, credentials,
 network access, or a populated cache:

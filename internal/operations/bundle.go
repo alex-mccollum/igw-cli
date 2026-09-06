@@ -173,7 +173,7 @@ func Bundle(ctx context.Context, runner Runner, input BundleRequest) result.Resu
 					return bundleFailure(stateResult, evidence, bundleProblem("generation", "diagnostics generation did not produce a valid bundle"), true)
 				}
 			}
-			if err := waitBundle(ctx, input.Interval); err != nil {
+			if err := waitPoll(ctx, input.Interval); err != nil {
 				return bundleFailure(stateResult, evidence, err, true)
 			}
 		}
@@ -248,7 +248,7 @@ func transientBundleRead(out result.Result) bool {
 	}
 	return false
 }
-func waitBundle(ctx context.Context, interval time.Duration) error {
+func waitPoll(ctx context.Context, interval time.Duration) error {
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 	select {

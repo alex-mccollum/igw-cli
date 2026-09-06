@@ -55,14 +55,14 @@ func (i *invocation) apiCommands() *cobra.Command {
 			return nil
 		}}
 	describe.Flags().String("reference", "", "Inspect a bundled name or local bundle directory without a Gateway")
-	capabilities := &cobra.Command{Use: "capabilities", Short: "Check catalog prerequisites for tag workflows", Args: cobra.NoArgs,
+	capabilities := &cobra.Command{Use: "capabilities", Short: "Check catalog prerequisites for tag and restart workflows", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, metadata, err := i.discovery(cmd)
 			if err != nil {
 				return err
 			}
 			defer c.Close()
-			assessments, err := workflow.AssessTags(c)
+			assessments, err := workflow.Assess(c)
 			if err != nil {
 				return result.Usage(err.Error())
 			}

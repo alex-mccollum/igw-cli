@@ -139,7 +139,7 @@ func TestCapabilityDiscoveryUsesSelectedCatalogAndHumanGuidance(t *testing.T) {
 	got := decodeResult(t, out)
 	var items []catalog.CapabilityAssessment
 	b, _ := json.Marshal(got.Data)
-	if json.Unmarshal(b, &items) != nil || len(items) != 3 || got.Meta.Catalog == nil || items[0].Status != "unavailable" || items[1].Status != "advertised" || items[2].Status != "unavailable" {
+	if json.Unmarshal(b, &items) != nil || len(items) != 4 || got.Meta.Catalog == nil || items[0].Status != "unavailable" || items[1].Status != "advertised" || items[2].Status != "unavailable" {
 		t.Fatalf("discovery did not use selected operations: %+v", got)
 	}
 	if err := app.Run(context.Background(), []string{"api", "capabilities", "--offline"}); err != nil {

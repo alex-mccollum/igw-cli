@@ -2,6 +2,34 @@
 
 Status: active. Accepted scope and goal: 2026-09-05.
 
+Current slice: verified Gateway restart. Implement the typed workflow and
+fixture checks first, then qualify it against the pinned disposable 8.3.0 and
+8.3.9 core Gateways. Done for this slice requires a single confirmed POST,
+read-only previews, strict baseline parsing, bounded polling, same-node process
+evidence, pending-task checks, real independent process observations, and owned
+container cleanup. The full v1 definition of done remains unchanged.
+
+Captured `/overview` exposes `processId` and `uptime`; `/redundancy` exposes
+`localId`; `/restart-tasks/pending` exposes `pending`; and
+`/restart-tasks/restart` requires `confirm=true` in practice. These are the
+workflow's exact catalog prerequisites. The vendor schema gives no uptime
+units, restart job ID, or atomic node precondition. The implementation compares
+PID/uptime without wall-time inference and brackets overview/task reads with
+node reads, while documenting the limits of non-atomic observations and
+load-balancer affinity. Current fixtures cannot establish actual PID or localId
+semantics; live evidence is required before claiming version qualification.
+
+The typed implementation and Cobra commands are now built. Focused unit and
+HTTP-fixture tests cover strict baseline fields/Unicode, missing capabilities,
+fresh write catalogs, previews, exact confirmation, redirect refusal,
+disconnect/5xx read-only recovery, process and uptime evidence, pending tasks,
+auth/identity failures, cancellation, and deadlines. The initial Unicode
+regression was corrected; negative numeric underflow is also refused before
+dispatch. Focused race checks, full unit tests, both entrypoint builds, command
+docs, and docs lint passed under the bounded runner. The legacy smoke script
+built successfully but stopped at its unconfigured doctor check (exit 2; no
+Gateway URL/token). Live restart qualification remains the next slice.
+
 ## Goal and definition of done
 
 Build a reliable Ignition 8.3+ CLI that lets a human or shell agent discover a

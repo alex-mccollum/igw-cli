@@ -160,11 +160,15 @@ func TestReferenceMatrixCapabilitiesAndModuleInventory(t *testing.T) {
 				status, unavailable = "unavailable", 1
 			}
 			items := r.Data.([]any)
-			if len(items) != 3 || len(ref.Qualification.UnavailableScopes) != unavailable {
+			if len(items) != 4 || len(ref.Qualification.UnavailableScopes) != unavailable {
 				t.Fatal("unexpected capability coverage")
 			}
 			for _, item := range items {
-				if item.(map[string]any)["status"] != status {
+				want := status
+				if item.(map[string]any)["id"] == "gateway.restart.verified" {
+					want = "advertised"
+				}
+				if item.(map[string]any)["status"] != want {
 					t.Fatalf("incorrect tag capability: %+v", item)
 				}
 			}

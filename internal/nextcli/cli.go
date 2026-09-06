@@ -23,6 +23,7 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/config"
 	"github.com/alex-mccollum/igw-cli/internal/execute"
+	"github.com/alex-mccollum/igw-cli/internal/operations"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/resource"
 	"github.com/alex-mccollum/igw-cli/internal/result"
@@ -103,9 +104,11 @@ func (a App) Run(ctx context.Context, args []string) error {
 		}
 	} else {
 		if i.output.Error != nil {
-			if _, batch := i.output.Data.(execute.BatchReport); batch {
+			_, batch := i.output.Data.(execute.BatchReport)
+			_, restart := i.output.Data.(operations.RestartEvidence)
+			if batch || restart {
 				if writeErr := human(a.Out, i.output); writeErr != nil {
-					return &result.Problem{Kind: "output", Message: "could not write batch output", Code: 7}
+					return &result.Problem{Kind: "output", Message: "could not write workflow output", Code: 7}
 				}
 			}
 			_, _ = fmt.Fprintln(a.Err, i.output.Error.Message)
@@ -149,12 +152,7 @@ func (i *invocation) commands() *cobra.Command {
 			i.output = result.Success(commandSchema(root))
 			return nil
 		}})
-	gatewayCmd := &cobra.Command{Use: "gateway", Short: "Inspect Gateway health"}
-	gatewayCmd.AddCommand(&cobra.Command{Use: "doctor", Short: "Read Gateway information without sending mutations", Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/gateway-info"})
-		}})
-	root.AddCommand(gatewayCmd)
+	root.AddCommand(i.gatewayCommands())
 	root.InitDefaultHelpCmd()
 	defaultHelp := root.HelpFunc()
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
