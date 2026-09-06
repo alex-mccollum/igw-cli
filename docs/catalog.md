@@ -764,6 +764,22 @@ CLI wire tests; it is not evidence of a header contract advertised by those
 Gateways. Original vendor bytes, identities, reference bundles, and historical
 live receipts retain their recorded provenance.
 
+Parser 21 shares content-parameter decoding across header, query, and path
+locations. OpenAPI's single media representation supports exact JSON (including
+JSON suffix types) and UTF-8 text with the complete declared schema. Validation
+removes URL escaping once before interpreting query/path content; header text
+keeps its existing HTTP normalization. The decoder bounds work, preserves
+references/numbers/null, and does not rewrite wire values. Absent optional
+content query parameters need no decoder; repeated values and overlap with
+exploded filter property names fail explicitly. See the
+[OpenAPI content-parameter contract](https://spec.openapis.org/oas/v3.1.1.html#fixed-fields-for-use-with-content).
+
+Synthetic 3.0/3.1 and actual CLI/HTTP-fixture checks cover these input semantics.
+All four retained default captures keep their non-parser expectations; none
+declares a query/path content parameter. Only current-parser expectations
+advance to 21. Original capture, reference, and live-receipt identities remain
+unchanged. This extends input support without claiming new Gateway acceptance.
+
 ## Project and tag transfer evidence
 
 The pinned 8.3.9 image passed the generic transfer contract test in 135.07

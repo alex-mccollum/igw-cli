@@ -131,7 +131,7 @@ func TestPathBindingStructures(t *testing.T) {
 		{"/items/{value}", "/items/one,two", `[{"in":"path","name":"value","required":true,"schema":{"type":"array","items":{"type":"string"}}}]`, false},
 		{"/items/{value}", "/items/.one", `[{"in":"path","name":"value","required":true,"style":"label","schema":{"type":"string"}}]`, false},
 		{"/items/{value}", "/items/;value=one", `[{"in":"path","name":"value","required":true,"style":"matrix","schema":{"type":"string"}}]`, false},
-		{"/items/{value}", "/items/%7B%7D", `[{"in":"path","name":"value","required":true,"content":{"application/json":{"schema":{"type":"object"}}}}]`, false},
+		{"/items/{value}", "/items/%7B%7D", `[{"in":"path","name":"value","required":true,"content":{"application/json":{"schema":{"type":"object"}}}}]`, true},
 	} {
 		t.Run(tt.template+tt.path, func(t *testing.T) {
 			raw := fmt.Sprintf(`{"openapi":"3.1.0","info":{"title":"Path bindings","version":"test"},"paths":{%q:{"get":{"parameters":%s,"responses":{"200":{"description":"OK"}}}}}}`, tt.template, tt.parameters)

@@ -1,5 +1,15 @@
 # Local qualification evidence
 
+`content-parameters.json` records parser 21's shared JSON/text decoding for
+query, path, and header parameters from a precommit worktree at `aa8ce7d`.
+It retains the initial refusal regressions, exact-value and HTTP wire checks,
+targeted catalog/CLI race checks, full unit/build/33 smoke checks, documentation,
+performance, and minimum-Go validation. All four captures preserve their
+non-parser expectations. Their query/path content-parameter inventory is empty,
+so this is synthetic-contract and fixture evidence, not a new live-Gateway
+qualification. Production source and executable hashes identify the tested
+implementation; original reference and live provenance remain unchanged.
+
 `catalog-revalidation.json` records the subsequent unchanged-catalog refresh
 optimization, based on a precommit worktree at `e306eec`. The before/after
 benchmark measures disk load, current-parser validation, conditional HTTP

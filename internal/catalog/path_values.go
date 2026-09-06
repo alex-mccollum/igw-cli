@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
@@ -49,15 +50,22 @@ func (c *Catalog) pathValidationView(item *v3.PathItem, request *http.Request, t
 		if values[name] == "" {
 			return refuse(name, "required")
 		}
-		if p.Schema == nil || p.Schema.Schema() == nil || (p.Style != "" && p.Style != "simple") {
-			return refuse(name, "unsupported_serialization")
+		var value any
+		var schema *base.Schema
+		var rule string
+		if p.Content != nil && p.Content.Len() != 0 {
+			value, schema, rule = parameterContentValue(p, values[name])
+		} else {
+			if p.Schema == nil || p.Schema.Schema() == nil || (p.Style != "" && p.Style != "simple") {
+				return refuse(name, "unsupported_serialization")
+			}
+			schema = p.Schema.Schema()
+			kind := querySchemaKind(schema)
+			if kind == "" || kind == "array" {
+				return refuse(name, "unsupported_serialization")
+			}
+			value, rule = parameterPrimitive(kind, values[name])
 		}
-		schema := p.Schema.Schema()
-		kind := querySchemaKind(schema)
-		if kind == "" || kind == "array" {
-			return refuse(name, "unsupported_serialization")
-		}
-		value, rule := parameterPrimitive(kind, values[name])
 		if rule != "" {
 			return refuse(name, rule)
 		}

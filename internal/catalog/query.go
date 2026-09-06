@@ -62,7 +62,18 @@ func (c *Catalog) filterValidationView(item *v3.PathItem, request *http.Request)
 		if name == "filter" {
 			continue
 		}
-		if peer.Schema == nil || peer.Schema.Schema() == nil || matcher.MatchString(name) {
+		if matcher.MatchString(name) {
+			return refuse("ambiguous_parameter_binding")
+		}
+		// Content parameters own one exact query key. The named-parameter
+		// decoder checks their representation later, independently of filters.
+		if peer.Content != nil && peer.Content.Len() != 0 {
+			if peer.Schema != nil || peer.Content.Len() != 1 {
+				return refuse("unsupported_serialization")
+			}
+			continue
+		}
+		if peer.Schema == nil || peer.Schema.Schema() == nil {
 			return refuse("ambiguous_parameter_binding")
 		}
 		// Named primitive/array peers own only their exact query key.

@@ -35,15 +35,27 @@ fell from 2.422 s/1.238 GB allocation to 1.293 s/647 MB on Go 1.27.1; Go 1.25.7
 uses 718 MB, within the new 1 GiB ceiling. Source and before/after evidence are
 retained separately; parser 20 and all original receipts remain unchanged.
 
-Next verifiable slice: support JSON and UTF-8 text `content` parameters in
-query and path locations, sharing the proven header decoder and exact schema
-validation. Preserve literal input and URL encoding, enforce size/uniqueness/
-presence constraints, and keep filter ownership unambiguous. Verify nested
-values, references, null, exact numbers, local refusal, and actual prepared wire
-requests before broadening other structured encodings. The remaining full
-structured-input/workflow/performance and final completed-source Gateway and
-release acceptance gates stay active; these optimizations alone are not v1
-readiness.
+Parser 21 adds JSON and UTF-8 text `content` parameters in query and path
+locations through the shared header decoder and exact schema validation.
+Presence, uniqueness, size/numeric/nesting bounds, literal URL values, inherited
+overrides, and filter ownership are preserved. Synthetic OpenAPI 3.0/3.1 tests
+cover nested values, references, null, and exact numbers. CLI wire tests verify
+the target prefix, URL encoding, zero-write previews, one confirmed request,
+and redacted local refusals. Targeted catalog/CLI race checks, full unit tests,
+native build/33 smoke checks, docs checks, the performance gate, and the matching
+Go 1.25.7 tests passed. All four captures keep their non-parser expectations;
+none declares query/path content parameters, so no new live-Gateway acceptance
+is claimed. Original capture/reference/live identities stay unchanged.
+The [retained input evidence](../qualification/content-parameters.json) binds
+the source and executable to the check logs and capture inventory.
+
+Next verifiable slice: inventory the remaining form-body contracts, then add
+bounded URL-encoded form construction and complete schema validation through
+the typed request core. Define property/array encoding and ambiguity handling
+before adding CLI flags; verify exact wire bytes, preview non-dispatch, limits,
+and refusal of unsupported declarations. Remaining structured encodings, binary
+and multipart assertions, broader workflows, and final completed-source Gateway
+and release acceptance gates stay active. These slices are not v1 readiness.
 
 Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,

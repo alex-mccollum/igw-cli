@@ -1,11 +1,9 @@
 package catalog
 
 import (
-	"mime"
 	"net/http"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/alex-mccollum/igw-cli/internal/gateway"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -81,19 +79,10 @@ func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request)
 		var schema *base.Schema
 		var rule string
 		if p.Content != nil && p.Content.Len() != 0 {
-			if p.Schema != nil || p.Content.Len() != 1 {
-				return refuse(name, "unsupported_serialization")
-			}
 			if len(input) != 1 {
 				return refuse(name, "duplicate_parameter")
 			}
-			for media, content := range p.Content.FromOldest() {
-				if content == nil || content.Schema == nil || content.Schema.Schema() == nil {
-					return refuse(name, "unsupported_serialization")
-				}
-				schema = content.Schema.Schema()
-				value, rule = decodeHeaderContent(media, input[0])
-			}
+			value, schema, rule = parameterContentValue(p, input[0])
 		} else {
 			if p.Schema == nil || p.Schema.Schema() == nil || (p.Style != "" && p.Style != "simple") {
 				return refuse(name, "unsupported_serialization")
@@ -150,30 +139,4 @@ func (c *Catalog) headerValidationView(item *v3.PathItem, request *http.Request)
 	req := *request
 	req.Header = headers
 	return view, &req, nil, nil
-}
-
-func decodeHeaderContent(media, text string) (any, string) {
-	media, parameters, err := mime.ParseMediaType(media)
-	if err != nil || strings.Contains(media, "*") {
-		return nil, "unsupported_serialization"
-	}
-	charset := strings.ToLower(parameters["charset"])
-	if charset != "" && charset != "utf-8" && charset != "us-ascii" {
-		return nil, "unsupported_serialization"
-	}
-	if charset == "us-ascii" {
-		for i := range len(text) {
-			if text[i] >= utf8.RuneSelf {
-				return nil, "invalid_text"
-			}
-		}
-	}
-	_, subtype, _ := strings.Cut(media, "/")
-	if subtype == "json" || strings.HasSuffix(subtype, "+json") {
-		return decodeExactJSON([]byte(text))
-	}
-	if media == "text/plain" {
-		return parameterPrimitive("string", text)
-	}
-	return nil, "unsupported_serialization"
 }

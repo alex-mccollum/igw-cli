@@ -163,8 +163,9 @@ selected schema applies, and an operation's declaration overrides an inherited
 declaration of the same parameter. Vendor `servers` never changes the selected
 target or the operation-relative path used for validation.
 
-Path arrays, objects, content-based parameters, and label/matrix styles currently
-fail schema-assisted validation as `unsupported_serialization`; their contracts
+Path arrays/objects using the parameter's `schema`/`style` strategy, and
+label/matrix styles, currently fail
+schema-assisted validation as `unsupported_serialization`; their contracts
 remain inspectable with `api describe`. A path template with multiple expressions
 in one segment must have an unambiguous binding. `api raw` remains the explicit
 escape hatch for encodings that are not yet supported.
@@ -237,11 +238,31 @@ fractions and exponents. Numeric validation preserves precision, with a limit
 of 4096 characters and an exponent between -4096 and 4096 to bound computation.
 The original wire text is never rounded or rewritten by validation.
 
-This covers the named primitive and exploded primitive-array query shapes in
-the qualified Gateway catalogs. Other query styles, nested values, and schema
-types without an unambiguous text representation require additional encoding
-support; use `api raw` explicitly for those cases. Header/path encoding and
-multipart input have separate contracts and remaining implementation work.
+Where a query or path parameter declares `content`, supply one value in its
+declared JSON or UTF-8 `text/plain` representation. For example, the argument
+`--query 'options={"enabled":false}'` supplies a JSON object only if that
+parameter declares JSON content; `--path-param 'value={"id":9007199254740993}'`
+uses the same rule for a path parameter. The CLI handles URL encoding and
+validates the exact decoded value without rewriting the supplied text. This
+does not reinterpret ordinary string parameters as JSON.
+
+Content parameters support nested objects, arrays, references, explicit JSON
+null when allowed, and exact numbers. JSON `""` is distinct from omitted input;
+empty text query values are present and must satisfy their schema. Empty path
+segments remain invalid. Repeated content query parameters, duplicate JSON
+keys, malformed Unicode, and trailing JSON fail before dispatch. Each content
+value is limited to 32 MiB before decoding, with the JSON numeric/nesting limits
+described below. Unsupported media fail when supplied; an absent optional
+content query parameter needs no decoder. An operation's parameter declaration
+overrides the same inherited name/location. Named content keys cannot overlap
+the Gateway's exploded filter property names.
+
+The retained Gateway captures qualify named primitive and exploded primitive-
+array query shapes. Their documents contain no query/path `content` parameters;
+the added encoding support is verified against HTTP fixtures, not a new live
+Gateway claim. Other query styles and nested `schema` serialization still need
+explicit support; `api raw` remains available. Multipart input has a separate
+contract and remaining implementation work.
 
 JSON request bodies are decoded without rounding numbers and validated against
 the selected request schema. The CLI sends the original bytes, including

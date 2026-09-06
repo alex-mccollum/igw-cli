@@ -67,6 +67,29 @@ func (c *Catalog) namedQueryValidationView(item *v3.PathItem, request *http.Requ
 	removed := make(map[string]bool, len(names))
 	for _, name := range names {
 		p := queries[name]
+		if p.Content != nil && p.Content.Len() != 0 {
+			input, present := values[name]
+			if !present {
+				if p.Required != nil && *p.Required {
+					return refuse(name, "required")
+				}
+			} else {
+				if len(input) != 1 {
+					return refuse(name, "duplicate_parameter")
+				}
+				value, schema, rule := parameterContentValue(p, input[0])
+				if rule != "" {
+					return refuse(name, rule)
+				}
+				issues, err := c.validateParameterValue("query", name, schema, value)
+				if err != nil || len(issues) > 0 {
+					return item, request, issues, err
+				}
+			}
+			removed[name] = true
+			delete(values, name)
+			continue
+		}
 		if p.Schema == nil || p.Schema.Schema() == nil {
 			return refuse(name, "unsupported_serialization")
 		}
