@@ -19,7 +19,7 @@ bash scripts/bounded-run.sh -- go build -o bin/igw ./cmd/igw
 
 The following examples assume `igw` is on PATH; use `bin/igw` for that local
 build. To install a published version, see [installation](docs/installation.md).
-No v1 tag or release is published by the local rebuild process.
+Use the documentation at your installed release tag; 0.x commands differ from v1.
 
 ```bash
 igw version

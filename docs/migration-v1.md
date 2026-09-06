@@ -1,11 +1,10 @@
 # Migrate from 0.x to v1
 
-The working source now uses one `igw` entrypoint. The old `igw-next` entrypoint,
+Version 1.0.0 uses one `igw` entrypoint. The old `igw-next` entrypoint,
 legacy parser and wrappers, persistent RPC, and CWD OpenAPI loader are removed.
-This is an intentional major-version interface change. The v1 source has not
-been published by the rebuild workflow. See
-[current qualification status](qualification/README.md) for the tested commits
-and the checks still required for a release candidate.
+This is an intentional major-version interface change. See
+[current qualification status](qualification/README.md) for tested sources,
+platform coverage, and remaining limitations.
 
 ## Configuration
 

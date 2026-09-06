@@ -1,5 +1,31 @@
 # Current qualification status
 
+## v1.0.0 release preparation
+
+Runtime source `7b276091b34c121d38ac2ad457c28a793e3e33a6` passed all six
+[GitHub CI jobs](https://github.com/alex-mccollum/igw-cli/actions/runs/34037027623)
+on 2026-09-06: Linux, macOS, and Windows tests/builds; the race detector;
+performance budgets; and documentation/reference-tool checks. Release preparation
+changes the changelog and documentation, with no further runtime changes.
+
+The same clean source passed refreshed native Linux CLI journeys on both pinned
+Ignition 8.3.0 and 8.3.9 images with `core-opcua` and `image-defaults` profiles:
+48 checks per 8.3.0 profile and 55 per 8.3.9 profile, 206 total. Both images first
+passed the lifecycle probe using the newly built test executable. Each of the
+six live invocations passed its process and receipt checks, with independent
+confirmation that no qualification containers remained. Private source/build
+records, receipts, and logs are retained in the ignored
+`bin/release-v1.0.0-20260906T135400Z/` directory and are not release assets.
+
+These checks refresh the affected CLI workflows; they do not rerun every
+historical live suite below or provide native execution evidence for all six
+release architectures. Release packaging separately builds all six targets and
+executes the packaged Linux amd64 version and smoke checks. The
+[workflow limits](../compatibility-matrix.md) still apply. Hosted reference-update
+activation is separate from release publication.
+
+## Historical simplification qualification
+
 Candidate `a1d2b4b` passed the simplification gates on 2026-09-06 UTC.
 No release was published and no hosted reference-update activation is claimed.
 The [qualification record](simplification.json) binds the source, executables,

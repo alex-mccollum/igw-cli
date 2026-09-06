@@ -1,10 +1,11 @@
 # Installation
 
-These docs describe the working v1 source. The latest published release checked
-on 2026-09-06 is v0.5.0, whose commands and output differ. Installing `latest`
-does not install this checkout. Use the documentation at the selected release
-tag, or build the working source below. See [migration](migration-v1.md) and
-[current qualification status](qualification/README.md) before adopting v1.
+These docs describe the v1 interface. Choose an available version from
+[GitHub Releases](https://github.com/alex-mccollum/igw-cli/releases) and use the
+documentation at that release tag, or build this checkout below. The `latest`
+installer selects the latest published release, which can differ from this
+checkout. See [migration](migration-v1.md) and
+[current qualification status](qualification/README.md) before upgrading from 0.x.
 
 ## Build this checkout
 

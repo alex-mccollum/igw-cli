@@ -1,15 +1,15 @@
 # Releasing
 
-Releases use an explicit `vMAJOR.MINOR.PATCH` tag. The working v1 source is not
-published by a local build or dry-run. Check [qualification status](qualification/README.md)
+Releases use an explicit `vMAJOR.MINOR.PATCH` tag. Local builds and dry-runs do
+not publish releases. Check [qualification status](qualification/README.md)
 for the exact tested source and remaining live or platform checks before choosing
 a release candidate. Earlier passing evidence does not qualify changed code.
 
 ## Prepare and verify
 
-Use a clean candidate checkout and a new, unused tag. The examples use
-`v1.0.0` as a prospective tag, not a claim that this release exists. Add the
-matching `## [v1.0.0]` changelog heading and release notes before cutting it.
+Use a clean candidate checkout and a new, unused tag. The examples illustrate
+`v1.0.0`; substitute the version being released and never reuse a published tag.
+Add its matching changelog heading and release notes before cutting it.
 Require the candidate's CI, relevant live workflow qualification, and platform
 checks to pass; the release workflow does not perform live Gateway qualification.
 

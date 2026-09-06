@@ -4,8 +4,14 @@ All notable user-facing changes to `igw` are documented here.
 
 ## [Unreleased]
 
+## [v1.0.0](https://github.com/alex-mccollum/igw-cli/compare/v0.5.0...v1.0.0) - 2026-09-06
+
+This release introduces a breaking CLI and automation interface. Read the
+[migration guide](docs/migration-v1.md) before upgrading from 0.x, and check
+[qualified scope and limitations](docs/qualification/README.md).
+
 ### Changed
-- Cut over to one `cmd/igw` command tree and typed execution core. Remove the development entrypoint, legacy argument parser, persistent RPC, old OpenAPI index, and WSL address helper. This breaking interface is intended for v1; see `docs/qualification/README.md` for tested sources and remaining release gates.
+- Cut over to one `cmd/igw` command tree and typed execution core. Remove the development entrypoint, legacy argument parser, persistent RPC, old OpenAPI index, and WSL address helper.
 - Use one `igw/v1` JSON envelope for discovery, requests, workflow results, and errors. Preserve exit codes 0/2/6/7 and the release version/artifact naming contracts.
 - Discover the target Gateway's complete OpenAPI contract with immutable snapshots, provenance, freshness, pins, and explicit offline references; remove implicit CWD spec lookup.
 - Require deliberate previews/confirmation and supported resource/project preconditions. Distinguish accepted requests from verified workflow outcomes and uncertain writes.
@@ -20,6 +26,7 @@ All notable user-facing changes to `igw` are documented here.
 - Reuse verified unchanged cache blobs while preserving corruption repair, escape validation field pointers correctly, and distinguish permanent configuration lock failures from contention.
 - Compare reference-update candidates against the default baseline for their selected module profile; explicit baseline overrides remain available.
 - Restrict hosted reference artifacts to validated status summaries and successful two-file references; retain raw execution logs and detailed receipts privately on the runner.
+- Isolate multipart temporary-file checks across operating systems and verify installer downloads for Linux/macOS on amd64/arm64.
 
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 
