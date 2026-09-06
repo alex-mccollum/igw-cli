@@ -68,6 +68,27 @@ func BenchmarkCapturedCatalog(b *testing.B) {
 	}
 }
 
+func BenchmarkLoadedOperationLookup(b *testing.B) {
+	_, c, err := reference.Select("ignition-8.3.9-defaults").OpenCatalog(context.Background())
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer c.Close()
+	const key = "GET /data/api/v1/gateway-info"
+	if _, err := c.Resolve(key); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		op, err := c.Resolve(key)
+		if err != nil || op.Key != key || len(op.Definition) == 0 {
+			b.Fatal("loaded lookup did not return the captured operation")
+		}
+	}
+	b.StopTimer()
+}
+
 type zeroStream struct{}
 
 func (zeroStream) Read(p []byte) (int, error) { clear(p); return len(p), nil }

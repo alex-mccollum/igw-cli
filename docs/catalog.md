@@ -146,12 +146,15 @@ retain the original references and explain the correction. This follows
 [JSON Schema reference and definition semantics](https://json-schema.org/understanding-json-schema/structuring).
 
 Recursive arrays, such as required security-level children, accept finite trees
-and are checked against actual input values. The parser receives a formatted
-private copy: its node index otherwise performs quadratic work on large compact
-JSON. Eager compilation of unrelated request/response schemas is disabled.
-Local discovery of the captured expanded document took about two seconds with
-roughly 600 MiB peak RSS on the development machine; memory needs optimization
-before release qualification.
+and are checked against actual input values. The parser receives an indented
+private copy with a YAML block root and JSON-encoded values. This avoids both
+quadratic same-line node indexing and the scanner's whole-root token queue.
+Document validation uses the exact decoded JSON with the upstream validator's
+embedded metaschemas and compiler; full model/reference validation still runs.
+Original vendor bytes and contract identities are preserved. Eager compilation
+of unrelated request/response schemas is disabled. Parser 20 reduced local
+full-reference process time to about 1.6 seconds and measured peak RSS to
+389–398 MiB; see [performance scope and evidence](performance.md).
 
 Document/model validation is not proof that every request schema is usable.
 Captured 8.3.9 basic-schedule create/update/delete schemas now support request

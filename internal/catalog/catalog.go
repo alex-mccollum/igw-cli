@@ -21,13 +21,12 @@ import (
 	validator "github.com/pb33f/libopenapi-validator"
 	validatorconfig "github.com/pb33f/libopenapi-validator/config"
 	validatorerrors "github.com/pb33f/libopenapi-validator/errors"
-	"github.com/pb33f/libopenapi-validator/schema_validation"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 const MaxDocumentBytes = 32 << 20
-const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/19"
+const ParserVersion = "libopenapi/0.38.7+validator/0.14.0;igw/20"
 
 var ErrSchemaCompilation = errors.New("the Gateway's operation schema cannot be compiled")
 var ErrIncompleteContract = errors.New("the Gateway's operation has an undocumented input schema")
@@ -122,41 +121,22 @@ func Parse(raw []byte) (*Catalog, error) {
 		return nil, errors.New("supported OpenAPI versions are 3.0 and 3.1")
 	}
 	adjustments := normalizeIgnition(value)
-	// The parser's node index scans each line's nodes linearly. Indent its
-	// private input to avoid quadratic work on compact multi-megabyte JSON.
-	modelBytes, err := json.MarshalIndent(value, "", "  ")
+	if !validDocumentValue(value, version) {
+		return nil, errors.New("document does not satisfy its OpenAPI version schema or numeric work limits")
+	}
+	if strings.HasPrefix(version, "3.0.") {
+		normalizeSchema30(value, "document")
+	} else {
+		// Validate before adapting boolean schemas for the high-level renderer.
+		_, _ = normalizeBooleanSchemas(value, "document")
+	}
+	modelBytes, err := modelDocument(value)
 	if err != nil {
 		return nil, err
 	}
 	doc, err := newParserDocument(modelBytes)
 	if err != nil {
 		return nil, errors.New("invalid OpenAPI document structure")
-	}
-	valid, _ := schema_validation.ValidateOpenAPIDocument(doc)
-	if !valid {
-		doc.Release()
-		return nil, errors.New("document does not satisfy its OpenAPI version schema")
-	}
-	changed := false
-	if strings.HasPrefix(version, "3.0.") {
-		normalizeSchema30(value, "document")
-		changed = true
-	} else {
-		// Validate the document before adapting valid boolean schemas into
-		// equivalent object forms for the upstream high-level renderer.
-		_, changed = normalizeBooleanSchemas(value, "document")
-	}
-	if changed {
-		adapted, err := json.MarshalIndent(value, "", "  ")
-		if err != nil {
-			doc.Release()
-			return nil, errors.New("could not prepare OpenAPI model")
-		}
-		doc.Release()
-		doc, err = newParserDocument(adapted)
-		if err != nil {
-			return nil, errors.New("could not prepare OpenAPI model")
-		}
 	}
 	model, err := doc.BuildV3Model()
 	if err != nil {

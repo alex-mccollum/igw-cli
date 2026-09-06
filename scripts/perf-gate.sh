@@ -9,7 +9,7 @@ OUTPUT_FILE="$(mktemp)"
 trap 'rm -f "$OUTPUT_FILE"' EXIT
 
 go test ./internal/cli -run '^$' \
-  -bench '^(BenchmarkCommandSchema|BenchmarkTypedRequest|BenchmarkCapturedCatalog|BenchmarkStreamedArtifact32MiB)$' \
+  -bench '^(BenchmarkCommandSchema|BenchmarkTypedRequest|BenchmarkCapturedCatalog|BenchmarkLoadedOperationLookup|BenchmarkStreamedArtifact32MiB)$' \
   -benchtime=3x -benchmem -count=1 >"$OUTPUT_FILE"
 cat "$OUTPUT_FILE"
 
@@ -38,5 +38,7 @@ assert_metric BenchmarkCommandSchema ns/op "${IGW_PERF_MAX_COMMAND_SCHEMA_NS:-$M
 assert_metric BenchmarkTypedRequest ns/op "${IGW_PERF_MAX_TYPED_REQUEST_NS:-$MAX_TYPED_REQUEST_NS}"
 assert_metric BenchmarkCapturedCatalog ns/op "${IGW_PERF_MAX_CAPTURED_CATALOG_NS:-$MAX_CAPTURED_CATALOG_NS}"
 assert_metric BenchmarkCapturedCatalog B/op "${IGW_PERF_MAX_CAPTURED_CATALOG_BYTES:-$MAX_CAPTURED_CATALOG_BYTES}"
+assert_metric BenchmarkLoadedOperationLookup ns/op "${IGW_PERF_MAX_LOADED_LOOKUP_NS:-$MAX_LOADED_LOOKUP_NS}"
+assert_metric BenchmarkLoadedOperationLookup B/op "${IGW_PERF_MAX_LOADED_LOOKUP_BYTES:-$MAX_LOADED_LOOKUP_BYTES}"
 assert_metric BenchmarkStreamedArtifact32MiB ns/op "${IGW_PERF_MAX_STREAMED_ARTIFACT_NS:-$MAX_STREAMED_ARTIFACT_NS}"
 assert_metric BenchmarkStreamedArtifact32MiB B/op "${IGW_PERF_MAX_STREAMED_ARTIFACT_BYTES:-$MAX_STREAMED_ARTIFACT_BYTES}"

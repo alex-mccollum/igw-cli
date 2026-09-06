@@ -1,4 +1,20 @@
-# Local cutover qualification
+# Local qualification evidence
+
+`catalog-parser20.json` records the subsequent catalog optimization. It binds
+production/reference inputs and the native executable to exact retained logs
+for the full suite, 33 smoke checks, catalog race checks, both Go toolchains'
+performance gates, process timings, and measured peak RSS. The source was a
+precommit worktree based on `8efb9ee`. Its transcript notes distinguish the
+corrected loaded-lookup timing from the initial sample, and cumulative profile
+allocation from per-operation allocation and peak memory. See
+[performance methodology and results](../performance.md).
+
+The four current-parser capture expectations advance to parser 20 without any
+other field changing. Original vendor captures, reference manifests, and live
+receipts remain historical evidence. All local checks used the existing guard
+limits, without containers or host configuration changes.
+
+## Single-entrypoint cutover
 
 `v1-cutover.json` records the six-platform artifact audit and the source-input
 digest for the single-entrypoint cutover. `v1-cutover-checks.txt` retains the

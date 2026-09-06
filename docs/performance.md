@@ -1,7 +1,8 @@
 # Performance qualification
 
 The v1 cutover replaces legacy call/RPC microbenchmarks with command-schema,
-typed HTTP request, actual captured-catalog, and streamed-artifact benchmarks.
+typed HTTP request, actual captured-catalog, loaded-operation lookup, and
+streamed-artifact benchmarks.
 Run `scripts/perf-gate.sh` through the bounded runner. It uses three iterations
 of each benchmark, checks every expected metric, and refuses missing results.
 It does not contact a Gateway or run concurrent heavy jobs.
@@ -34,12 +35,55 @@ point, not a latency distribution. Reported p50/p95 use nearest-rank empirical
 quantiles. A separate full CLI race-test run sampled about 2.91 GiB resident
 memory; that is an observation, not a measured peak or a portable memory bound.
 
-The checked-in thresholds are regression ceilings with headroom for shared CI.
-They are not an assertion that current catalog cost is the best achievable UX.
-The captured catalog's allocation and startup cost remain an optimization target
-in the full v1 goal. Full source qualification must include actual process
-latency, retained input identity, memory observations, and representative large
-artifacts. Do not declare that gate complete from the microbenchmarks alone.
+## Parser 20 optimization
+
+Profiling the cutover parser attributed about 44% of sampled allocations to the
+YAML scanner's token insertion. The private parser representation now uses a
+block root with JSON-encoded values, so the scanner can consume each root member
+without queuing the entire document as a possible complex key. Indentation still
+avoids quadratic same-line node indexing. Vendor bytes, returned definitions,
+raw/document/contract hashes, and reference provenance stay unchanged.
+
+Full document validation uses the already decoded exact JSON value with the
+same embedded OpenAPI 3.0/3.1 metaschemas and compiler as the upstream validator.
+Model construction and reference validation still run. This avoids redundant
+JSON views and, for adapted schemas, a second parser document. Differential
+validation and typed-node tests cover both versions, precise numbers, Unicode,
+references, and invalid documents. Numeric work is bounded before compilation.
+No parser validation flags are relaxed and no dependency version changes.
+
+The final Go 1.27.1 checks observed a 1.440 s full-reference open with
+772,654,328 B/op: about 28% less elapsed time and 50% fewer cumulative allocated
+bytes than the cutover baseline. Go 1.25.7 observed 1.856 s and 823,487,000 B/op.
+These are separate local three-iteration runs. The allocation regression ceiling
+is now 1 GiB, leaving headroom on both toolchains while detecting a return to the
+previous cost. This ceiling measures allocation, not resident memory.
+
+Five actual process samples took 1,548.377–1,604.946 ms for reference inspection
+(median 1,566.673 ms), and 13.533–14.954 ms for command schemas. Three additional
+`/usr/bin/time` runs of reference inspection observed 398,300–407,356 KiB peak
+RSS (389–398 MiB) and 1.60–1.69 s elapsed time. Each was a new CLI process using
+the complete retained reference, with output discarded. OS filesystem caches
+were not flushed; this is process startup, not cold-disk latency.
+
+The loaded-operation benchmark opens and validates the actual reference outside
+its timer, then resolves the exact Gateway-info operation with independent
+definition bytes. Setup and release are excluded. A 1,000-iteration Go 1.27.1
+run observed 2,111 ns/op and 4,112 B/op. This isolates lookup cost; ordinary
+separate CLI invocations still pay catalog-open cost. The 32 MiB streamed
+artifact benchmark remains below 1 MiB allocation on both toolchains.
+
+[The parser-20 receipt](qualification/catalog-parser20.json) binds production
+inputs and the executable to retained full-unit, smoke, catalog-race, benchmark,
+and process logs. The four current-parser capture expectations advance to parser
+20; their other fields and all original capture/live receipts stay unchanged.
+No Gateway or host lifecycle operation ran during these checks. All validation
+used the same 8 GiB/two-CPU limits; none needed a larger allocation.
+
+The checked-in thresholds are regression ceilings with headroom for shared CI,
+not portable performance guarantees. Final completed-source acceptance remains
+part of the full v1 goal. Catalog revalidation still reparses unchanged documents
+after an HTTP 304; removing that duplicate work is the next measured slice.
 
 The artifact allocation ceiling is 1 MiB for a 32 MiB payload, so buffering the
 whole payload fails the gate. Its elapsed-time ceiling includes filesystem sync

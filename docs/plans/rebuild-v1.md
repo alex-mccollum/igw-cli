@@ -14,13 +14,25 @@ source-input identity, all twelve checksums/aliases, stale-file exclusion,
 and the local execution limits. Historical Gateway receipts retain their
 original source and labels.
 
-Next verifiable slice: profile the full captured-catalog parse/open path and
-real process discovery, then reduce measured startup and allocation costs
-without weakening validation, identity checks, freshness, or reference trust.
-Current full-reference inspection takes about 2.2 seconds per process. The
-remaining structured-input/workflow/performance and final completed-source
-Gateway and release acceptance gates stay active; cutover alone is not v1
-readiness.
+Parser 20's measured optimization is implemented and locally verified. It
+reuses exact decoded JSON for full document validation and changes only the
+private parser representation to avoid the YAML scanner's whole-root queue.
+All four retained captures preserve their non-parser identities. Full unit,
+catalog race, native build/33 smoke checks, and performance gates passed; both
+Go 1.27.1 and minimum Go 1.25.7 pass a tightened 1 GiB allocation ceiling.
+Full-reference process inspection now takes about 1.6 seconds, with 389–398 MiB
+observed peak RSS. Loaded lookup and 32 MiB streamed artifacts are separately
+measured. [Evidence and limits](../performance.md) preserve the historical
+baseline and original Gateway receipts. Resource caps stayed unchanged.
+
+Next verifiable slice: reuse the already validated catalog when the selected
+Gateway returns a conditional 304 or exactly identical document bytes. Keep
+invocation-time verification for writes, immutable receipt publication,
+fallback behavior, and catalog ownership intact. Test changed documents,
+publication failures, and pins, then measure the complete revalidation path.
+The remaining structured-input/workflow/performance and final completed-source
+Gateway and release acceptance gates stay active; this optimization alone is
+not v1 readiness.
 
 Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,
