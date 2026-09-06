@@ -113,6 +113,29 @@ budget guard have separate fixture tests. The receipts keep their actual source
 and timestamps; final current-source qualification remains part of the full v1
 gate.
 
+## Additional Gateway restart qualification
+
+Both pinned core images passed on 2026-09-06 UTC from clean source `8084cd0`,
+using the same executable and parser 19. Each first passed 10 lifecycle checks,
+then 9 CLI checks. The 8.3.0 and 8.3.9 suites took 88.29 and 90.19 seconds,
+with 62 and 61 restart polls respectively. Each sent one confirmed POST, used
+one fresh catalog for the restart, and completed through `uptime_reset`.
+
+The advertised `processId` identified the `ignition-gateway` wrapper. It stayed
+unchanged while an independently observed Java child was replaced. Container
+and wrapper start identities, Docker restart count, and applied resource limits
+remained unchanged. Independent cleanup queries were empty. Both runs had
+empty pending-task lists; module health and nonempty task completion were not
+qualified. Exact captures and original provenance are retained in
+`internal/testgateway/testdata/restart/`.
+
+Separate containers returned the same `localId`, so matching that field is a
+consistency check rather than proof of globally unique node identity. The CLI
+requires direct node addressing for verification; its clarified correlation
+label is `selected_target`. Original receipts retain `observed_node`, their
+actual source, and their original timestamps. No OpenAPI schema claim is used
+to infer uniqueness, JVM PID semantics, uptime units, or request causality.
+
 ## Observed module profiles
 
 The core runs use the explicit `com.inductiveautomation.opcua` whitelist and

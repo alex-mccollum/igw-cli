@@ -69,11 +69,15 @@ collection behavior, and verification limits.
 Gateway restart now has a typed baseline/write/readback workflow. It checks
 the four advertised routes, reads node identity around each process/task
 observation, dispatches one confirmed restart, and requires a process change or
-uptime reset on the same observed node with no pending tasks. It reports
+uptime reset with matching reported identity and no pending tasks. It reports
 `restart_observed` verification, with explicit acknowledgement and observational
 correlation evidence. Neither HTTP availability nor an empty task list proves
-restart by itself. Unit/HTTP-fixture verification and real disposable-Gateway
-qualification are tracked separately; live restart qualification is pending.
+restart by itself. Both pinned core images passed live qualification with
+independent replacement-JVM observations and unchanged container limits.
+The wrapper PID stayed unchanged, and separate containers shared a `localId`:
+use a direct node URL and do not interpret that ID as globally unique. Retained
+receipts keep their original correlation label; current wording limits the
+claim to `selected_target`. See `docs/compatibility-matrix.md`.
 
 The default invocation deadline is 30 seconds across discovery and execution.
 In-memory response bodies default to a 16 MiB limit. `--out` streams directly

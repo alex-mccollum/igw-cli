@@ -144,7 +144,7 @@ func observeRestart(runner Runner) result.Result {
 		return last
 	}
 	if first.Data.(string) != last.Data.(string) {
-		last.OK, last.Outcome, last.Data, last.Error = false, "failed", nil, restartProblem("identity", "Gateway node identity changed during observation; select a direct node URL")
+		last.OK, last.Outcome, last.Data, last.Error = false, "failed", nil, restartProblem("identity", "Gateway reported localId changed during observation; select a direct node URL")
 		return last
 	}
 	last.Data = RestartObservation{NodeID: first.Data.(string), ProcessID: *pid, Uptime: *uptime, Pending: tasks.Data.(PendingRestartTasks).Pending}
@@ -172,7 +172,7 @@ func Restart(ctx context.Context, runner RestartRunner, input RestartRequest) re
 		return out
 	}
 	before := out.Data.(RestartObservation)
-	evidence := RestartEvidence{Before: before, Last: before, Proof: "not_observed", Correlation: "observed_node"}
+	evidence := RestartEvidence{Before: before, Last: before, Proof: "not_observed", Correlation: "selected_target"}
 	baselineMeta := out.Meta
 	request := execute.Request{Operation: workflow.RestartOperation, Query: url.Values{"confirm": {"true"}}, Yes: input.Yes, DryRun: input.DryRun}
 	if err := ctx.Err(); err != nil {
@@ -214,7 +214,7 @@ func Restart(ctx context.Context, runner RestartRunner, input RestartRequest) re
 		} else {
 			evidence.Last = out.Data.(RestartObservation)
 			if evidence.Last.NodeID != before.NodeID {
-				return restartFailure(out, evidence, restartProblem("identity", "Gateway node identity differs from the baseline; select a direct node URL before further action"), true)
+				return restartFailure(out, evidence, restartProblem("identity", "Gateway reported localId differs from the baseline; select a direct node URL before further action"), true)
 			}
 			evidence.Proof = "not_observed"
 			if evidence.Last.ProcessID != before.ProcessID {
@@ -224,7 +224,7 @@ func Restart(ctx context.Context, runner RestartRunner, input RestartRequest) re
 			}
 			if evidence.Proof != "not_observed" && len(evidence.Last.Pending) == 0 {
 				out.Data, out.Outcome, out.Meta.Verification = evidence, "completed", "restart_observed"
-				out.Meta.Warnings = append(out.Meta.Warnings, "A restart was observed on the same node with no pending restart tasks. The API has no job ID or atomic node precondition; request causality and module health are not proven.")
+				out.Meta.Warnings = append(out.Meta.Warnings, "The reported process or uptime changed at the selected target with no pending restart tasks. Matching localId values do not prove node uniqueness; use a direct node URL. The API has no job ID or atomic node precondition; request causality and module health are not proven.")
 				if !evidence.Acknowledged {
 					out.Meta.Warnings = append(out.Meta.Warnings, "The restart request was not acknowledged. Only read-only verification continued; the request was not replayed.")
 				}

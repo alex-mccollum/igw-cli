@@ -8,7 +8,7 @@ const OverviewOperation = "GET /data/api/v1/overview"
 const RedundancyOperation = "GET /data/api/v1/redundancy"
 
 func GatewayRestart() catalog.Capability {
-	return catalog.Capability{ID: "gateway.restart.verified", Description: "Restart and observe a process change on the same Gateway node with no pending restart tasks", RequiredOperations: []string{RestartOperation, RestartTasksOperation, OverviewOperation, RedundancyOperation}}
+	return catalog.Capability{ID: "gateway.restart.verified", Description: "Restart and observe a process or uptime change with matching reported identity and no pending restart tasks", RequiredOperations: []string{RestartOperation, RestartTasksOperation, OverviewOperation, RedundancyOperation}}
 }
 
 // Assess includes current workflow prerequisites. Historical qualification

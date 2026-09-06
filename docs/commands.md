@@ -44,16 +44,20 @@ the restart, including when the vendor response schema omits required fields.
 Completion requires the same observed `redundancy.localId`, either a changed
 `overview.processId` or a decreased `overview.uptime`, and no pending restart
 tasks. Uptime is reported in the API's units, which the captured document does
-not specify; the CLI does not infer seconds or elapsed wall time. Node identity
-and process identity come from the API; `processId` is not assumed to be a JVM
-PID (a preliminary 8.3.9 observation identified the `ignition-gateway` wrapper).
-Node identity
-is read before and after each overview/task observation. JSON evidence records
+not specify; the CLI does not infer seconds or elapsed wall time. `processId`
+is not assumed to be a JVM PID: both qualified images reported the
+`ignition-gateway` wrapper PID, which stayed unchanged while Java restarted.
+`localId` is read before and after each overview/task observation. JSON evidence
+records
 `before`, `last`, `polls`, `acknowledged`, `proof`, and `correlation`.
+`correlation: "selected_target"` limits the claim to the addressed target.
 `meta.verification: "restart_observed"` means these checks passed. A reachable
 API or an empty task list alone is insufficient.
 
-There is no restart job ID or atomic node precondition. Separate reads cannot
+The qualified disposable Gateways returned identical `localId` values across
+separate containers. A matching value is a consistency check, not proof of
+unique physical node identity. There is no restart job ID or atomic node
+precondition. Separate reads cannot
 guarantee affinity through a load balancer, establish exclusive causality, or
 prove every module's health. An observed node change stops verification.
 After a disconnect or server error on the POST, the CLI may continue read-only
@@ -61,8 +65,8 @@ verification; it never replays the restart. Successful observation can therefore
 have `acknowledged: false`. Auth failures, invalid observations, cancellation,
 or a deadline after dispatch produce `uncertain` with the normal error exit
 code (auth 6, other failures 7). Inspect current state before considering another
-restart. Preview and local usage errors remain non-mutating. Live qualification
-of this new workflow is still pending; see `docs/rebuild-preview.md`.
+restart. Preview and local usage errors remain non-mutating. Both core image
+versions passed live restart qualification; see `docs/compatibility-matrix.md`.
 
 Qualified API references are available without Gateway configuration, credentials,
 network access, or a populated cache:

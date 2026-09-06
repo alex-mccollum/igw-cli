@@ -2,9 +2,10 @@
 
 Status: active. Accepted scope and goal: 2026-09-05.
 
-Current slice: verified Gateway restart. Implement the typed workflow and
-fixture checks first, then qualify it against the pinned disposable 8.3.0 and
-8.3.9 core Gateways. Done for this slice requires a single confirmed POST,
+Current slice: verified Gateway restart, now qualified against both pinned core
+images from source `8084cd0`. The typed workflow, fixture checks, clean build,
+lifecycle probes, and real 8.3.0/8.3.9 runs are complete. This slice requires
+a single confirmed POST,
 read-only previews, strict baseline parsing, bounded polling, same-node process
 evidence, pending-task checks, real independent process observations, and owned
 container cleanup. The full v1 definition of done remains unchanged.
@@ -17,7 +18,8 @@ units, restart job ID, or atomic node precondition. The implementation compares
 PID/uptime without wall-time inference and brackets overview/task reads with
 node reads, while documenting the limits of non-atomic observations and
 load-balancer affinity. Current fixtures cannot establish actual PID or localId
-semantics; live evidence is required before claiming version qualification.
+semantics. Live observations now establish wrapper PID and uptime-reset
+behavior on these two cells; they do not establish globally unique localId.
 
 The typed implementation and Cobra commands are now built. Focused unit and
 HTTP-fixture tests cover strict baseline fields/Unicode, missing capabilities,
@@ -28,7 +30,26 @@ regression was corrected; negative numeric underflow is also refused before
 dispatch. Focused race checks, full unit tests, both entrypoint builds, command
 docs, and docs lint passed under the bounded runner. The legacy smoke script
 built successfully but stopped at its unconfigured doctor check (exit 2; no
-Gateway URL/token). Live restart qualification remains the next slice.
+Gateway URL/token).
+
+Live attempts from `3ac2eed` and `1920701` stopped before any restart POST while
+checking process assumptions; both cleaned up and retain failed receipts.
+The second showed that the reported process runs `ignition-gateway`. The
+corrected harness resolves its unique direct Java child across wrapper thread
+child lists and records wrapper/JVM identities separately. Source `8084cd0`
+then passed 10 lifecycle and 9 CLI checks on each version, with independently
+observed Java replacement, stable container/wrapper start identity, reapplied
+limit checks, and independent empty-container queries. No WSL or Docker Desktop
+lifecycle controls were used and no resource limits were raised.
+
+The separate containers returned identical localId values. That finding narrows
+the machine/human claim to the selected target: matching reported identity is
+not proof of node uniqueness or load-balancer affinity. Retained receipts keep
+their original correlation label; current wording uses `selected_target`.
+See `docs/compatibility-matrix.md` and the retained restart evidence for the
+exact source, counts, hashes, and qualification boundaries. Remaining v1 work
+includes structured inputs, broader workflows, migration/cutover, performance,
+release artifacts, and final qualification of the completed source.
 
 ## Goal and definition of done
 

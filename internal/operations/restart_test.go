@@ -129,7 +129,7 @@ func TestRestartProofAndSingleDispatch(t *testing.T) {
 				t.Fatalf("restart result: %+v, steps=%d", out, len(r.steps))
 			}
 			e := out.Data.(RestartEvidence)
-			if e.Before.ProcessID != 100 || e.Before.NodeID != "node-a" || e.Correlation != "observed_node" {
+			if e.Before.ProcessID != 100 || e.Before.NodeID != "node-a" || e.Correlation != "selected_target" {
 				t.Fatal("baseline evidence lost")
 			}
 			if scenario == "preview" {

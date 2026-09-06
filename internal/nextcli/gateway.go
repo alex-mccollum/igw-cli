@@ -22,7 +22,7 @@ func (i *invocation) gatewayCommands() *cobra.Command {
 			return i.runWorkflow(cmd, false, func(_ context.Context, scope *execute.Scope) result.Result { return operations.RestartTasks(scope) })
 		}})
 	var input operations.RestartRequest
-	restart := &cobra.Command{Use: "restart", Short: "Restart the Gateway and verify a process change on the same node", Args: cobra.NoArgs,
+	restart := &cobra.Command{Use: "restart", Short: "Restart the Gateway and verify reported process or uptime changes", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := input.Validate(); err != nil {
 				return err
