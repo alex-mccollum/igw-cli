@@ -609,6 +609,13 @@ creation refusal. Its first 8.3.0 run verified update, stale-review refusal, and
 deletion, but recreation returned HTTP 200 with an unverified outcome. The
 [original failed attempt](../internal/testgateway/testdata/singleton/attempts/README.md)
 is retained. Full singleton qualification remains pending.
+The subsequent diagnostic run on 8.3.0 matched acknowledgement, signature,
+description, and enabled state, but omitted `config` from both readbacks even
+though the schema advertises it. Such a result remains `uncertain`/exit 7;
+metadata success cannot establish translation configuration state. The harness
+keeps that exact configuration request and separately tests metadata-only
+creation. This observed limitation does not establish behavior for other types
+or Gateway versions.
 
 Project workflows transfer a complete project ZIP, inspect its file manifest,
 and verify the imported contents through a fresh export:

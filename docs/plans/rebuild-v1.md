@@ -22,7 +22,7 @@ human and JSON output, positive results, and useful failure recovery.
 | Journey | Required observations | Current status |
 | --- | --- | --- |
 | Set up and discover | Configure a profile, read Gateway information, discover an operation, inspect its inputs and catalog provenance | Implemented; final candidate walkthrough pending |
-| Configure resources | Preview and apply changes, inspect readback, refuse stale signatures without mutation | Named workflows qualified historically; singleton recreation mismatch needs diagnosis |
+| Configure resources | Preview and apply changes, inspect readback, refuse stale signatures without mutation | Named workflows qualified historically; singleton config omission diagnosed, metadata/uncertainty acceptance pending |
 | Deploy projects | Export and inspect a ZIP, import, and replace using a reviewed digest | Implemented and historically qualified; final candidate run pending |
 | Transfer tags | JSON import/export using existing verification policies; explicit refusal where APIs are absent | Implemented; final candidate run pending |
 | Troubleshoot | Retrieve relevant logs by time, severity, logger, and search; expose available exception context and pagination; distinguish no matches from failure | Human views, recovery guidance, and filter/JSON regressions pass locally; live candidate walkthrough pending |

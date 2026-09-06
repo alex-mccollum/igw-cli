@@ -104,3 +104,55 @@ func TestRetainedSingletonRecreationFailure(t *testing.T) {
 		t.Fatal("original capture changed")
 	}
 }
+
+func TestRetainedSingletonConfigurationReadbackGap(t *testing.T) {
+	read := func(path string) []byte {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join("testdata", "singleton", "attempts", "2", path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	raw := read("manifest.json")
+	if inputDigest(raw) != "ba13d6b362d7aa07b8b6ab0f0101ed795cdb2a5de5424d4effae238568115f79" {
+		t.Fatal("original diagnostic attempt manifest changed")
+	}
+	var manifest struct {
+		Version int
+		Files   []struct {
+			Path, SHA256 string
+			Bytes        int64
+		}
+	}
+	if json.Unmarshal(raw, &manifest) != nil || manifest.Version != 1 || len(manifest.Files) != 18 {
+		t.Fatal("invalid diagnostic manifest")
+	}
+	for _, file := range manifest.Files {
+		if !filepath.IsLocal(file.Path) {
+			t.Fatal("invalid evidence path")
+		}
+		b := read(file.Path)
+		if int64(len(b)) != file.Bytes || inputDigest(b) != file.SHA256 {
+			t.Fatal("diagnostic evidence bytes changed")
+		}
+	}
+	var receipt inputReceipt
+	if json.Unmarshal(read("8.3.0/singleton/singleton.json"), &receipt) != nil || receipt.Passed || !receipt.Cleanup || len(receipt.Checks) != 17 {
+		t.Fatal("failed diagnostic attempt relabeled as passing")
+	}
+	creation := receipt.Checks[15]
+	if creation.Name != "create" || creation.Outcome != "uncertain" || creation.ExitCode != 7 || creation.HTTPStatus != 200 || creation.Resource == nil || creation.Resource.Checks == nil {
+		t.Fatal("original uncertain recreation changed")
+	}
+	c := creation.Resource.Checks
+	if !c.Acknowledged || c.SignatureMatched == nil || !*c.SignatureMatched || c.FieldsMatched == nil || *c.FieldsMatched || len(c.MismatchedFields) != 1 || c.MismatchedFields[0] != "config" {
+		t.Fatal("diagnostic cause changed")
+	}
+	if receipt.Checks[16].Name != "uncertain-create-readback" || receipt.Checks[16].HTTPStatus != 200 {
+		t.Fatal("independent readback missing")
+	}
+	if len(read("8.3.0/after-singleton.txt")) != 0 {
+		t.Fatal("diagnostic attempt left a container")
+	}
+}

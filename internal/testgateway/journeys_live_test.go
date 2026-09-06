@@ -263,7 +263,7 @@ func journeyEnvironment(base []string, root string) []string {
 func TestJourneyEnvironmentIsolatesConfiguration(t *testing.T) {
 	got := journeyEnvironment([]string{"PATH=/bin", "IGNITION_API_TOKEN=private", "IGNITION_GATEWAY_URL=https://private.invalid", "XDG_CONFIG_HOME=/private", "XDG_CACHE_HOME=/private"}, "/fixture")
 	joined := strings.Join(got, "\n")
-	if strings.Contains(joined, "private") || !strings.Contains(joined, "PATH=/bin") || !strings.Contains(joined, "XDG_CONFIG_HOME=/fixture/config") || !strings.Contains(joined, "XDG_CACHE_HOME=/fixture/cache") {
+	if strings.Contains(joined, "private") || !strings.Contains(joined, "PATH=/bin") || !strings.Contains(joined, "XDG_CONFIG_HOME="+filepath.Join("/fixture", "config")) || !strings.Contains(joined, "XDG_CACHE_HOME="+filepath.Join("/fixture", "cache")) {
 		t.Fatal("journey process inherited real configuration")
 	}
 }

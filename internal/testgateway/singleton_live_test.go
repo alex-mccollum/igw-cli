@@ -45,6 +45,7 @@ func TestLiveSingletonResources(t *testing.T) {
 	const kind = "ignition/translations"
 	const read = "GET /data/api/v1/resources/singleton/ignition/translations"
 	const initial = `{"description":"igw singleton qualification","enabled":true,"config":{"caseInsensitive":false,"ignoreWhitespace":false,"ignorePunctuation":false,"ignoreTags":false,"terms":{}}}`
+	const metadata = `{"description":"igw singleton metadata qualification","enabled":true}`
 	const changed = `{"description":"igw singleton verified update"}`
 	s.refused(s.run("confirmation", nil, "resource", "update", kind, "--body", changed))
 	s.refused(s.run("review-required", nil, "resource", "update", kind, "--body", changed, "--yes"))
@@ -117,8 +118,8 @@ func TestLiveSingletonResources(t *testing.T) {
 	}
 	before := s.run("get-before", nil, "resource", "get", kind)
 	if !before.OK && inputHTTPStatus(before) == 404 && s.last().OperationRequests == 1 {
-		preview(s.run("initial-create-preview", nil, "resource", "create", kind, "--body", initial, "--dry-run"), "create")
-		completed(s.run("initial-create", nil, "resource", "create", kind, "--body", initial, "--yes"), "create")
+		preview(s.run("initial-create-preview", nil, "resource", "create", kind, "--body", metadata, "--dry-run"), "create")
+		completed(s.run("initial-create", nil, "resource", "create", kind, "--body", metadata, "--yes"), "create")
 		before = get("created-baseline")
 	}
 	baseline := state(before)
@@ -146,29 +147,32 @@ func TestLiveSingletonResources(t *testing.T) {
 		t.Fatal("singleton deletion did not establish absence")
 	}
 	preview(s.run("create-preview", nil, "resource", "create", kind, "--body", initial, "--dry-run"), "create")
-	created := s.run("create", nil, "resource", "create", kind, "--body", initial, "--yes")
+	created := s.run("create-with-config", nil, "resource", "create", kind, "--body", initial, "--yes")
 	if !created.OK {
-		// Inspect once without replaying. Record only comparisons for authored
-		// fixture fields; never dump the resource's configuration or credentials.
-		observed := state(get("uncertain-create-readback"))
-		var expected map[string]json.RawMessage
-		_ = json.Unmarshal([]byte(initial), &expected)
-		for _, key := range []string{"description", "enabled", "config"} {
-			t.Logf("recreation comparison %s: matches=%t present=%t", key, jsonvalue.Equivalent(expected[key], observed[key], true), len(observed[key]) > 0)
+		// The retained 8.3.0 attempt acknowledges config but omits it from
+		// readback. Qualify this exact uncertainty, not successful configuration.
+		e := s.last().Resource
+		if created.Outcome != "uncertain" || created.Error == nil || created.Error.Kind != "verification" || created.Error.Code != 7 || s.last().OperationRequests != 3 || e == nil || e.Checks == nil {
+			t.Fatal("unexpected singleton creation failure")
 		}
-		var wantConfig, gotConfig map[string]json.RawMessage
-		_ = json.Unmarshal(expected["config"], &wantConfig)
-		_ = json.Unmarshal(observed["config"], &gotConfig)
-		for _, key := range []string{"caseInsensitive", "ignoreWhitespace", "ignorePunctuation", "ignoreTags", "terms"} {
-			t.Logf("recreation comparison config.%s: matches=%t present=%t", key, jsonvalue.Equivalent(wantConfig[key], gotConfig[key], true), len(gotConfig[key]) > 0)
+		c := e.Checks
+		if !c.Acknowledged || c.MatchingChanges != 1 || !c.ReadbackValid || c.SignatureMatched == nil || !*c.SignatureMatched || c.FieldsMatched == nil || *c.FieldsMatched || len(c.MismatchedFields) != 1 || c.MismatchedFields[0] != "config" {
+			t.Fatal("singleton failure differs from the observed configuration-readback gap")
 		}
-		t.Fatal("singleton recreation remained unverified; readback retained without another mutation")
+		t.Log("configuration readback unavailable: acknowledged metadata is not proof that config was applied")
+	} else {
+		completed(created, "create")
 	}
-	completed(created, "create")
 	recreated := state(get("recreated-readback"))
 	var submitted map[string]json.RawMessage
 	_ = json.Unmarshal([]byte(initial), &submitted)
 	for field, value := range submitted {
+		if field == "config" && !created.OK {
+			if _, present := recreated[field]; present {
+				t.Fatal("unverified configuration was present; investigate instead of assuming the retained readback gap")
+			}
+			continue
+		}
 		if !jsonvalue.Equivalent(value, recreated[field], true) {
 			t.Fatal("independent singleton create readback mismatch")
 		}
@@ -178,6 +182,18 @@ func TestLiveSingletonResources(t *testing.T) {
 		t.Fatal("duplicate singleton creation was not refused")
 	}
 	noWrites()
+	// A separate, explicitly metadata-only create has its own preview and
+	// independent verification. The original config request remains above.
+	completed(s.run("metadata-recreate-delete", nil, "resource", "delete", kind, "--if-signature", signature(recreated), "--yes"), "delete")
+	preview(s.run("metadata-create-preview", nil, "resource", "create", kind, "--body", metadata, "--dry-run"), "create")
+	completed(s.run("metadata-create", nil, "resource", "create", kind, "--body", metadata, "--yes"), "create")
+	final := state(get("metadata-readback"))
+	_ = json.Unmarshal([]byte(metadata), &submitted)
+	for _, field := range []string{"description", "enabled"} {
+		if !jsonvalue.Equivalent(submitted[field], final[field], false) {
+			t.Fatal("singleton metadata creation did not preserve requested fields")
+		}
+	}
 	s.completed = true
 }
 

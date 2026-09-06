@@ -65,3 +65,27 @@ func TestVerificationChecksExplainUncertainCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateDoesNotVerifyMissingConfiguration(t *testing.T) {
+	calls := 0
+	got := Apply(runFunc(func(execute.Request) result.Result {
+		calls++
+		switch calls {
+		case 1:
+			return missing()
+		case 2:
+			return response(`{"success":true,"changes":[{"type":"test/settings","collection":"core","newSignature":"after"}]}`)
+		case 3:
+			return response(`{"type":"test/settings","collection":"core","signature":"after","description":"fixture","enabled":true}`)
+		}
+		t.Fatal("mutation replayed")
+		return result.Result{}
+	}), Change{Action: "create", Type: "test/settings", Singleton: true, Collection: "core", Yes: true, Body: []byte(`{"description":"fixture","enabled":true,"config":{"caseInsensitive":false}}`)})
+	if got.OK || got.Outcome != "uncertain" || got.Error == nil || got.Error.Code != 7 || calls != 3 {
+		t.Fatal("missing configuration counted as verified")
+	}
+	c := got.Data.(Evidence).Checks
+	if !c.Acknowledged || c.SignatureMatched == nil || !*c.SignatureMatched || c.FieldsMatched == nil || *c.FieldsMatched || !reflect.DeepEqual(c.MismatchedFields, []string{"config"}) {
+		t.Fatal("missing configuration was not distinguished from acknowledgement/signature failure")
+	}
+}
