@@ -87,6 +87,8 @@ def main():
         run("command schema", ["schema", "resource", "update"], env)
         run("exit codes", ["exit-codes"], env)
         run("group help", ["api"], env)
+        if run("help before global value", ["--help", "--timeout", "90s"], env)["data"]["name"] != "igw":
+            raise RuntimeError("global flag value changed help discovery")
         if run("selected help", ["help", "api"], env)["data"]["name"] != "api":
             raise RuntimeError("help selected the wrong command")
         run("unknown help topic", ["help", "unknown"], env, expected=2)

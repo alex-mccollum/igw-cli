@@ -214,6 +214,9 @@ func (i *invocation) commands() *cobra.Command {
 // Cobra shows help before argument validation on a non-runnable group. Make
 // groups runnable so unknown nested commands fail instead of exiting zero.
 func strictCommandGroups(cmd *cobra.Command) {
+	// Find scans flags before execution initializes Cobra's default help flag.
+	// Register it now so --help cannot consume a following flag as its value.
+	cmd.InitDefaultHelpFlag()
 	if !cmd.Runnable() && cmd.HasAvailableSubCommands() {
 		cmd.Args = cobra.NoArgs
 		cmd.RunE = func(cmd *cobra.Command, _ []string) error { return cmd.Help() }
