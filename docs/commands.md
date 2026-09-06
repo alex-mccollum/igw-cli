@@ -564,7 +564,12 @@ Verification compares submitted values, permits additional Gateway defaults,
 and checks that omitted top-level writable fields remain unchanged. It does not
 prove removal of unspecified nested properties.
 If acknowledgement, signature, or readback cannot establish the outcome,
-the result stays failed or uncertain. Redacted secrets or vendor-normalized
+the result stays failed or uncertain. After a mutation attempt, `data.checks`
+reports acknowledgement, matching change count, and readback validity. When
+available, it also reports signature and field comparisons, with sorted
+`mismatchedFields` names. Comparison fields are omitted when unavailable or
+inapplicable. These diagnostics contain no configuration values and do not
+authorize an automatic retry. Redacted secrets or vendor-normalized
 values that cannot be compared can prevent verification; inspect current state
 before retrying. Forced reference changes still require explicit generic API
 requests.
@@ -596,8 +601,10 @@ is absent; the Gateway may still use built-in defaults at runtime.
 The fixture checks cover all 17 singleton types in each retained default
 8.3.0/8.3.9 contract, plus actual CLI HTTP fixtures. A disposable-Gateway harness
 exercises translations update, stale review, deletion, recreation, and duplicate
-creation refusal. Its real-Gateway qualification remains pending; captured
-schemas and a compiled or skipped harness do not establish those live outcomes.
+creation refusal. Its first 8.3.0 run verified update, stale-review refusal, and
+deletion, but recreation returned HTTP 200 with an unverified outcome. The
+[original failed attempt](../internal/testgateway/testdata/singleton/attempts/README.md)
+is retained. Full singleton qualification remains pending.
 
 Project workflows transfer a complete project ZIP, inspect its file manifest,
 and verify the imported contents through a fresh export:

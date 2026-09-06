@@ -11,14 +11,15 @@ import (
 )
 
 type inputResourceEvidence struct {
-	Action                string           `json:"action"`
-	Type                  string           `json:"type"`
-	Singleton             bool             `json:"singleton"`
-	State                 string           `json:"state"`
-	BeforeSignatureSHA256 string           `json:"beforeSignatureSha256,omitempty"`
-	AfterSignatureSHA256  string           `json:"afterSignatureSha256,omitempty"`
-	ChangedFields         []string         `json:"changedFields"`
-	Request               *execute.Preview `json:"request,omitempty"`
+	Action                string                       `json:"action"`
+	Type                  string                       `json:"type"`
+	Singleton             bool                         `json:"singleton"`
+	State                 string                       `json:"state"`
+	BeforeSignatureSHA256 string                       `json:"beforeSignatureSha256,omitempty"`
+	AfterSignatureSHA256  string                       `json:"afterSignatureSha256,omitempty"`
+	ChangedFields         []string                     `json:"changedFields"`
+	Request               *execute.Preview             `json:"request,omitempty"`
+	Checks                *resource.VerificationChecks `json:"checks,omitempty"`
 }
 
 func resourceEvidence(raw json.RawMessage) *inputResourceEvidence {
@@ -26,7 +27,7 @@ func resourceEvidence(raw json.RawMessage) *inputResourceEvidence {
 	if json.Unmarshal(raw, &e) != nil || e.Action == "" || e.Type == "" {
 		return nil
 	}
-	out := &inputResourceEvidence{Action: e.Action, Type: e.Type, Singleton: e.Singleton, State: e.State, ChangedFields: e.ChangedFields, Request: e.Request}
+	out := &inputResourceEvidence{Action: e.Action, Type: e.Type, Singleton: e.Singleton, State: e.State, ChangedFields: e.ChangedFields, Request: e.Request, Checks: e.Checks}
 	if e.BeforeSignature != "" {
 		out.BeforeSignatureSHA256 = inputDigest([]byte(e.BeforeSignature))
 	}

@@ -74,8 +74,19 @@ signatures plus independent readback. The new disposable-Gateway harness will
 exercise translations update, stale review, deletion, recreation, and duplicate
 creation refusal. Full unit/build/33 smoke checks, documentation, focused
 resource/CLI/harness race checks (including the captured cases), and matching
-Go 1.25.7 checks passed. Real-Gateway qualification is next, using a clean source
-build and per-image lifecycle probes. No new live acceptance is claimed yet.
+Go 1.25.7 checks passed. The clean-source `7096ce1` executable passed the 8.3.0
+lifecycle probe and verified update, stale-review refusal, and deletion, then
+stopped on uncertain recreation after HTTP 200. Cleanup and independent empty
+container queries passed. The original failed attempt is retained under
+`internal/testgateway/testdata/singleton/attempts/1/`; 8.3.9 did not run.
+Resource evidence now exposes acknowledgement, signature, and field comparison
+checks without values, preserving the existing acceptance rules. The next
+clean-source qualification will use those diagnostics to establish the cause.
+Full singleton live acceptance remains pending.
+The diagnostic slice passed the full unit suite, native build/33 smoke checks,
+command/docs checks, and focused race checks. The original failed-attempt
+manifest and its uncertain, single-write result also pass an offline integrity
+regression. Logs: `bin/singleton-diagnostics-{checks,race}.log`.
 
 Remaining structured encodings, binary and multipart assertions, broader tag
 verification, and final completed-source Gateway and release acceptance gates

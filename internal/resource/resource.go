@@ -124,16 +124,29 @@ func (c Change) Validate() (map[string]json.RawMessage, error) {
 }
 
 type Evidence struct {
-	Action          string           `json:"action"`
-	Type            string           `json:"type"`
-	Name            string           `json:"name,omitempty"`
-	Singleton       bool             `json:"singleton,omitempty"`
-	Collection      string           `json:"collection"`
-	BeforeSignature string           `json:"beforeSignature,omitempty"`
-	AfterSignature  string           `json:"afterSignature,omitempty"`
-	ChangedFields   []string         `json:"changedFields"`
-	State           string           `json:"state"`
-	Request         *execute.Preview `json:"request,omitempty"`
+	Action          string              `json:"action"`
+	Type            string              `json:"type"`
+	Name            string              `json:"name,omitempty"`
+	Singleton       bool                `json:"singleton,omitempty"`
+	Collection      string              `json:"collection"`
+	BeforeSignature string              `json:"beforeSignature,omitempty"`
+	AfterSignature  string              `json:"afterSignature,omitempty"`
+	ChangedFields   []string            `json:"changedFields"`
+	State           string              `json:"state"`
+	Request         *execute.Preview    `json:"request,omitempty"`
+	Checks          *VerificationChecks `json:"checks,omitempty"`
+}
+
+// VerificationChecks reports why an attempted mutation could or could not be verified,
+// without returning configuration values. Nil comparison pointers mean that
+// the comparison was unavailable or did not apply (for example, deletion).
+type VerificationChecks struct {
+	Acknowledged     bool     `json:"acknowledged"`
+	MatchingChanges  int      `json:"matchingChanges"`
+	ReadbackValid    bool     `json:"readbackValid"`
+	SignatureMatched *bool    `json:"signatureMatched,omitempty"`
+	FieldsMatched    *bool    `json:"fieldsMatched,omitempty"`
+	MismatchedFields []string `json:"mismatchedFields,omitempty"`
 }
 
 // Apply sends at most one mutation. A 2xx response is insufficient: the
@@ -231,6 +244,7 @@ func Apply(runner Runner, change Change) result.Result {
 	}
 	afterResult := runner.Run(get)
 	after, afterExists, afterValid := state(afterResult, change)
+	evidence.Checks = &VerificationChecks{Acknowledged: acknowledged, MatchingChanges: matches, ReadbackValid: afterValid}
 	if !afterValid {
 		evidence.State = "unknown"
 		out := problem(written, evidence, "verification", "mutation was attempted but readback could not establish its outcome; inspect resource get before retrying", "uncertain")
@@ -244,12 +258,19 @@ func Apply(runner Runner, change Change) result.Result {
 	}
 	if afterExists {
 		evidence.AfterSignature = stringField(after, "signature")
+		if change.Action != "delete" {
+			signatureMatched := newSignature != "" && newSignature == evidence.AfterSignature
+			evidence.Checks.SignatureMatched = &signatureMatched
+			evidence.Checks.MismatchedFields = mismatchedFields(fields, before, after, change.Action == "update")
+			fieldsMatched := len(evidence.Checks.MismatchedFields) == 0
+			evidence.Checks.FieldsMatched = &fieldsMatched
+		}
 	}
 	if change.Action == "delete" && !afterExists && acknowledged {
 		evidence.State = "absent"
 		return completed(written, evidence)
 	}
-	if change.Action != "delete" && acknowledged && afterExists && newSignature != "" && newSignature == evidence.AfterSignature && matchesFields(fields, before, after, change.Action == "update") {
+	if change.Action != "delete" && acknowledged && afterExists && *evidence.Checks.SignatureMatched && *evidence.Checks.FieldsMatched {
 		evidence.State = "matches_request"
 		return completed(written, evidence)
 	}
@@ -310,17 +331,23 @@ func stringField(object map[string]json.RawMessage, key string) string {
 }
 
 func matchesFields(fields, before, after map[string]json.RawMessage, update bool) bool {
+	return len(mismatchedFields(fields, before, after, update)) == 0
+}
+
+func mismatchedFields(fields, before, after map[string]json.RawMessage, update bool) []string {
+	mismatches := []string{}
 	for key, value := range fields {
 		if !jsonvalue.Equivalent(value, after[key], true) {
-			return false
+			mismatches = append(mismatches, key)
 		}
 	}
 	if update {
 		for _, key := range []string{"description", "enabled", "config", "backupConfig"} {
 			if _, supplied := fields[key]; !supplied && !jsonvalue.Equivalent(before[key], after[key], false) {
-				return false
+				mismatches = append(mismatches, key)
 			}
 		}
 	}
-	return true
+	sort.Strings(mismatches)
+	return mismatches
 }
