@@ -18,14 +18,15 @@ DIST_DIR="${DIST_DIR:-dist}"
 mkdir -p "$DIST_DIR"
 
 echo "==> docs checks"
-./scripts/check-command-docs.sh
-./scripts/lint-docs.sh
+bash ./scripts/check-command-docs.sh
+bash ./scripts/lint-docs.sh
 
 echo "==> tests"
 go test ./...
 
 echo "==> build release artifacts"
 COMMIT="$(git rev-parse --short HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then COMMIT="${COMMIT}-dirty"; fi
 DATE="$(date -u +%Y-%m-%d)"
 TARGETS=(
   "linux/amd64"
@@ -37,33 +38,27 @@ TARGETS=(
 )
 
 if ! command -v zip >/dev/null 2>&1; then
-  echo "warn: zip not found, skipping windows packaging targets in local dry-run"
-  FILTERED=()
-  for target in "${TARGETS[@]}"; do
-    if [[ "${target%/*}" != "windows" ]]; then
-      FILTERED+=("$target")
-    fi
-  done
-  TARGETS=("${FILTERED[@]}")
+  echo "error: zip is required to qualify all six artifact targets" >&2
+  exit 2
 fi
 
 for target in "${TARGETS[@]}"; do
-  GOOS="${target%/*}"
-  GOARCH="${target#*/}"
-  ./scripts/release/build-artifact.sh "$VERSION" "$COMMIT" "$DATE" "$GOOS" "$GOARCH" "$DIST_DIR" >/dev/null
+  target_goos="${target%/*}"
+  target_goarch="${target#*/}"
+  bash ./scripts/release/build-artifact.sh "$VERSION" "$COMMIT" "$DATE" "$target_goos" "$target_goarch" "$DIST_DIR" >/dev/null
 done
 
 echo "==> verify packaged linux/amd64 artifact"
-./scripts/release/verify-artifact.sh "$VERSION" linux amd64 "$DIST_DIR"
+bash ./scripts/release/verify-artifact.sh "$VERSION" linux amd64 "$DIST_DIR"
 
 echo "==> generate latest aliases"
-./scripts/release/generate-latest-aliases.sh "$VERSION" "$DIST_DIR"
+bash ./scripts/release/generate-latest-aliases.sh "$VERSION" "$DIST_DIR"
 
 echo "==> generate checksums manifest"
-./scripts/release/generate-checksums.sh "$DIST_DIR"
+bash ./scripts/release/generate-checksums.sh "$DIST_DIR"
 
 echo "==> generate release manifest"
-./scripts/release/generate-manifest.sh "$VERSION" "$DIST_DIR"
+bash ./scripts/release/generate-manifest.sh "$VERSION" "$DIST_DIR"
 
 echo "dry-run complete for ${VERSION}"
 echo "artifacts:"

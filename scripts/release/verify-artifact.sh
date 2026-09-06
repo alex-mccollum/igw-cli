@@ -30,7 +30,8 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 tar -C "$TMP_DIR" -xzf "$ARCHIVE_PATH"
 BIN_PATH="${TMP_DIR}/${NAME}/igw"
 
-./scripts/check-version-contract.sh "$BIN_PATH" "$VERSION"
+bash ./scripts/check-version-contract.sh "$BIN_PATH" "$VERSION"
 "$BIN_PATH" help >/dev/null 2>&1
+python3 ./scripts/smoke.py --binary "$BIN_PATH"
 
 echo "ok: packaged artifact smoke check passed (${ARCHIVE_PATH})"

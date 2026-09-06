@@ -24,8 +24,10 @@ if [[ "$TARGET_GOOS" == "windows" ]]; then
   BIN_NAME="igw.exe"
 fi
 
-OUT_DIR="${DIST_DIR}/${DIR_NAME}"
-
+mkdir -p "$DIST_DIR"
+WORK_DIR="$(mktemp -d "${DIST_DIR}/.igw-build-XXXXXXXX")"
+trap 'rm -rf "$WORK_DIR"' EXIT
+OUT_DIR="${WORK_DIR}/${DIR_NAME}"
 mkdir -p "$OUT_DIR"
 
 GOOS="$TARGET_GOOS" GOARCH="$TARGET_GOARCH" CGO_ENABLED=0 go build -trimpath \
@@ -33,6 +35,7 @@ GOOS="$TARGET_GOOS" GOARCH="$TARGET_GOARCH" CGO_ENABLED=0 go build -trimpath \
   -o "${OUT_DIR}/${BIN_NAME}" ./cmd/igw
 
 cp LICENSE README.md "$OUT_DIR/"
+cp -R docs "$OUT_DIR/"
 
 if [[ "$TARGET_GOOS" == "windows" ]]; then
   if ! command -v zip >/dev/null 2>&1; then
@@ -40,11 +43,11 @@ if [[ "$TARGET_GOOS" == "windows" ]]; then
     exit 1
   fi
   (
-    cd "$DIST_DIR"
+    cd "$WORK_DIR"
     zip -rq "${ARCHIVE_NAME}" "${DIR_NAME}"
   )
-  echo "${DIST_DIR}/${ARCHIVE_NAME}"
 else
-  tar -C "$DIST_DIR" -czf "${DIST_DIR}/${ARCHIVE_NAME}" "${DIR_NAME}"
-  echo "${DIST_DIR}/${ARCHIVE_NAME}"
+  tar -C "$WORK_DIR" -czf "${WORK_DIR}/${ARCHIVE_NAME}" "${DIR_NAME}"
 fi
+mv "${WORK_DIR}/${ARCHIVE_NAME}" "${DIST_DIR}/${ARCHIVE_NAME}"
+echo "${DIST_DIR}/${ARCHIVE_NAME}"

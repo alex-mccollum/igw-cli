@@ -39,7 +39,7 @@ Use:
    - verifies the release tag resolves to the workflow commit on tag-triggered runs,
    - verifies the release tag exists on `origin`,
    - builds and packages all platform artifacts,
-   - runs packaged Linux `amd64` smoke verification,
+   - runs packaged Linux `amd64` version and isolated executable smoke verification,
    - generates stable latest aliases (`igw_<os>_<arch>.<ext>`),
    - generates `checksums.txt`,
    - generates `release-manifest.json`,
@@ -112,7 +112,7 @@ Then run:
 
 ```bash
 igw version
-igw gateway info --gateway-url http://127.0.0.1:8088 --api-key "$IGNITION_API_TOKEN" --json
+igw gateway doctor --gateway-url http://127.0.0.1:8088 --json
 ```
 
 ## Manual release run
@@ -138,8 +138,31 @@ Each archive includes:
 - `igw` (or `igw.exe`)
 - `LICENSE`
 - `README.md`
+- `docs/` with command, migration, automation, and catalog guidance
 
 Additional release assets:
 
 - `checksums.txt`
 - `release-manifest.json`
+
+## Local v1 qualification
+
+Run the dry-run through the bounded runner on a shared Linux/WSL workstation.
+Use an isolated output directory when preserving earlier artifacts. The command
+requires all six OS/architecture targets; missing ZIP support is an error rather
+than a smaller passing matrix. Python 3 supplies the isolated Linux executable
+smoke, which exercises local profiles, migration, errors, and fixture HTTP without
+contacting a configured Gateway. Other targets are compiled and packaged; native
+execution requires their own qualification.
+Each archive is built from a private staging directory and published after it
+is complete, so reusing a distribution directory cannot include stale files
+from a previous payload tree or ZIP archive.
+
+The current v1 source remains under qualification. A local `v1.0.0` artifact
+dry-run verifies format and behavior; it does not publish a release or complete
+the remaining Gateway/workflow/performance gates.
+
+The [local cutover evidence](qualification/README.md) retains the passing
+six-target dry-run, 33-check packaged smoke, source-input identity, artifact
+hashes, and independent stale-file/header checks. Its recorded precommit source
+and Linux-only execution scope remain distinct from final release qualification.

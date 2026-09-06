@@ -8,9 +8,11 @@ exit codes, and configuration precedence remain intact; command docs, migration
 guidance, executable smoke checks, and performance checks use the new tree.
 Full unit tests, native builds, command/docs checks, CLI/config race checks,
 the final focused command race checks, and 33 executable smoke checks passed.
-All six artifact targets and the local release dry-run also passed; packaging
-evidence is being recorded as its own delivery slice. Historical Gateway
-receipts retain their original source and labels.
+All six artifact targets, the local release dry-run, and the independent
+archive audit passed. [Retained evidence](../qualification/README.md) records
+source-input identity, all twelve checksums/aliases, stale-file exclusion,
+and the local execution limits. Historical Gateway receipts retain their
+original source and labels.
 
 Next verifiable slice: profile the full captured-catalog parse/open path and
 real process discovery, then reduce measured startup and allocation costs

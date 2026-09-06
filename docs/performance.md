@@ -16,10 +16,13 @@ iterations and observed:
 | Full 8.3.9 default-module reference validation/open | 2.00 s | 1,555,713,656 |
 | Stream and publish 32 MiB with hashing | 0.628 s | 109,322 |
 
-These measurements are from `bin/cutover-release-final.log`, under the 8 GiB,
+These measurements are retained in
+[the cutover check log](qualification/v1-cutover-checks.txt), under the 8 GiB,
 two-CPU runner with Go 1.27.1, using the precommit cutover worktree based on
 `b08b625`. They are local observations, not portable latency guarantees or
 live-Gateway timings.
+The [qualification receipt](qualification/v1-cutover.json) records the exact
+Go/module/reference input digest and toolchain.
 Go's B/op is cumulative allocation, not peak resident memory. The catalog case
 verifies the full retained reference and builds its model; it is not a synthetic
 small schema or a warmed operation lookup.
