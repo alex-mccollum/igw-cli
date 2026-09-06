@@ -57,6 +57,12 @@ retain comparison evidence in human mode; logs preserve stack/context and
 unknown fields, escape terminal controls, and leave JSON unchanged. Doctor
 states its limited scope. Logs: `bin/workflow-human-{checks,race}.log`.
 
+`TestLiveWorkflowJourneys` runs the built Linux CLI as separate processes with
+isolated configuration. It covers the six journeys and reuses existing transfer
+checks; executable identity and per-command results are separate from observed
+HTTP request counts. The harness is compiled locally; live outcomes are pending.
+See [workflow qualification](../workflow-qualification.md) for invocation.
+
 ## OpenAPI authority and availability
 
 The target's OpenAPI describes the advertised contract. Actual Gateway responses

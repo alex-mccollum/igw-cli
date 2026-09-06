@@ -146,7 +146,25 @@ func TestLiveSingletonResources(t *testing.T) {
 		t.Fatal("singleton deletion did not establish absence")
 	}
 	preview(s.run("create-preview", nil, "resource", "create", kind, "--body", initial, "--dry-run"), "create")
-	completed(s.run("create", nil, "resource", "create", kind, "--body", initial, "--yes"), "create")
+	created := s.run("create", nil, "resource", "create", kind, "--body", initial, "--yes")
+	if !created.OK {
+		// Inspect once without replaying. Record only comparisons for authored
+		// fixture fields; never dump the resource's configuration or credentials.
+		observed := state(get("uncertain-create-readback"))
+		var expected map[string]json.RawMessage
+		_ = json.Unmarshal([]byte(initial), &expected)
+		for _, key := range []string{"description", "enabled", "config"} {
+			t.Logf("recreation comparison %s: matches=%t present=%t", key, jsonvalue.Equivalent(expected[key], observed[key], true), len(observed[key]) > 0)
+		}
+		var wantConfig, gotConfig map[string]json.RawMessage
+		_ = json.Unmarshal(expected["config"], &wantConfig)
+		_ = json.Unmarshal(observed["config"], &gotConfig)
+		for _, key := range []string{"caseInsensitive", "ignoreWhitespace", "ignorePunctuation", "ignoreTags", "terms"} {
+			t.Logf("recreation comparison config.%s: matches=%t present=%t", key, jsonvalue.Equivalent(wantConfig[key], gotConfig[key], true), len(gotConfig[key]) > 0)
+		}
+		t.Fatal("singleton recreation remained unverified; readback retained without another mutation")
+	}
+	completed(created, "create")
 	recreated := state(get("recreated-readback"))
 	var submitted map[string]json.RawMessage
 	_ = json.Unmarshal([]byte(initial), &submitted)

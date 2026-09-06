@@ -136,6 +136,7 @@ type inputReceipt struct {
 	Catalog          *catalog.Metadata            `json:"catalog,omitempty"`
 	OpenAPI          *artifact.Info               `json:"openapi,omitempty"`
 	Checks           []inputCheck                 `json:"checks"`
+	Executable       *journeyExecutable           `json:"executable,omitempty"`
 	Cleanup          bool                         `json:"cleanup"`
 	Passed           bool                         `json:"passed"`
 }
