@@ -47,6 +47,45 @@ def publish_json(path, value):
     temporary.replace(path)
 
 
+def public_summary(receipt):
+    """Publish control outcomes only; never copy diagnostics or arbitrary text."""
+    def choice(value, allowed):
+        if value not in allowed:
+            raise ValueError("invalid public summary field")
+        return value
+
+    def matched(value, pattern):
+        if not isinstance(value, str) or not re.fullmatch(pattern, value):
+            raise ValueError("invalid public summary field")
+        return value
+
+    summary = {
+        "version": "igw/reference-update-summary/v1",
+        "status": choice(receipt["status"], ("qualified", "failed")),
+        "tag": matched(receipt["tag"], r"8\.3(?:\.(?:0|[1-9][0-9]{0,4}))?"),
+        "moduleProfile": choice(receipt["moduleProfile"], tuple(DEFAULT_BASELINES)),
+        "steps": [],
+    }
+    if "source" in receipt:
+        summary["sourceCommit"] = matched(receipt["source"]["commit"], r"[a-f0-9]{40,64}")
+    if "image" in receipt:
+        summary["image"] = matched(receipt["image"], r"inductiveautomation/ignition@sha256:[a-f0-9]{64}")
+    stages = ("admission", "engine", "exclusive-slot", "source-commit", "source-status",
+              "toolchain", "build-capture", "build-tests", "resolve", "pull", "lifecycle",
+              "capture", "resources", "transfers", "operations", "verify-source-commit",
+              "verify-source-status", "qualify")
+    for step in receipt["steps"]:
+        item = {"name": choice(step["name"], stages),
+                "status": choice(step["status"], ("running", "passed", "failed", "interrupted"))}
+        if "exitCode" in step:
+            code = step["exitCode"]
+            if type(code) is not int or not -255 <= code <= 255:
+                raise ValueError("invalid public summary exit code")
+            item["exitCode"] = code
+        summary["steps"].append(item)
+    return summary
+
+
 class StageFailure(Exception):
     pass
 
@@ -210,6 +249,7 @@ class Update:
         finally:
             self.receipt["finishedAt"] = now()
             self.save()
+            publish_json(self.out / "public-run.json", public_summary(self.receipt))
         return self.receipt
 
 

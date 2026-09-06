@@ -19,6 +19,7 @@ All notable user-facing changes to `igw` are documented here.
 ### Fixed
 - Reuse verified unchanged cache blobs while preserving corruption repair, escape validation field pointers correctly, and distinguish permanent configuration lock failures from contention.
 - Compare reference-update candidates against the default baseline for their selected module profile; explicit baseline overrides remain available.
+- Restrict hosted reference artifacts to validated status summaries and successful two-file references; retain raw execution logs and detailed receipts privately on the runner.
 
 ## [v0.5.0](https://github.com/alex-mccollum/igw-cli/compare/v0.4.0...v0.5.0) - 2026-02-27
 

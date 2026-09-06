@@ -26,6 +26,9 @@ Original history is retained in a private recovery bundle outside the checkout.
 Do not add that bundle, local worktree exports, or full execution logs to Git.
 Use the existing ignored `bin/` or another private directory for new raw run
 outputs. Reviewed compact qualification summaries remain in this directory.
+The [hosted updater](../reference-updates.md) uploads only a validated control
+summary and successful two-file references; raw execution packets and console
+diagnostics stay private on the runner.
 
 This cleanup preserves public author attribution and the intentional security
 contact. It removes accidental local execution detail, not project ownership.

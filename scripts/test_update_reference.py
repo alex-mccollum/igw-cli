@@ -9,6 +9,7 @@ from pathlib import Path
 import signal
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 
@@ -143,6 +144,11 @@ class CoordinatorTests(unittest.TestCase):
         self.assertEqual(receipt["source"], {"commit": COMMIT, "dirty": False})
         self.assertEqual(receipt["toolchain"]["GOVERSION"], "go1.27.1")
         self.assertTrue(all(s["status"] == "passed" for s in receipt["steps"]))
+        public = json.loads((self.out / "public-run.json").read_text())
+        self.assertEqual(public["status"], "qualified")
+        self.assertEqual(public["sourceCommit"], COMMIT)
+        self.assertEqual(public["image"], IMAGE)
+        self.assertEqual([s["name"] for s in public["steps"]], STEPS)
         test_paths = []
         for name, args, env in self.seen:
             if name in ("lifecycle", "resources", "transfers", "operations"):
@@ -188,7 +194,63 @@ class CoordinatorTests(unittest.TestCase):
                 receipt = self.receipt()
                 self.assertEqual(receipt["status"], "failed")
                 self.assertEqual(receipt["steps"][-1]["exitCode"], 7)
+                public = json.loads((self.out / "public-run.json").read_text())
+                self.assertEqual(public["status"], "failed")
+                self.assertEqual(public["steps"][-1]["exitCode"], 7)
                 self.assertFalse((self.out / "reference/reference.json").exists())
+
+    def test_public_summary_excludes_private_diagnostics_and_unknown_fields(self):
+        private = str(self.root / "PRIVATE-DIAGNOSTIC-CANARY")
+        receipt = self.run_update()
+        receipt.update(failure={"message": private}, futureField=private,
+                       toolchain={"GOVERSION": private}, comparison={"details": private})
+        receipt["source"]["directory"] = private
+        receipt["steps"][0]["message"] = private
+        self.assertNotIn(private, json.dumps(UPDATE.public_summary(receipt)))
+        self.assertEqual(receipt["failure"]["message"], private)
+
+    def test_public_summary_rejects_unvalidated_control_values(self):
+        receipt = self.run_update()
+        for field in ("tag", "image", "moduleProfile", "status"):
+            with self.subTest(field=field):
+                invalid = {**receipt, field: "PRIVATE-DIAGNOSTIC-CANARY"}
+                with self.assertRaises(ValueError):
+                    UPDATE.public_summary(invalid)
+        for field in ("name", "status", "exitCode"):
+            with self.subTest(step_field=field):
+                invalid = {**receipt, "steps": [{**receipt["steps"][0], field: "PRIVATE-DIAGNOSTIC-CANARY"}]}
+                with self.assertRaises(ValueError):
+                    UPDATE.public_summary(invalid)
+        with self.assertRaises(ValueError):
+            UPDATE.public_summary({**receipt, "source": {"commit": str(self.root)}})
+
+    def test_workflow_uploads_only_public_files_and_hides_console_diagnostics(self):
+        workflow = (UPDATE.ROOT / ".github/workflows/reference-update.yml").read_text()
+        uploaded = [line.strip() for line in workflow.splitlines()
+                    if line.strip().startswith("${{ env.REFERENCE_OUT }}/")]
+        self.assertEqual(uploaded, ["${{ env.REFERENCE_OUT }}/reference/reference.json",
+                                    "${{ env.REFERENCE_OUT }}/reference/openapi.json.gz"])
+        self.assertIn("path: ${{ env.REFERENCE_OUT }}/public-run.json", workflow)
+        self.assertEqual(workflow.count("uses: actions/upload-artifact@"), 2)
+        self.assertIn("vars.IGW_REFERENCE_RUNNER_ENABLED == 'true'", workflow)
+        self.assertIn("REFERENCE_OUT: ${{ github.workspace }}/../igw-private-reference-evidence/", workflow)
+        section = workflow.split("      - name: Qualify resolved upstream image\n", 1)[1]
+        shell = textwrap.dedent(section.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0])
+        fake_bin = self.root / "fake-bin"
+        fake_bin.mkdir()
+        python = fake_bin / "python3"
+        python.write_text("#!/bin/sh\necho PRIVATE-DIAGNOSTIC-CANARY\necho PRIVATE-ERROR-CANARY >&2\nexit 7\n")
+        python.chmod(0o700)
+        result = subprocess.run(["bash", "-e", "-c", shell], capture_output=True, text=True,
+                                env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"],
+                                     "REFERENCE_TAG": "8.3", "REFERENCE_PROFILE": "core-opcua",
+                                     "REFERENCE_OUT": str(self.out)})
+        self.assertEqual(result.returncode, 7)
+        self.assertNotIn("CANARY", result.stdout + result.stderr)
+        private_log = self.out.with_suffix(".console.log")
+        self.assertIn("PRIVATE-DIAGNOSTIC-CANARY", private_log.read_text())
+        self.assertIn("PRIVATE-ERROR-CANARY", private_log.read_text())
+        self.assertEqual(private_log.stat().st_mode & 0o777, 0o600)
 
     def test_preflight_refuses_unsupported_engine_and_existing_container(self):
         for case in ("controls", "existing"):

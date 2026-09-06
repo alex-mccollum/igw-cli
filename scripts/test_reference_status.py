@@ -62,6 +62,11 @@ class StatusTests(unittest.TestCase):
     def collect(self, api, **kwargs):
         return STATUS.collect(api, REPO, now=NOW, **kwargs)
 
+    def test_qualification_steps_match_the_hosted_workflow(self):
+        workflow = (Path(__file__).resolve().parent.parent / ".github/workflows/reference-update.yml").read_text()
+        for name in (STATUS.QUALIFY_STEP, STATUS.RETAIN_STEP):
+            self.assertEqual(workflow.count("- name: " + name + "\n"), 1)
+
     def test_complete_qualification_and_summary(self):
         report = self.collect(FakeAPI([run(2)], {(2, 1): jobs()}), enabled="true")
         self.assertEqual(report["status"], "qualified")

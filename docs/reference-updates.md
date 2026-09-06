@@ -126,11 +126,31 @@ process scope remains limited to 8 GiB with zero swap, two CPUs, and 256 tasks.
 Each disposable Gateway separately receives 2 GiB, zero swap, two CPUs, and
 256 PIDs. The coordinator never provisions or changes these host settings.
 
-The workflow requires a clean checkout and retains allowlisted candidate and
-failure evidence for 30 days. It excludes compiled tools and temporary test
-files, which can include synthetic Gateway backups and diagnostics. Candidate
-artifacts are for review; the retained Git bundle and binary embedding provide
-durable availability after those artifacts expire. See the upstream
+The workflow requires a clean checkout and uploads only explicit public files,
+retained for 30 days:
+
+- `public-run.json`: `igw/reference-update-summary/v1`, with validated status,
+  tag, module profile, source commit and image when known, and stage names,
+  outcomes, and exit codes. It excludes failure messages, paths, toolchain
+  details, comparison details, and unknown fields. A failure before the run
+  directory is created may have no summary.
+- After successful qualification only, `reference.json` and `openapi.json.gz`:
+  the portable API reference, with unchanged vendor bytes and provenance.
+
+Full `run.json`, logs, captures, detailed workflow receipts, and contributor
+evidence remain private in `igw-private-reference-evidence/` beside the runner's
+checkout, with separate run/attempt/profile directories. They survive subsequent
+clean checkouts, including the next matrix profile. Coordinator console output is retained
+beside the run directory as `<run-directory>.console.log`, with private file
+permissions; Actions receives only a fixed success or failure message and the
+original exit code. The two-file download does not include the detailed packet
+addressed by its evidence locator. Runner operators must privately archive
+reviewed packets and manage disk retention; the public artifact expiry does not
+delete these local files. Do not upload packets wholesale or post failure logs
+publicly; extract and review only the details needed.
+
+The retained Git references and binary embedding provide durable availability
+after hosted artifacts expire. See the upstream
 [artifact retention documentation](https://github.com/actions/upload-artifact#retention-period).
 
 GitHub schedules can be delayed or dropped under load; public-repository
@@ -161,8 +181,8 @@ dedicated runner is currently available.
 
 The report includes the latest run and last complete qualification among the
 20 most recent default-branch runs. Both named module-profile jobs must have
-succeeded in the same attempt, including the actual qualification and evidence
-upload steps. A green run containing skipped jobs does not qualify. Partial
+succeeded in the same attempt, including the actual qualification and qualified
+reference upload steps. A public status upload alone does not qualify. Partial
 reruns cannot borrow a successful profile from an earlier attempt; rerun all
 jobs to establish complete hosted qualification. A newer failure preserves the
 last successful timestamp/link. Beyond 14 days (two weekly intervals), the
@@ -189,8 +209,10 @@ Activate in this order:
    WSL workstation or change its host settings for activation.
 3. Set `IGW_REFERENCE_RUNNER_ENABLED=true`, then manually dispatch the workflow
    for the chosen patch. The existing serial matrix and cleanup checks apply.
-4. Inspect both profile receipts, cleanup, artifacts, and the final status
-   summary. Only then record activation and observe the next weekly run.
+4. Review both profiles' full receipts and cleanup evidence privately on the
+   runner, plus the public references and final status summary. Confirm private
+   evidence retention and disk maintenance. Only then record activation and
+   observe the next weekly run.
 
 As checked on 2026-09-06, the remote repository lists CI and Release workflows
 only; the reference workflow is not installed. Runner and variable settings

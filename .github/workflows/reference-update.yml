@@ -36,7 +36,8 @@ jobs:
     env:
       REFERENCE_TAG: ${{ inputs.tag || '8.3' }}
       REFERENCE_PROFILE: ${{ matrix.profile }}
-      REFERENCE_OUT: ${{ github.workspace }}/bin/igw-reference-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.profile }}
+      # Outside the checkout so the next profile's clean checkout preserves it.
+      REFERENCE_OUT: ${{ github.workspace }}/../igw-private-reference-evidence/${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.profile }}
     steps:
       - name: Check out trusted source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -51,23 +52,36 @@ jobs:
           cache: false
 
       - name: Qualify resolved upstream image
-        run: python3 scripts/update-reference.py --tag "$REFERENCE_TAG" --module-profile "$REFERENCE_PROFILE" --out "$REFERENCE_OUT" --require-clean
+        run: |
+          umask 077
+          set -o noclobber
+          mkdir -p -- "$(dirname "$REFERENCE_OUT")"
+          if python3 scripts/update-reference.py --tag "$REFERENCE_TAG" --module-profile "$REFERENCE_PROFILE" --out "$REFERENCE_OUT" --require-clean > "$REFERENCE_OUT.console.log" 2>&1; then
+            echo "Qualification completed."
+          else
+            code=$?
+            echo "::error::Qualification failed; inspect the private runner evidence."
+            exit "$code"
+          fi
 
-      - name: Retain candidate and failure evidence
+      - name: Retain public qualification status
         if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ignition-reference-status-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.profile }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: ${{ env.REFERENCE_OUT }}/public-run.json
+
+      - name: Retain qualified API reference
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ignition-reference-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.profile }}
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
           path: |
-            ${{ env.REFERENCE_OUT }}/run.json
-            ${{ env.REFERENCE_OUT }}/logs/
-            ${{ env.REFERENCE_OUT }}/resolution/
-            ${{ env.REFERENCE_OUT }}/capture/
-            ${{ env.REFERENCE_OUT }}/lifecycle.json
-            ${{ env.REFERENCE_OUT }}/*-workflows.json
-            ${{ env.REFERENCE_OUT }}/reference/
+            ${{ env.REFERENCE_OUT }}/reference/reference.json
+            ${{ env.REFERENCE_OUT }}/reference/openapi.json.gz
 
   status:
     name: Reference update status

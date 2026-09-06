@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 WORKFLOW = "reference-update.yml"
 PROFILES = ("image-defaults", "core-opcua")
 QUALIFY_STEP = "Qualify resolved upstream image"
-RETAIN_STEP = "Retain candidate and failure evidence"
+RETAIN_STEP = "Retain qualified API reference"
 HISTORY_LIMIT = 20
 MAX_RESPONSE = 4 << 20
 OVERDUE_DAYS = 14
