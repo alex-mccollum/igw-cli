@@ -27,6 +27,7 @@ func (i *invocation) logsCommands() *cobra.Command {
 	var since, until string
 	var filters []string
 	list := &cobra.Command{Use: "list", Short: "Read one page of logs with optional level, logger, and time filters", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
+		i.render = humanLogs
 		now := time.Now()
 		if i.app.Now != nil {
 			now = i.app.Now()
@@ -49,6 +50,8 @@ func (i *invocation) logsCommands() *cobra.Command {
 		}
 		return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/logs", Query: query})
 	}}
+	list.Long = "Read one page of Gateway logs. Narrow the time window, then filter by severity, logger, or search terms. Human output includes exception context and the next page offset when available; --json preserves the complete Gateway response."
+	list.Example = "  igw logs list --min-level WARN --since 1h\n  igw logs list --logger Gateway --search timeout --since 1h --json\n  igw logs list --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --limit 50"
 	f := list.Flags()
 	f.IntVar(&input.Limit, "limit", 50, "Maximum events in this page (1..1000)")
 	f.IntVar(&input.Offset, "offset", 0, "Events to skip")

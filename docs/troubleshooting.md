@@ -5,6 +5,33 @@ then `gateway doctor --json` for a read-only Gateway request. See
 `docs/commands.md` for canonical commands and `docs/migration-v1.md` if an old
 command or flag is rejected.
 
+`gateway doctor` establishes that the Gateway information request completed.
+It does not test each module, device, project, or database connection. Its human
+output states that scope; JSON preserves the Gateway information response.
+
+## Investigate a failed configuration or deployment
+
+1. Preserve the failed command's JSON result. Check its `outcome`, error kind,
+   and verification evidence. Read the current resource or export the affected
+   project/tags before deciding whether another change is needed.
+2. Query recent warnings with `igw logs list --min-level WARN --since 1h`.
+   Inspect the message, logger, timestamp, stack, and context. Narrow the
+   selection by logger or search term after observing the relevant entries.
+3. Use absolute `--since` and `--until` times for the incident window. Retain
+   the same window and filters while following the reported page offset.
+   No events on one page does not establish that the Gateway has no problems.
+4. Use `--json` when passing events to an agent or script. Preserve exception
+   context and distinguish observed errors from inferred causes. The CLI
+   retrieves evidence; it does not automatically diagnose or repair a device.
+5. Save the complete log database with `logs download`, or collect a diagnostic
+   bundle explicitly when more context is needed. Log download is the Gateway's
+   database artifact, not a plain-text transcript. Bundle generation requires
+   `--yes`; review its preview and use a suitable explicit timeout.
+
+All steps must use the same profile and effective Gateway URL as the failed
+change. See [operational command examples](commands.md) for complete invocations.
+Human mode includes recovery guidance without changing JSON or exit codes.
+
 ## Configuration and authentication
 
 Exit 2 means usage or configuration needs attention. The v1 reader rejects

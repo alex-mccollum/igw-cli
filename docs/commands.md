@@ -556,6 +556,10 @@ collection and returns one page with the Gateway's pagination metadata. Resource
 types can be discovered offline, but state reads and change previews require
 connectivity. Previews expose changed field names and a request digest without
 configuration values. Explicit `get` and `list` return resource configuration.
+Human previews show the target, changed fields, request digest, and reviewed
+signature. Apply that signature with `--if-signature` for update/delete after
+reviewing the proposed body. Human failures also retain workflow state and
+available verification checks; JSON keeps the complete `igw/v1` result.
 
 Successful workflows report `outcome: "completed"` and
 `meta.verification: "verified"` after response/state checks. This verifies stored
@@ -693,8 +697,11 @@ diagnostics collection through one invocation:
 
 ```bash
 igw backup export --out gateway.gwbk --json
+igw logs list --min-level WARN --since 1h
 igw logs list --limit 50 --min-level WARN --since 1h --json
+igw logs list --logger Gateway --search timeout --since 1h --json
 igw logs list --logger Gateway --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --json
+igw logs list --since 2026-09-05T08:00:00-07:00 --until 2026-09-05T09:00:00-07:00 --limit 50
 igw logs download --out system-logs.idb --json
 igw diagnostics bundle status --json
 igw diagnostics bundle collect --out diagnostics.zip --dry-run --json
@@ -711,6 +718,14 @@ page, supports `--offset`, `--logger`, and `--search`, and accepts case-insensit
 minimum levels. `--since` accepts a positive duration measured from the local
 invocation clock or an RFC3339 timestamp; `--until` requires an RFC3339 timestamp.
 Both are sent as epoch milliseconds. A log query does not change logger levels.
+Human output renders epoch-millisecond event timestamps in UTC, followed by
+severity, logger, message, and available stack context. Context and unfamiliar
+fields are preserved; an unrecognized response shape falls back to complete
+JSON. Terminal controls in formatted fields are escaped. `--json` preserves the
+original structured response, including pagination metadata and event fields.
+The human footer shows page counts and the next offset when available. Keep
+the same filters and a fixed time window while paging; offset pagination is
+not an immutable snapshot. An empty page is distinct from a failed request.
 
 Diagnostics status normalizes the qualified Gateway states `Invalid`,
 `Generating`, and `Valid` to `empty`, `generating`, and `ready`, retaining the

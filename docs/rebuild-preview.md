@@ -110,6 +110,10 @@ bounded literal construction and object-schema validation for the supported
 primitive/JSON/explicit-array bindings documented in `docs/commands.md`.
 The workflow release prioritizes configuration, project/tag deployment, and
 basic troubleshooting, including readable logs and useful failure guidance.
+Human resource previews/results now expose review signatures and verification
+checks, including on failure. Logs have a readable event view with stack/context
+and pagination; JSON retains the original event data. Doctor states its limited
+connectivity/information scope and human failures offer recovery guidance.
 Singleton recreation diagnosis and final candidate qualification remain open.
 Additional form/parameter encodings and broader tag policies are deferred unless
 these journeys need them. Activating the dedicated scheduled reference runner

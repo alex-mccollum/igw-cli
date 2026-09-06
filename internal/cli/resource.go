@@ -80,6 +80,18 @@ func (i *invocation) resourceChangeCommand(action string) *cobra.Command {
 	change := resource.Change{Action: action}
 	var body string
 	cmd := &cobra.Command{Use: action + " TYPE [NAME]", Short: action + " a resource and verify it; omit NAME for a singleton", Args: cobra.RangeArgs(1, 2)}
+	cmd.Long = "Inspect the type with resource describe and the current definition with resource get. Preview the proposed change before confirming it. Update and delete require the reviewed signature; uncertain writes are never automatically replayed."
+	cmd.Example = "  igw resource describe ignition/schedule\n  igw resource get ignition/schedule Example --json"
+	if action == "delete" {
+		cmd.Example += "\n  igw resource delete ignition/schedule Example --dry-run\n  igw resource delete ignition/schedule Example --if-signature REVIEWED_SIGNATURE --yes"
+	} else {
+		cmd.Example += "\n  igw resource " + action + " ignition/schedule Example --body @schedule-fields.json --dry-run"
+		if action == "update" {
+			cmd.Example += "\n  igw resource update ignition/schedule Example --body @schedule-fields.json --if-signature REVIEWED_SIGNATURE --yes"
+		} else {
+			cmd.Example += "\n  igw resource create ignition/schedule Example --body @schedule-fields.json --yes"
+		}
+	}
 	f := cmd.Flags()
 	f.StringVar(&change.Collection, "collection", "core", "Configuration collection to change")
 	f.BoolVar(&change.DryRun, "dry-run", false, "Read current state and validate the proposed change without mutating")

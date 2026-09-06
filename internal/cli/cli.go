@@ -50,6 +50,7 @@ type invocation struct {
 	profile, gatewayURL, pin string
 	offline, allowStale      bool
 	timeout                  time.Duration
+	render                   func(io.Writer, result.Result) error
 }
 
 func (a App) Run(ctx context.Context, args []string) error {
@@ -112,17 +113,25 @@ func (a App) Run(ctx context.Context, args []string) error {
 			return &result.Problem{Kind: "output", Message: "could not write JSON output", Code: 7}
 		}
 	} else {
+		render := i.render
+		if render == nil {
+			render = human
+		}
 		if i.output.Error != nil {
 			_, batch := i.output.Data.(execute.BatchReport)
 			_, restart := i.output.Data.(operations.RestartEvidence)
-			if batch || restart {
+			_, resourceChange := i.output.Data.(resource.Evidence)
+			if batch || restart || resourceChange {
 				if writeErr := human(a.Out, i.output); writeErr != nil {
 					return &result.Problem{Kind: "output", Message: "could not write workflow output", Code: 7}
 				}
 			}
 			_, _ = fmt.Fprintln(a.Err, i.output.Error.Message)
+			if hint := recoveryHint(i.output); hint != "" {
+				_, _ = fmt.Fprintln(a.Err, "Next:", hint)
+			}
 		} else {
-			if writeErr := human(a.Out, i.output); writeErr != nil {
+			if writeErr := render(a.Out, i.output); writeErr != nil {
 				return &result.Problem{Kind: "output", Message: "could not write output", Code: 7}
 			}
 		}
@@ -290,6 +299,9 @@ func referenceProfile(ref reference.Summary) string {
 }
 
 func human(out io.Writer, r result.Result) error {
+	if evidence, ok := r.Data.(resource.Evidence); ok {
+		return humanResource(out, r, evidence)
+	}
 	if version, ok := r.Data.(versionData); ok {
 		_, err := fmt.Fprintln(out, "igw version "+version.text)
 		return err

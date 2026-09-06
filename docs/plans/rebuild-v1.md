@@ -25,7 +25,7 @@ human and JSON output, positive results, and useful failure recovery.
 | Configure resources | Preview and apply changes, inspect readback, refuse stale signatures without mutation | Named workflows qualified historically; singleton recreation mismatch needs diagnosis |
 | Deploy projects | Export and inspect a ZIP, import, and replace using a reviewed digest | Implemented and historically qualified; final candidate run pending |
 | Transfer tags | JSON import/export using existing verification policies; explicit refusal where APIs are absent | Implemented; final candidate run pending |
-| Troubleshoot | Retrieve relevant logs by time, severity, logger, and search; expose available exception context and pagination; distinguish no matches from failure | Filters implemented; human output and recovery guidance need improvement |
+| Troubleshoot | Retrieve relevant logs by time, severity, logger, and search; expose available exception context and pagination; distinguish no matches from failure | Human views, recovery guidance, and filter/JSON regressions pass locally; live candidate walkthrough pending |
 | Preserve evidence | Save complete backup/log/diagnostic artifacts; require confirmation for diagnostics generation | Implemented and historically qualified; final candidate run pending |
 
 A generic accepted request is not a verified state change. Preserve uncertain
@@ -50,6 +50,12 @@ Use focused checks during changes, followed by one complete candidate gate.
 Rerun affected checks after fixes. Keep historical receipts immutable; they are
 supporting evidence, not proof that a later executable ran. Commit small verified
 slices and preserve the user's unrelated script permission changes.
+
+The human-output slice passed the full unit suite, native build, 33 executable
+smoke checks, command/docs checks, and focused race checks. Resource failures
+retain comparison evidence in human mode; logs preserve stack/context and
+unknown fields, escape terminal controls, and leave JSON unchanged. Doctor
+states its limited scope. Logs: `bin/workflow-human-{checks,race}.log`.
 
 ## OpenAPI authority and availability
 

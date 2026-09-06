@@ -14,7 +14,10 @@ import (
 func (i *invocation) gatewayCommands() *cobra.Command {
 	group := &cobra.Command{Use: "gateway", Short: "Inspect Gateway status and verify an explicit restart"}
 	group.AddCommand(&cobra.Command{Use: "doctor", Short: "Read Gateway information without sending mutations", Args: cobra.NoArgs,
+		Long:    "Read the selected Gateway's information endpoint. Success establishes that this request completed; module, device, and project health require their own checks. Inspect recent warnings with logs list when investigating a failed change.",
+		Example: "  igw profile show\n  igw gateway doctor\n  igw logs list --min-level WARN --since 1h --json",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			i.render = humanDoctor
 			return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/gateway-info"})
 		}})
 	group.AddCommand(&cobra.Command{Use: "restart-tasks", Short: "Read tasks awaiting a Gateway restart", Args: cobra.NoArgs,
