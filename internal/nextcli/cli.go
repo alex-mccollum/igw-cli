@@ -30,14 +30,15 @@ import (
 )
 
 type App struct {
-	In         io.Reader
-	Out        io.Writer
-	Err        io.Writer
-	Getenv     func(string) string
-	ReadConfig func() (config.File, error)
-	CacheDir   string
-	HTTP       *http.Client
-	Now        func() time.Time
+	In          io.Reader
+	Out         io.Writer
+	Err         io.Writer
+	Getenv      func(string) string
+	ReadConfig  func() (config.File, error)
+	ConfigStore *config.Store
+	CacheDir    string
+	HTTP        *http.Client
+	Now         func() time.Time
 }
 
 type invocation struct {
@@ -64,7 +65,13 @@ func (a App) Run(ctx context.Context, args []string) error {
 		a.Getenv = os.Getenv
 	}
 	if a.ReadConfig == nil {
-		a.ReadConfig = config.Read
+		if a.ConfigStore == nil {
+			a.ConfigStore = &config.Store{}
+		}
+		a.ReadConfig = func() (config.File, error) {
+			state, err := a.ConfigStore.Read()
+			return state.Config, err
+		}
 	}
 	i := &invocation{app: a}
 	root := i.commands()
@@ -136,6 +143,7 @@ func (i *invocation) commands() *cobra.Command {
 	f := root.PersistentFlags()
 	f.BoolVar(&i.json, "json", false, "Emit one versioned JSON result, including errors")
 	f.StringVar(&i.profile, "profile", "", "Use a configured profile")
+	_ = root.RegisterFlagCompletionFunc("profile", i.completeProfiles)
 	f.StringVar(&i.gatewayURL, "gateway-url", "", "Override the profile Gateway URL")
 	f.DurationVar(&i.timeout, "timeout", 30*time.Second, "Total deadline for discovery and execution")
 	f.BoolVar(&i.offline, "offline", false, "Use a local catalog for discovery and previews")
@@ -168,6 +176,9 @@ func (i *invocation) commands() *cobra.Command {
 func (i *invocation) runtime() (catalog.Target, string, error) {
 	file, err := i.app.ReadConfig()
 	if err != nil {
+		if i.app.ConfigStore != nil {
+			return catalog.Target{}, "", result.Usage(err.Error())
+		}
 		return catalog.Target{}, "", result.Usage("could not read configuration")
 	}
 	effective, err := config.ResolveWithProfile(file, i.app.Getenv, i.gatewayURL, "", i.profile)

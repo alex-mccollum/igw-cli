@@ -17,20 +17,22 @@ bin/igw-next completion bash
 Examples for this entrypoint are maintained in the development section of
 `docs/commands.md`. The command tree currently provides:
 
-- `profile list` and `profile show`, using existing configuration precedence and
-  environment variables without displaying token values.
+- `profile list`, `show`, `set`, `use`, `remove`, `migrate`, and `rollback`, with
+  explicit local previews/writes, private storage, revision checks, and preserved
+  configuration precedence. See `docs/profiles.md` for migration and recovery.
 - `spec sync`, `inspect`, `import`, `export`, and `diff` for full documents.
 - `spec references list`, `inspect`, and `export` for qualified offline bundles.
 - `api list`, `describe`, and `request` using a selected target's catalog.
 - `api capabilities` for the advertised or missing routes required by tag
-  workflows.
+  workflows and verified Gateway restart.
 - `api list`, `describe`, and `capabilities --reference NAME_OR_DIRECTORY` for
   explicit offline discovery without target configuration or credentials.
 - `api raw` for explicit requests without schema validation.
 - `api batch` for bounded sequential JSON/text requests with ordered per-item
   results, zero-operation previews, and explicit continuation after ordinary
   failures.
-- `gateway doctor`, which only reads Gateway information.
+- `gateway doctor`, which only reads Gateway information; `restart-tasks`; and
+  `restart`, with a read-only preview and observed restart completion.
 - `resource types`, `describe`, `list`, `get`, and named-resource
   `create`/`update`/`delete` with signatures, previews, and state verification.
 - `project list`, `get`, `inspect`, `export`, and verified ZIP `import`, with a
@@ -103,7 +105,7 @@ literal text fields, streamed files, and ordered JSON part manifests with
 transport-only coverage for schema-less declarations. Multipart schema decoding,
 URL-encoded forms, parameter serialization beyond explicit path/query/header values,
 singleton resources, broader tag format/policy verification,
-profile migration, remote update-schedule activation, and final qualification
+entrypoint cutover, remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.
 
 Catalog storage is under the platform user cache directory at

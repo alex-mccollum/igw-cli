@@ -1,5 +1,12 @@
 # Architecture
 
+This page describes the current release entrypoint. The staged v1 architecture
+and full completion gates are in `docs/plans/rebuild-v1.md`; implemented command
+coverage is in `docs/rebuild-preview.md`. V1 now uses `internal/config.Store`
+for strict versioned profile storage and explicit reversible migration, as
+documented in `docs/profiles.md`. Entrypoint cutover will replace this legacy
+architecture description with the completed v1 implementation.
+
 ## Goal
 A thin CLI wrapper around the Ignition Gateway HTTP API.
 

@@ -26,6 +26,44 @@ bin/igw-next api list --offline --json
 bin/igw-next spec diff before-openapi.json after-openapi.json --json
 ```
 
+Configure a profile using explicit stored values. These commands are local and
+can run without a Gateway connection:
+
+```bash
+bin/igw-next profile set dev --url http://localhost:8088 --use --dry-run --json
+bin/igw-next profile set dev --url http://localhost:8088 --use --yes --json
+bin/igw-next profile set dev --token-stdin --yes --json < private-token.txt
+bin/igw-next profile list --json
+bin/igw-next profile show --profile dev --json
+bin/igw-next profile set dev --clear-token --if-revision "$CONFIG_REVISION" --dry-run --json
+bin/igw-next profile set dev --clear-token --if-revision "$CONFIG_REVISION" --yes --json
+bin/igw-next profile use --default --yes --json
+bin/igw-next profile remove dev --yes --json
+```
+
+Use `--url` to store a target; runtime `--gateway-url`, `--profile`, and
+environment values are not saved. Token input is bounded to 16 KiB and never
+printed. `--if-revision` uses `data.revision` from `profile list`, or
+`data.before.revision` from an edit preview. Each successful write produces a
+new revision. Every edit requires exactly one of `--dry-run` or `--yes`.
+An active profile must be deselected before removal.
+
+Existing users explicitly migrate the legacy settings before editing them:
+
+```bash
+bin/igw-next profile migrate --dry-run --json
+bin/igw-next profile migrate --yes --json
+bin/igw-next profile list --json
+bin/igw-next profile rollback --if-revision "$CONFIG_REVISION" --dry-run --json
+bin/igw-next profile rollback --if-revision "$CONFIG_REVISION" --yes --json
+```
+
+Migration preserves `config.json` and activates a separate `config.v1.json`.
+Rollback requires the unchanged legacy file and archives the current v1 bytes
+before returning to it. Migration reads current legacy settings and has no v1
+revision precondition. See `docs/profiles.md` for exact precedence, strict file
+validation, storage permissions, concurrent writer behavior, and recovery limits.
+
 `gateway restart` is a full Gateway restart and interrupts its running services.
 Use a direct URL for the intended Gateway node. A preview reads node identity,
 process ID, uptime, and pending tasks, then prepares `POST

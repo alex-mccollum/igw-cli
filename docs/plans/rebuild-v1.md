@@ -2,7 +2,20 @@
 
 Status: active. Accepted scope and goal: 2026-09-05.
 
-Current slice: verified Gateway restart, now qualified against both pinned core
+Current slice: profile setup and explicit reversible migration is implemented
+and locally verified. A separate versioned file preserves legacy defaults,
+named profiles, and resolution precedence. Local writes require a preview or
+confirmation, serialize CLI writers, reject stale reviewed revisions, and
+preserve v1 bytes during rollback. Isolated configuration tests, focused race
+checks, full unit tests, both entrypoint builds, command/docs checks, and 16
+real-executable checks passed. Windows amd64 and macOS arm64 configuration test
+binaries compile; native filesystem behavior on those systems is not yet
+qualified. No user configuration or host settings changed. Next planned work
+is entrypoint cutover and migration of the remaining legacy command/docs/test
+contracts, with the full structured-input/workflow/performance/release and
+current-source Gateway acceptance gates still active.
+
+Previous slice: verified Gateway restart, now qualified against both pinned core
 images from source `8084cd0`. The typed workflow, fixture checks, clean build,
 lifecycle probes, and real 8.3.0/8.3.9 runs are complete. This slice requires
 a single confirmed POST,
@@ -1671,6 +1684,52 @@ The focused retained body/batch checks passed in
 versions and workflow limits. Full v1 work remains active, including structured
 input contracts, restart verification, migration/cutover, performance/release
 gates, and final current-source qualification.
+
+## Profile setup and reversible migration
+
+`internal/config.Store` now owns a separate `igw-config/1` document in
+`config.v1.json`. It preserves legacy default fields and named profiles,
+rejects ambiguous/unknown/null/malformed configuration, and prefers v1 without
+falling back on read failure. Migration leaves legacy bytes unchanged. Rollback
+requires the current opaque revision and the unchanged legacy bytes, archives
+the exact current v1 file, and returns runtime reads to legacy. It can retain
+edits made since migration; it never overwrites a different rollback archive.
+
+Local changes use bounded input, private temporary files, complete publication,
+and cooperative kernel locks. Another writer is refused promptly, and exact
+source bytes are rechecked under the lock. Revisions are random and token hashes
+are absent from reports. Filesystem/OS limits and external-editor boundaries are
+explicit in `docs/profiles.md`; Windows compilation is not a claim of native
+atomicity, ACL, or process-lock qualification.
+
+The modern CLI now provides `profile set/use/remove/migrate/rollback`, alongside
+list/show. Writes require `--yes`, previews require `--dry-run`, and stale
+reviewed revisions fail. Token changes use stdin or explicit clearing, display
+only their action/presence, and honor cancellation even while stdin is blocked.
+Local edits never import environment or runtime override values. Runtime
+precedence remains unchanged. Generated schemas/help describe these commands;
+shell completion reads only local profile names.
+
+The first focused run correctly refused test directories whose leaf mode was
+not 0700. The fixtures were corrected without relaxing the store's check.
+Subsequent regression and focused race checks passed, including a separate
+process holding the lock and release after its forced exit; ambiguous JSON;
+oversized migration previews; explicit edit/rollback revisions; archive reuse
+and collision refusal; preservation of resolution and original bytes; token
+redaction; and zero-network profile commands. A local HTTP fixture verified
+that the newly stored profile drives the target-bound execution core.
+
+Full unit tests, both native entrypoint builds, command documentation, and docs
+lint passed. Windows amd64 and macOS arm64 configuration test binaries compiled.
+Sixteen checks through the built development executable passed using temporary
+platform configuration directories, including blocked-stdin timeout and exact
+rollback preservation. Legacy smoke built and stopped at unconfigured doctor
+with exit 2 in an isolated empty directory; no Gateway smoke success is claimed.
+Logs/results are in `bin/profile-{focused,regression,race,final-race,full-gates,
+final-gates,platform-builds,legacy-smoke}.log` and
+`bin/profile-executable.json`. These are local configuration/fixture checks,
+not new live-Gateway receipts. No host controls, resource-limit changes, or
+real user-configuration edits occurred. The complete v1 goal remains active.
 
 ## References
 
