@@ -65,13 +65,21 @@ undefined binding, with regression coverage and the original failure retained.
 The [form qualification receipt](../qualification/urlencoded-input.json) binds
 the final source/executable to these checks without claiming live acceptance.
 
-Next verifiable slice: inspect captured singleton-resource contracts, then
-extend the typed resource workflow where read, mutation, signature, and readback
-contracts support it. Choose the command shape from that evidence and verify
-preview/refusal behavior before real-Gateway qualification. Remaining structured
-encodings, binary and multipart assertions, broader tag verification, and final
-completed-source Gateway and release acceptance gates stay active. These slices
-are not v1 readiness.
+The singleton resource slice is implemented with focused core/CLI checks and
+102 captured-contract previews passing: create/update/delete for all 17 types
+in both retained default versions. `resource get/create/update/delete TYPE`
+selects a singleton; `TYPE NAME` preserves named-resource behavior. Reads disable
+default substitution, mutations omit names, and update/delete use observed
+signatures plus independent readback. The new disposable-Gateway harness will
+exercise translations update, stale review, deletion, recreation, and duplicate
+creation refusal. Full unit/build/33 smoke checks, documentation, focused
+resource/CLI/harness race checks (including the captured cases), and matching
+Go 1.25.7 checks passed. Real-Gateway qualification is next, using a clean source
+build and per-image lifecycle probes. No new live acceptance is claimed yet.
+
+Remaining structured encodings, binary and multipart assertions, broader tag
+verification, and final completed-source Gateway and release acceptance gates
+stay active. These slices are not v1 readiness.
 
 Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,

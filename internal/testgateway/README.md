@@ -21,6 +21,19 @@ run that test alone in a separate guarded invocation. It verifies applied
 limits, exclusive admission, a shortened lifetime, and exact-ID cleanup.
 Normal tests use fake Docker responses and never provide live Gateway evidence.
 
+`TestLiveSingletonResources` uses `IGW_SINGLETON_EVIDENCE_DIR` with the same
+clean-source build, per-image lifecycle probe, and serialized guarded invocation
+as the input suites below. It exercises the translations singleton through the
+resource commands, verifies previews and reviewed signatures, and deliberately
+deletes/recreates its stored definition. Independent generic API reads verify
+the resulting configuration and absence with default substitution disabled.
+It creates the initial definition only if absent and performs all changes in
+its fresh owned Gateway. The receipt records projected resource outcomes,
+signature hashes, prepared previews, observed wire requests, and cleanup.
+Keep the complete receipt, source/build identities, lifecycle/process results,
+and independent empty-container check; compiling or skipping this harness does
+not qualify live behavior.
+
 `TestLiveRestart` uses a new `IGW_RESTART_EVIDENCE_DIR` with the same pinned
 image, module profile, clean test executable, lifecycle probe, and serialized
 bounded invocation as the input suites below. It tests confirmation refusal,

@@ -108,7 +108,7 @@ bounded literal construction and object-schema validation for the supported
 primitive/JSON/explicit-array bindings documented in `docs/commands.md`.
 Multipart schema decoding, other form bindings, parameter serialization beyond
 explicit path/query/header values,
-singleton resources, broader tag format/policy verification,
+singleton-resource live qualification, broader tag format/policy verification,
 remote update-schedule activation, and final qualification
 of the completed implementation remain on the rebuild roadmap.
 

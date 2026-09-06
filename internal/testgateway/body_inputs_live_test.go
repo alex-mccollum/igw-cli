@@ -112,6 +112,7 @@ type inputCheck struct {
 	Preview         *execute.Preview                `json:"preview,omitempty"`
 	Artifact        *inputArtifact                  `json:"artifact,omitempty"`
 	Restart         *inputRestartEvidence           `json:"restart,omitempty"`
+	Resource        *inputResourceEvidence          `json:"resource,omitempty"`
 	Process         *testgateway.ProcessObservation `json:"process,omitempty"`
 }
 
@@ -298,6 +299,7 @@ func (s *inputSuite) run(name string, input io.Reader, args ...string) transferR
 	}
 	batch := len(args) >= 2 && args[0] == "api" && args[1] == "batch"
 	restart := len(args) >= 2 && args[0] == "gateway" && args[1] == "restart"
+	resourceChange := len(args) >= 2 && args[0] == "resource" && (args[1] == "create" || args[1] == "update" || args[1] == "delete")
 	if batch {
 		check.Batch = batchEvidence(got.Data)
 	} else if restart {
@@ -307,6 +309,8 @@ func (s *inputSuite) run(name string, input io.Reader, args ...string) transferR
 			check.Restart.ConfirmedRequests = observer.confirmedRestarts
 			observer.mu.Unlock()
 		}
+	} else if resourceChange {
+		check.Resource = resourceEvidence(got.Data)
 	} else if got.Outcome == "preview" {
 		var preview execute.Preview
 		if json.Unmarshal(got.Data, &preview) != nil {

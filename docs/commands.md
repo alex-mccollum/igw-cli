@@ -566,8 +566,38 @@ prove removal of unspecified nested properties.
 If acknowledgement, signature, or readback cannot establish the outcome,
 the result stays failed or uncertain. Redacted secrets or vendor-normalized
 values that cannot be compared can prevent verification; inspect current state
-before retrying. Singleton resources and forced reference changes still use
-explicit generic API requests.
+before retrying. Forced reference changes still require explicit generic API
+requests.
+
+Singletons use the same commands with `TYPE` alone. `resource types` reports
+`singleton: true` when the catalog advertises that type's singleton read route;
+each requested mutation must also exist in the current catalog. For example:
+
+```bash
+igw resource get ignition/translations --json
+igw resource update ignition/translations --body '{"description":"Shared translations"}' --dry-run --json
+igw resource update ignition/translations --body '{"description":"Shared translations"}' --if-signature REVIEWED_SIGNATURE --yes --json
+igw resource delete ignition/translations --dry-run --json
+igw resource delete ignition/translations --if-signature REVIEWED_SIGNATURE --yes --json
+igw resource create ignition/translations --body @translation-fields.json --dry-run --json
+igw resource create ignition/translations --body @translation-fields.json --yes --json
+```
+
+Omitting `NAME` selects the singleton route explicitly. Supplying `NAME` selects
+the named-resource route; neither mode falls back to the other. Singleton
+identity is type plus collection. The CLI omits name fields from mutations and
+uses the signature-only delete path. Singleton reads explicitly disable
+`defaultIfUndefined`, so a default configuration cannot count as an existing
+stored definition. Update/delete keep the same reviewed-signature requirement,
+single-mutation behavior, and independent readback checks as named resources.
+Create requires observed absence. Deletion verifies that the stored definition
+is absent; the Gateway may still use built-in defaults at runtime.
+
+The fixture checks cover all 17 singleton types in each retained default
+8.3.0/8.3.9 contract, plus actual CLI HTTP fixtures. A disposable-Gateway harness
+exercises translations update, stale review, deletion, recreation, and duplicate
+creation refusal. Its real-Gateway qualification remains pending; captured
+schemas and a compiled or skipped harness do not establish those live outcomes.
 
 Project workflows transfer a complete project ZIP, inspect its file manifest,
 and verify the imported contents through a fresh export:

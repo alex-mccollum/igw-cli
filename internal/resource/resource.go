@@ -1,4 +1,4 @@
-// Package resource implements named configuration workflows over the typed
+// Package resource implements configuration workflows over the typed
 // execution core. It never parses CLI arguments or opens its own HTTP client.
 package resource
 
@@ -28,8 +28,9 @@ func ValidateType(id string) error {
 }
 
 type Type struct {
-	ID      string `json:"id"`
-	Summary string `json:"summary"`
+	ID        string `json:"id"`
+	Summary   string `json:"summary"`
+	Singleton bool   `json:"singleton"`
 }
 
 func Types(c *catalog.Catalog) []Type {
@@ -37,7 +38,8 @@ func Types(c *catalog.Catalog) []Type {
 	for _, op := range c.Operations() {
 		id, ok := strings.CutPrefix(op.Path, prefix+"type/")
 		if op.Method == "GET" && ok && ValidateType(id) == nil {
-			types = append(types, Type{ID: id, Summary: op.Summary})
+			_, err := c.Resolve("GET " + prefix + "singleton/" + id)
+			types = append(types, Type{ID: id, Summary: op.Summary, Singleton: err == nil})
 		}
 	}
 	sort.Slice(types, func(i, j int) bool { return types[i].ID < types[j].ID })
@@ -50,19 +52,41 @@ type Runner interface {
 
 type Change struct {
 	Action, Type, Name, Collection string
+	Singleton                      bool
 	Signature                      string
 	Body                           []byte
 	Yes, DryRun                    bool
 }
 
+// ReadRequest selects a resource by its actual identity. Singleton identity is
+// type plus collection; a response's optional name is not a lookup key. Never
+// request defaultIfUndefined=true: defaults cannot establish stored existence.
+func ReadRequest(typeID, name, collection string, singleton bool) (execute.Request, error) {
+	if err := ValidateType(typeID); err != nil {
+		return execute.Request{}, err
+	}
+	if strings.TrimSpace(collection) == "" {
+		return execute.Request{}, result.Usage("resource collection is required")
+	}
+	if singleton && name != "" {
+		return execute.Request{}, result.Usage("singleton resources do not take a name")
+	}
+	query := url.Values{"collection": {collection}}
+	if singleton {
+		query.Set("defaultIfUndefined", "false")
+		return execute.Request{Operation: "GET " + prefix + "singleton/" + typeID, Query: query}, nil
+	}
+	if strings.TrimSpace(name) == "" {
+		return execute.Request{}, result.Usage("named resources require a name")
+	}
+	return execute.Request{Operation: "GET " + prefix + "find/" + typeID + "/{name}", PathParams: map[string]string{"name": name}, Query: query}, nil
+}
+
 // Validate rejects ambiguous bodies before acquiring a catalog or reading state.
 // The returned fields preserve exact JSON numbers and do not include identity.
 func (c Change) Validate() (map[string]json.RawMessage, error) {
-	if err := ValidateType(c.Type); err != nil {
+	if _, err := ReadRequest(c.Type, c.Name, c.Collection, c.Singleton); err != nil {
 		return nil, err
-	}
-	if strings.TrimSpace(c.Name) == "" || strings.TrimSpace(c.Collection) == "" {
-		return nil, result.Usage("resource name and collection are required")
 	}
 	if c.Action != "create" && c.Action != "update" && c.Action != "delete" {
 		return nil, result.Usage("unknown resource change")
@@ -102,7 +126,8 @@ func (c Change) Validate() (map[string]json.RawMessage, error) {
 type Evidence struct {
 	Action          string           `json:"action"`
 	Type            string           `json:"type"`
-	Name            string           `json:"name"`
+	Name            string           `json:"name,omitempty"`
+	Singleton       bool             `json:"singleton,omitempty"`
 	Collection      string           `json:"collection"`
 	BeforeSignature string           `json:"beforeSignature,omitempty"`
 	AfterSignature  string           `json:"afterSignature,omitempty"`
@@ -119,8 +144,8 @@ func Apply(runner Runner, change Change) result.Result {
 	if err != nil {
 		return result.Failure(err)
 	}
-	evidence := Evidence{Action: change.Action, Type: change.Type, Name: change.Name, Collection: change.Collection, ChangedFields: []string{}}
-	get := execute.Request{Operation: "GET " + prefix + "find/" + change.Type + "/{name}", PathParams: map[string]string{"name": change.Name}, Query: url.Values{"collection": {change.Collection}}}
+	evidence := Evidence{Action: change.Action, Type: change.Type, Name: change.Name, Singleton: change.Singleton, Collection: change.Collection, ChangedFields: []string{}}
+	get, _ := ReadRequest(change.Type, change.Name, change.Collection, change.Singleton)
 	beforeResult := runner.Run(get)
 	before, exists, valid := state(beforeResult, change)
 	if !valid {
@@ -148,13 +173,19 @@ func Apply(runner Runner, change Change) result.Result {
 	if change.Action == "delete" {
 		request.Operation = "DELETE " + prefix + change.Type + "/{name}/{signature}"
 		request.PathParams = map[string]string{"name": change.Name, "signature": evidence.BeforeSignature}
-		request.Query = get.Query
+		if change.Singleton {
+			request.Operation = "DELETE " + prefix + change.Type + "/{signature}"
+			delete(request.PathParams, "name")
+		}
+		request.Query = url.Values{"collection": {change.Collection}}
 	} else {
 		body := make(map[string]json.RawMessage, len(fields)+3)
 		for key, value := range fields {
 			body[key] = value
 		}
-		body["name"], _ = json.Marshal(change.Name)
+		if !change.Singleton {
+			body["name"], _ = json.Marshal(change.Name)
+		}
 		body["collection"], _ = json.Marshal(change.Collection)
 		request.Operation = "POST " + prefix + change.Type
 		if change.Action == "update" {
@@ -189,7 +220,7 @@ func Apply(runner Runner, change Change) result.Result {
 	newSignature := ""
 	matches := 0
 	for _, item := range response.Changes {
-		if item.Name == change.Name && item.Type == change.Type && item.Collection == change.Collection {
+		if (change.Singleton || item.Name == change.Name) && item.Type == change.Type && item.Collection == change.Collection {
 			matches++
 			if matches > 1 {
 				acknowledged = false
@@ -266,7 +297,7 @@ func state(out result.Result, change Change) (map[string]json.RawMessage, bool, 
 	}
 	raw, ok := out.Data.(json.RawMessage)
 	var object map[string]json.RawMessage
-	if !ok || jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &object) != nil || stringField(object, "name") != change.Name || stringField(object, "collection") != change.Collection || stringField(object, "type") != change.Type || stringField(object, "signature") == "" {
+	if !ok || jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &object) != nil || (!change.Singleton && stringField(object, "name") != change.Name) || stringField(object, "collection") != change.Collection || stringField(object, "type") != change.Type || stringField(object, "signature") == "" {
 		return nil, false, false
 	}
 	return object, true, true

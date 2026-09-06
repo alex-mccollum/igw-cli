@@ -13,7 +13,7 @@ import (
 )
 
 func (i *invocation) resourceCommands() *cobra.Command {
-	group := &cobra.Command{Use: "resource", Short: "Inspect and change named configuration resources"}
+	group := &cobra.Command{Use: "resource", Short: "Inspect and change named or singleton configuration resources"}
 	types := &cobra.Command{Use: "types", Short: "List resource type IDs from the target catalog", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			snapshot, err := i.snapshot(cmd, false)
@@ -32,15 +32,17 @@ func (i *invocation) resourceCommands() *cobra.Command {
 			return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/resources/type/" + args[0]})
 		}}
 	var collection string
-	get := &cobra.Command{Use: "get TYPE NAME", Short: "Read a resource including its signature and configuration", Args: cobra.ExactArgs(2),
+	get := &cobra.Command{Use: "get TYPE [NAME]", Short: "Read a resource; omit NAME for a singleton", Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := resource.ValidateType(args[0]); err != nil {
+			name := ""
+			if len(args) == 2 {
+				name = args[1]
+			}
+			request, err := resource.ReadRequest(args[0], name, collection, len(args) == 1)
+			if err != nil {
 				return err
 			}
-			if collection == "" {
-				return result.Usage("collection must be explicit; the default is core")
-			}
-			return i.runRequest(cmd, execute.Request{Operation: "GET /data/api/v1/resources/find/" + args[0] + "/{name}", PathParams: map[string]string{"name": args[1]}, Query: url.Values{"collection": {collection}}})
+			return i.runRequest(cmd, request)
 		}}
 	get.Flags().StringVar(&collection, "collection", "core", "Configuration collection to read")
 	var limit, offset int
@@ -77,7 +79,7 @@ func (i *invocation) resourceCommands() *cobra.Command {
 func (i *invocation) resourceChangeCommand(action string) *cobra.Command {
 	change := resource.Change{Action: action}
 	var body string
-	cmd := &cobra.Command{Use: action + " TYPE NAME", Short: action + " a resource and verify its resulting state", Args: cobra.ExactArgs(2)}
+	cmd := &cobra.Command{Use: action + " TYPE [NAME]", Short: action + " a resource and verify it; omit NAME for a singleton", Args: cobra.RangeArgs(1, 2)}
 	f := cmd.Flags()
 	f.StringVar(&change.Collection, "collection", "core", "Configuration collection to change")
 	f.BoolVar(&change.DryRun, "dry-run", false, "Read current state and validate the proposed change without mutating")
@@ -90,7 +92,10 @@ func (i *invocation) resourceChangeCommand(action string) *cobra.Command {
 		_ = cmd.MarkFlagRequired("body")
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		change.Type, change.Name = args[0], args[1]
+		change.Type, change.Singleton = args[0], len(args) == 1
+		if !change.Singleton {
+			change.Name = args[1]
+		}
 		if i.offline {
 			return result.Usage("resource changes and their previews require current state; use api describe --offline for contract inspection")
 		}

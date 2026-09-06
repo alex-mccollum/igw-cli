@@ -1,5 +1,13 @@
 # Local qualification evidence
 
+`singleton-local.json` records the typed singleton workflows and opt-in live
+harness from a precommit worktree at `4ff0ce3`. Local checks include 102 preview
+cases against the two retained default catalogs, real CLI HTTP fixtures, full
+unit/build/33 smoke checks, docs, and focused resource/CLI/harness checks under
+the race detector and minimum Go version. The catalog parser stays at 22 and
+historical captures/receipts remain unchanged. Live qualification is pending;
+the opt-in test has only been compiled and its evidence projection tested.
+
 `urlencoded-input.json` records parser 22's bounded form construction and
 supported property decoding, from a precommit worktree at `cd91099`. The final
 full unit/build/33 smoke checks, focused catalog/core/CLI race checks, docs, and
