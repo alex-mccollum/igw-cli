@@ -135,6 +135,17 @@ func TestBuildPreservesEvidenceAndLoadsOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	captureBytes, err := os.ReadFile(filepath.Join(in.CaptureDir, "capture.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capture testgateway.Evidence
+	if err := json.Unmarshal(captureBytes, &capture); err != nil {
+		t.Fatal(err)
+	}
+	if m.CapturedAt == nil || !m.CapturedAt.Equal(capture.CapturedAt) || m.CapturedAt.After(m.CreatedAt) {
+		t.Fatal("reference did not preserve the actual capture date")
+	}
 	if len(m.Files) != 1 || m.Qualification.Evidence.URI != "evidence/qualification.json" || len(m.Modules) != 1 {
 		t.Fatalf("incorrect qualification: %+v", m)
 	}

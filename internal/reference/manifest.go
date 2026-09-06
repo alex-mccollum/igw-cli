@@ -57,6 +57,7 @@ type Manifest struct {
 	Version               string                   `json:"version"`
 	Name                  string                   `json:"name"`
 	CreatedAt             time.Time                `json:"createdAt"`
+	CapturedAt            *time.Time               `json:"capturedAt,omitempty"`
 	Image                 Image                    `json:"image"`
 	ModuleInventorySHA256 string                   `json:"moduleInventorySha256"`
 	ModuleProfile         *moduleprofile.Selection `json:"moduleProfile,omitempty"`

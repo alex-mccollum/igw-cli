@@ -10,6 +10,11 @@ SHA-256. Historical packets remain in Git at `65e643d`; format conversion does
 not renew their qualification. New packets are assembled by `igw-capture qualify`
 and retained separately from the runtime payload.
 
+The four `capturedAt` values were recovered from their original `capture.json`
+receipts at `65e643d`, after checking the archived manifest and capture file
+SHA-256 values and matching image/raw-document identity. Assembly dates,
+qualification identities, evidence hashes, and compressed payloads are unchanged.
+
 See [reference maintenance](../../../docs/reference-updates.md) and
 [the catalog contract](../../../docs/catalog.md). Review changes against the same
 module profile. Preserve vendor license metadata in the original document.

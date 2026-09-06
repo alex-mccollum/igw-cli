@@ -118,9 +118,19 @@ loads Gateway configuration, credentials, target cache, or network clients.
 `meta.reference.catalog` uses current policy `igw-contract/2`; pins compare this
 identity. `qualification.catalog` and `qualification.parserVersion` preserve
 what the original live evidence actually qualified. The summary's `parserVersion`
-identifies that historical qualification; `inspectionParserVersion` and
-`inspectionCatalog` are populated only after current parsing. `createdAt` retains
-the original assembly date and is never a live-target verification timestamp.
+identifies that historical qualification for compatibility. Prefer the explicit
+`qualification.parserVersion` for original qualification and
+`catalogParserVersion` for the parser recorded with the derived catalog (the
+manifest calls this `parserVersion`). `inspectionParserVersion` and
+`inspectionCatalog` are populated only after parsing in this invocation.
+
+`capturedAt` is the original Gateway document capture time. It is omitted when
+unknown, including older v2 bundles without this optional field; the human
+display says `unknown`. `createdAt` is the original bundle assembly date.
+Capture must not postdate assembly. Neither timestamp establishes live-target
+freshness, and inspection does not advance either one. Human listing includes
+capture dates; detailed output labels capture, assembly, qualification parser,
+and whether this invocation reparsed the document.
 Core references retain all 32 installed module records, including inactive ones.
 
 Format conversion does not renew workflow qualification. Converted built-ins

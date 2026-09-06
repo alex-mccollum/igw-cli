@@ -30,7 +30,9 @@ type Bundle struct {
 }
 
 // Summary identifies reference evidence without claiming live target freshness.
-// ParserVersion identifies qualification; InspectionParserVersion is set only
+// ParserVersion retains its historical qualification meaning for compatibility.
+// CatalogParserVersion identifies the manifest's derived catalog, while
+// InspectionParserVersion is set only
 // when a command has reparsed the document in this invocation. InspectionCatalog
 // reports current policy identity separately from the immutable recorded one.
 type Summary struct {
@@ -40,6 +42,7 @@ type Summary struct {
 	Version                 string                   `json:"version"`
 	Name                    string                   `json:"name"`
 	CreatedAt               time.Time                `json:"createdAt"`
+	CapturedAt              *time.Time               `json:"capturedAt,omitempty"`
 	Image                   Image                    `json:"image"`
 	ModuleInventorySHA256   string                   `json:"moduleInventorySha256"`
 	ModuleProfile           *moduleprofile.Selection `json:"moduleProfile,omitempty"`
@@ -47,6 +50,7 @@ type Summary struct {
 	ActiveModuleCount       int                      `json:"activeModuleCount"`
 	Catalog                 catalog.Identity         `json:"catalog"`
 	ParserVersion           string                   `json:"parserVersion"`
+	CatalogParserVersion    string                   `json:"catalogParserVersion"`
 	InspectionParserVersion string                   `json:"inspectionParserVersion,omitempty"`
 	InspectionCatalog       *catalog.Identity        `json:"inspectionCatalog,omitempty"`
 	Qualification           Qualification            `json:"qualification"`
@@ -60,9 +64,9 @@ func (b Bundle) Summary(m Manifest) Summary {
 		}
 	}
 	return Summary{Selector: b.selector, SourceKind: "reference", Origin: b.origin,
-		Version: m.Version, Name: m.Name, CreatedAt: m.CreatedAt, Image: m.Image,
+		Version: m.Version, Name: m.Name, CreatedAt: m.CreatedAt, CapturedAt: m.CapturedAt, Image: m.Image,
 		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleProfile: m.ModuleProfile, ModuleCount: len(m.Modules), ActiveModuleCount: active,
-		Catalog: m.Catalog, ParserVersion: m.Qualification.ParserVersion, Qualification: m.Qualification}
+		Catalog: m.Catalog, ParserVersion: m.Qualification.ParserVersion, CatalogParserVersion: m.ParserVersion, Qualification: m.Qualification}
 }
 
 func Directory(dir string) Bundle {

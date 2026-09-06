@@ -139,7 +139,13 @@ metadata includes `moduleCount` for all installed observations and
 `activeModuleCount` for those observed active; the core profile has 32 and 1
 respectively. `moduleProfile` identifies explicit newer qualification; older
 manifests retain their original all-active evidence. Human output shows both
-counts and labels historical manifests `legacy all-active`. The 8.3.0 references
+counts, the original capture date (`unknown` if absent), and labels historical
+manifests `legacy all-active`. JSON `capturedAt` records capture and `createdAt`
+records assembly; inspection renews neither. `qualification.parserVersion`,
+`catalogParserVersion`, and `inspectionParserVersion` distinguish original
+qualification, recorded catalog derivation, and parsing in this invocation.
+The last field is absent for manifest-only listing and payload inspection.
+The 8.3.0 references
 report tag-transfer workflows as unavailable. See the [qualification matrix](compatibility-matrix.md).
 
 `REFERENCE` accepts a bundled selector or a local bundle directory; prefix a

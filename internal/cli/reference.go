@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -141,4 +142,11 @@ func referenceProblem(err error) *result.Problem {
 		return result.FromError(err)
 	}
 	return &result.Problem{Kind: "reference", Message: "reference unavailable or invalid; use spec references list or select a complete bundle directory", Code: 2}
+}
+
+func referenceCaptureDate(ref reference.Summary) string {
+	if ref.CapturedAt == nil {
+		return "unknown"
+	}
+	return ref.CapturedAt.UTC().Format(time.RFC3339)
 }

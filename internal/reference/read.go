@@ -46,6 +46,9 @@ func readManifest(ctx context.Context, read fileReader) (Manifest, error) {
 	if !namePattern.MatchString(m.Name) || m.CreatedAt.IsZero() || m.ParserVersion == "" || m.Catalog.ContractPolicy != catalog.ContractPolicy || !validIdentity(m.Catalog) || !hashPattern.MatchString(m.ModuleInventorySHA256) {
 		return Manifest{}, errors.New("invalid reference identity or provenance")
 	}
+	if m.CapturedAt != nil && (m.CapturedAt.IsZero() || m.CapturedAt.After(m.CreatedAt)) {
+		return Manifest{}, errors.New("reference capture date must precede assembly")
+	}
 	q := m.Qualification
 	if q.Policy == "" || q.ParserVersion == "" || !validIdentity(q.Catalog) || !hashPattern.MatchString(q.TestBinarySHA256) || !hashPattern.MatchString(q.Evidence.SHA256) || q.Evidence.URI == "" || len(q.Evidence.URI) > 4096 || len(q.Scopes) == 0 {
 		return Manifest{}, errors.New("invalid reference qualification summary")

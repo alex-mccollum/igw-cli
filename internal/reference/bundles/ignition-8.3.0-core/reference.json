@@ -2,6 +2,7 @@
   "version": "igw/reference/v2",
   "name": "ignition-8.3.0-59de1d32eebf-d5ec3e55a0d8",
   "createdAt": "2026-09-05T19:45:51.221594423Z",
+  "capturedAt": "2026-09-05T19:40:20.771396459Z",
   "image": {
     "reference": "inductiveautomation/ignition@sha256:9fa22bb89a3004b95c6d7b281f690f9122ec53e4509f762fb23e10d5306eeafb",
     "configurationDigest": "sha256:3ccb0dd03f8237048a0cc8554abd29a25429d684be85bbbe0c8bd1c42a95be85",

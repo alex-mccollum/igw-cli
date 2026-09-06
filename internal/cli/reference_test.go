@@ -258,3 +258,26 @@ func TestReferenceCancellationAndHumanProvenance(t *testing.T) {
 		t.Fatal("human inspection omitted reference source")
 	}
 }
+
+func TestReferenceHumanDatesAndInspection(t *testing.T) {
+	app, out, _ := testApp(t, nil)
+	forbidReferenceRuntime(t, &app)
+	if err := app.Run(context.Background(), []string{"spec", "references", "list"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out.String(), "captured 2026-09-05T") != 4 {
+		t.Fatalf("listing lacks original capture dates: %s", out.String())
+	}
+	out.Reset()
+	if err := app.Run(context.Background(), []string{"spec", "references", "inspect", builtinReference}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Captured: 2026-09-05T16:04:53Z; assembled: 2026-09-05T16:22:05Z", "Qualification parser: libopenapi/", "Inspection parser: not reparsed in this invocation"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing %q in reference output: %s", want, out.String())
+		}
+	}
+	if got := referenceCaptureDate(reference.Summary{CreatedAt: time.Now()}); got != "unknown" {
+		t.Fatalf("unknown capture inferred from assembly: %s", got)
+	}
+}

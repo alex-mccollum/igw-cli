@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 )
@@ -66,3 +67,52 @@ func TestReferenceRejectsOldFormatsAndRelabeledIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestCaptureDateProvenanceAndLegacyAbsence(t *testing.T) {
+	bundle := Select("ignition-8.3.9-defaults")
+	m, err := bundle.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.CapturedAt == nil || m.CapturedAt.Format(time.RFC3339Nano) != "2026-09-05T16:04:53.330033397Z" {
+		t.Fatalf("original capture date missing: %v", m.CapturedAt)
+	}
+	for _, tc := range []struct {
+		name  string
+		date  *time.Time
+		valid bool
+	}{
+		{"recorded", m.CapturedAt, true},
+		{"unknown", nil, true},
+		{"zero", new(time.Time), false},
+		{"after assembly", timePointer(m.CreatedAt.Add(time.Second)), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := m
+			changed.CapturedAt = tc.date
+			raw, err := json.Marshal(changed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := readManifest(context.Background(), func(context.Context, string, int64) ([]byte, error) { return raw, nil })
+			if (err == nil) != tc.valid {
+				t.Fatalf("capture date validity: %v", err)
+			}
+			if !tc.valid {
+				return
+			}
+			summary := bundle.Summary(loaded)
+			if summary.CatalogParserVersion != m.ParserVersion || summary.ParserVersion != m.Qualification.ParserVersion || summary.InspectionParserVersion != "" || summary.InspectionCatalog != nil {
+				t.Fatal("inspection and qualification conflated")
+			}
+			if tc.date == nil && summary.CapturedAt != nil {
+				t.Fatal("unknown capture date inferred from assembly")
+			}
+			if tc.date == nil && strings.Contains(string(raw), "capturedAt") {
+				t.Fatal("unknown capture date should be omitted")
+			}
+		})
+	}
+}
+
+func timePointer(v time.Time) *time.Time { return &v }

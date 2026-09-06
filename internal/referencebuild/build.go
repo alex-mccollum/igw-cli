@@ -144,7 +144,7 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		return reference.Manifest{}, err
 	}
 	m := reference.Manifest{
-		Version: reference.Version, CreatedAt: time.Now().UTC(),
+		Version: reference.Version, CreatedAt: time.Now().UTC(), CapturedAt: &capture.CapturedAt,
 		Name:                  "ignition-" + strings.Fields(capture.GatewayVersion)[0] + "-" + capture.ModuleInventory.SHA256[:12] + "-" + capture.ContractSHA256[:12],
 		Image:                 reference.Image{Reference: capture.Image, ConfigurationDigest: capture.ImageID, Platform: capture.Platform, GatewayVersion: capture.GatewayVersion},
 		ModuleInventorySHA256: capture.ModuleInventory.SHA256,

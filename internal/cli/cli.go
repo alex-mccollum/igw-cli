@@ -332,7 +332,7 @@ func human(out io.Writer, r result.Result) error {
 	}
 	if references, ok := r.Data.([]reference.Summary); ok {
 		for _, item := range references {
-			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%d modules (%d active)\t%s\n", item.Selector, item.Image.GatewayVersion, referenceProfile(item), item.ModuleCount, item.ActiveModuleCount, item.Catalog.ContractSHA256); err != nil {
+			if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%d modules (%d active)\tcaptured %s\t%s\n", item.Selector, item.Image.GatewayVersion, referenceProfile(item), item.ModuleCount, item.ActiveModuleCount, referenceCaptureDate(item), item.Catalog.ContractSHA256); err != nil {
 				return err
 			}
 		}
@@ -340,6 +340,13 @@ func human(out io.Writer, r result.Result) error {
 	}
 	if ref := r.Meta.Reference; ref != nil {
 		if _, err := fmt.Fprintf(out, "Reference: %s (%s; %s; %d modules, %d active)\n", ref.Selector, ref.Image.GatewayVersion, referenceProfile(*ref), ref.ModuleCount, ref.ActiveModuleCount); err != nil {
+			return err
+		}
+		inspection := ref.InspectionParserVersion
+		if inspection == "" {
+			inspection = "not reparsed in this invocation"
+		}
+		if _, err := fmt.Fprintf(out, "Captured: %s; assembled: %s\nQualification parser: %s\nInspection parser: %s\n", referenceCaptureDate(*ref), ref.CreatedAt.UTC().Format(time.RFC3339), ref.Qualification.ParserVersion, inspection); err != nil {
 			return err
 		}
 	}
