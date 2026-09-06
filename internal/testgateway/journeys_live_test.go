@@ -237,6 +237,17 @@ func TestLiveWorkflowJourneys(t *testing.T) {
 	}
 	download("backup-export", "gateway.gwbk", "backup", "export")
 	download("logs-download", "system-logs.idb", "logs", "download")
+	initialBundle := ok("bundle-initial-contract", "api", "request", "GET /data/api/v1/diagnostics/bundle/status")
+	var bundleFields map[string]json.RawMessage
+	if json.Unmarshal(initialBundle.Data, &bundleFields) != nil {
+		t.Fatal("invalid initial bundle status")
+	}
+	var bundleState string
+	if json.Unmarshal(bundleFields["state"], &bundleState) != nil {
+		t.Fatal("missing initial bundle state")
+	}
+	_, bundleSizePresent := bundleFields["fileSize"]
+	t.Logf("initial bundle status: state=%q fileSizePresent=%t", bundleState, bundleSizePresent)
 	previewFile := filepath.Join(root, "preview.zip")
 	ok("bundle-preview", "diagnostics", "bundle", "collect", "--out", previewFile, "--dry-run")
 	if _, err := os.Stat(previewFile); !os.IsNotExist(err) {

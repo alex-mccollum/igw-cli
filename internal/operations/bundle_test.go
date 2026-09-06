@@ -22,9 +22,15 @@ func statusResult(state string, size int64) result.Result {
 }
 
 func TestBundleStatesRequireQualifiedStateAndSize(t *testing.T) {
-	for _, raw := range []string{`{}`, `{"state":"Valid"}`, `{"state":"Valid","fileSize":0}`, `{"state":"Valid","fileSize":null}`, `{"state":"Unknown","fileSize":5}`, `{"state":"Valid","fileSize":-1}`, `{"state":"Valid","fileSize":5,"state":"Generating"}`} {
+	for _, raw := range []string{`{}`, `{"state":"Valid"}`, `{"state":"Valid","fileSize":0}`, `{"state":"Valid","fileSize":null}`, `{"state":"Unknown","fileSize":5}`, `{"state":"Valid","fileSize":-1}`, `{"state":"Invalid","fileSize":null}`, `{"state":"Generating","fileSize":-1}`, `{"state":"Valid","fileSize":5,"state":"Generating"}`} {
 		if _, err := ParseBundleStatus([]byte(raw)); err == nil {
 			t.Fatalf("invalid status accepted: %s", raw)
+		}
+	}
+	for raw, want := range map[string]string{`{"state":"Invalid"}`: "empty", `{"state":"Generating"}`: "generating"} {
+		state, err := ParseBundleStatus([]byte(raw))
+		if err != nil || state.State != want || state.FileSize != 0 {
+			t.Fatalf("absent non-ready size rejected: %s", raw)
 		}
 	}
 	state, err := ParseBundleStatus([]byte(`{"state":"Generating","fileSize":500}`))
@@ -67,7 +73,7 @@ func TestBundleWorkflowOutcomesAndAtomicPublication(t *testing.T) {
 						if scenario == "download" {
 							return statusResult("Valid", 5)
 						}
-						return statusResult("Invalid", 0)
+						return result.Success(json.RawMessage(`{"state":"Invalid"}`))
 					}
 					if scenario == "timeout" {
 						cancel()

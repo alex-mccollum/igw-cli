@@ -49,10 +49,20 @@ func ParseBundleStatus(raw []byte) (BundleStatus, error) {
 	var object map[string]json.RawMessage
 	var state *string
 	var size *int64
-	if json.Unmarshal(raw, &object) != nil || json.Unmarshal(object["state"], &state) != nil || json.Unmarshal(object["fileSize"], &size) != nil || state == nil || size == nil || *size < 0 {
-		return BundleStatus{}, bundleProblem("response", "diagnostics status requires a state and nonnegative file size")
+	if json.Unmarshal(raw, &object) != nil || json.Unmarshal(object["state"], &state) != nil || state == nil {
+		return BundleStatus{}, bundleProblem("response", "diagnostics status requires a state")
 	}
-	status := BundleStatus{GatewayState: *state, FileSize: *size}
+	// Empty or generating bundles may omit fileSize. A ready bundle must
+	// still advertise a positive size before any download is published.
+	if value, present := object["fileSize"]; present {
+		if json.Unmarshal(value, &size) != nil || size == nil || *size < 0 {
+			return BundleStatus{}, bundleProblem("response", "diagnostics file size must be a nonnegative integer")
+		}
+	}
+	status := BundleStatus{GatewayState: *state}
+	if size != nil {
+		status.FileSize = *size
+	}
 	switch *state {
 	case "Invalid":
 		status.State = "empty"
@@ -60,7 +70,7 @@ func ParseBundleStatus(raw []byte) (BundleStatus, error) {
 		status.State = "generating"
 	case "Valid":
 		status.State = "ready"
-		if *size == 0 {
+		if status.FileSize == 0 {
 			return BundleStatus{}, bundleProblem("response", "ready diagnostics bundle has no bytes")
 		}
 	default:
