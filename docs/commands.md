@@ -322,7 +322,9 @@ Choose at most one. Text is not a file selector. `contentType` defaults to
 `application/json` when a body is supplied; specify `text/plain` for plain text.
 The offline command schema includes the complete manifest shape.
 
-The complete manifest is limited to 1 MiB and 100 items. Malformed JSON,
+The complete manifest is limited to 1 MiB and 100 items. A separate 1 MiB input
+budget counts values and every repeated query/header name before URL encoding;
+a compact array cannot bypass it. Malformed JSON,
 duplicate keys or IDs, unknown fields, and invalid input types fail before
 Gateway access. Each response is capped at 256 KiB. Use single-request commands
 for raw HTTP, file uploads, multipart input, and streamed artifacts. Batch items

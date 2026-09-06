@@ -1584,6 +1584,27 @@ reported a reachable Linux engine and no qualification containers; no recovery
 was attempted. The live runs will use a separately built executable and fresh
 evidence paths, with each image's lifecycle probe preceding its batch suite.
 
+Both clean-source batch runs passed from `2ddc7f4`, with 13 CLI checks (catalog
+capture plus 12 batch invocations), 29 ordered item results, and 15 operation
+requests per image. Each first passed all 10 lifecycle checks. The 8.3.9 and
+8.3.0 batch suites took 60.80 and 59.25 seconds respectively. Independent
+container queries were empty and the source checkout remained clean. Original
+results are in `bin/batch-live-v1/`, pending retained-evidence assembly.
+
+Post-run size review found that a compact query/header value array could repeat
+a long name many times on the wire while the batch budget counted that name
+only once. The pure validation regression reproduced both bypasses without
+sending a request (`bin/batch-expansion-before.log`). The budget now counts
+every repeated name before URL/header construction, and CLI regressions require
+refusal before runtime configuration or Gateway access. Bounded repetitions
+remain accepted. This guard is subsequent to the recorded live source; the
+receipts must retain their original source identity.
+The corrected batch regressions passed in `bin/batch-expansion-focused.log`.
+The full unit suite, both CLI builds, command-doc consistency, and docs lint
+passed in `bin/batch-final-gates.log`; legacy smoke built and exited 2 at the
+unconfigured `doctor` (`bin/batch-expansion-smoke.log`). No requests were sent
+by the expansion regressions, and no resource limits or host settings changed.
+
 ## References
 
 - [IA Gateway API documentation](https://www.docs.inductiveautomation.com/docs/8.3/platform/gateway/openapi)

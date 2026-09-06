@@ -211,3 +211,24 @@ func TestBatchCommandSchemaIsOffline(t *testing.T) {
 		t.Fatal("batch input schema missing")
 	}
 }
+
+func TestBatchExpandedInputsFailBeforeRuntime(t *testing.T) {
+	for _, location := range []string{"query", "headers"} {
+		t.Run(location, func(t *testing.T) {
+			key := strings.Repeat("x", 4096)
+			values := make([]string, execute.MaxBatchInputBytes/len(key)+1)
+			input, err := json.Marshal([]map[string]any{{"id": "read", "operation": "GET /unused", location: map[string][]string{key: values}}})
+			if err != nil || len(input) >= execute.MaxBatchInputBytes {
+				t.Fatal("fixture must be a small valid JSON manifest")
+			}
+			app, out, _ := testApp(t, nil)
+			app.ReadConfig = func() (config.File, error) { t.Fatal("expanded inputs reached runtime"); return config.File{}, nil }
+			if err := app.Run(context.Background(), []string{"api", "batch", "--input", string(input), "--json"}); err == nil {
+				t.Fatal("expanded input was accepted")
+			}
+			if got := decodeResult(t, out); got.Error.Code != 2 {
+				t.Fatal("expanded input refusal changed exit code")
+			}
+		})
+	}
+}

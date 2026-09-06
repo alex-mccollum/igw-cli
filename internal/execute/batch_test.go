@@ -246,6 +246,34 @@ func TestBatchReadOnlyContinuationAndExitPrecedence(t *testing.T) {
 	}
 }
 
+func TestBatchBoundsRepeatedInputNames(t *testing.T) {
+	for _, location := range []string{"query", "headers"} {
+		t.Run(location, func(t *testing.T) {
+			// A compact manifest can expand into a much larger request because
+			// each array entry repeats its field name on the wire.
+			key := strings.Repeat("x", 4096)
+			values := make([]string, MaxBatchInputBytes/len(key)+1)
+			item := BatchItem{ID: "read", Request: Request{Operation: "GET /state"}}
+			if location == "query" {
+				item.Request.Query = map[string][]string{key: values}
+			} else {
+				item.Request.Headers = map[string][]string{key: values}
+			}
+			if err := ValidateBatch([]BatchItem{item}); err == nil {
+				t.Fatal("repeated names bypassed the expanded input limit")
+			}
+			if location == "query" {
+				item.Request.Query = map[string][]string{"q": values}
+			} else {
+				item.Request.Headers = map[string][]string{"X": values}
+			}
+			if err := ValidateBatch([]BatchItem{item}); err != nil {
+				t.Fatalf("bounded repetitions were refused: %v", err)
+			}
+		})
+	}
+}
+
 func TestBatchRejectsInvalidStructureBeforeDiscovery(t *testing.T) {
 	for _, name := range []string{"empty", "too-many", "duplicate-id", "invalid-id", "raw", "per-item-confirmation", "artifact", "response-limit", "input-limit"} {
 		t.Run(name, func(t *testing.T) {

@@ -80,8 +80,10 @@ func ValidateBatch(items []BatchItem) error {
 				if key == "" || !consume(key) {
 					return result.Usage("invalid batch input names")
 				}
-				for _, value := range entries {
-					if !consume(value) {
+				for n, value := range entries {
+					// Serialization repeats the name for every value. Count it
+					// before constructing URLs or individual HTTP header lines.
+					if n > 0 && !consume(key) || !consume(value) {
 						return result.Usage("batch input exceeds its size or UTF-8 limits")
 					}
 				}
