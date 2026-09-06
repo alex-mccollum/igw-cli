@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ type ProcessObservation struct {
 	ContainerStartedAt  time.Time `json:"containerStartedAt"`
 	ContainerRestarts   int       `json:"containerRestarts"`
 	ProcessID           int64     `json:"processId"`
+	ExecutableName      string    `json:"executableName"`
 	StartTicks          uint64    `json:"startTicks"`
 	ContainmentVerified bool      `json:"containmentVerified"`
 	ObservedAt          time.Time `json:"observedAt"`
@@ -48,8 +51,16 @@ func (s *Session) ObserveJavaProcess(ctx context.Context, pid int64) (ProcessObs
 	if err := s.verifyKernelLimits(ctx); err != nil {
 		return out, err
 	}
-	path := "/proc/" + strconv.FormatInt(pid, 10)
-	raw, err = s.command(ctx, nil, "exec", s.ID, "cat", path+"/comm", path+"/stat")
+	proc := "/proc/" + strconv.FormatInt(pid, 10)
+	raw, err = s.command(ctx, nil, "exec", s.ID, "readlink", proc+"/exe")
+	if err != nil {
+		return out, err
+	}
+	executable := strings.TrimSpace(string(raw))
+	if !strings.HasPrefix(executable, "/") || path.Base(executable) != "java" {
+		return out, fmt.Errorf("API process %d runs executable %q; Java verification unavailable", pid, path.Base(executable))
+	}
+	raw, err = s.command(ctx, nil, "exec", s.ID, "cat", proc+"/comm", proc+"/stat")
 	if err != nil {
 		return out, err
 	}
@@ -57,14 +68,16 @@ func (s *Session) ObserveJavaProcess(ctx context.Context, pid int64) (ProcessObs
 	if err != nil {
 		return out, err
 	}
-	return ProcessObservation{ContainerID: s.ID, ContainerStartedAt: identity.StartedAt, ContainerRestarts: identity.Restarts, ProcessID: pid, StartTicks: ticks, ContainmentVerified: true, ObservedAt: time.Now().UTC()}, nil
+	return ProcessObservation{ContainerID: s.ID, ContainerStartedAt: identity.StartedAt, ContainerRestarts: identity.Restarts, ProcessID: pid, ExecutableName: "java", StartTicks: ticks, ContainmentVerified: true, ObservedAt: time.Now().UTC()}, nil
 }
 
 func javaStartTicks(raw []byte, pid int64) (uint64, error) {
 	comm, stat, ok := strings.Cut(string(raw), "\n")
-	prefix := strconv.FormatInt(pid, 10) + " (java) "
-	if !ok || comm != "java" || !strings.HasPrefix(stat, prefix) {
-		return 0, errors.New("API process ID did not identify the expected Java process")
+	// Linux comm is a thread name, which the JVM can change independently of
+	// its executable. Match the two proc observations without assuming "java".
+	prefix := strconv.FormatInt(pid, 10) + " (" + comm + ") "
+	if !ok || comm == "" || len(comm) > 64 || !strings.HasPrefix(stat, prefix) {
+		return 0, errors.New("API process ID and process status did not agree")
 	}
 	fields := strings.Fields(strings.TrimPrefix(stat, prefix))
 	// fields[0] is state (field 3); starttime is field 22.

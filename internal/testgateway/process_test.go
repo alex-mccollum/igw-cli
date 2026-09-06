@@ -16,6 +16,9 @@ func TestJavaProcessStartTime(t *testing.T) {
 	if err != nil || ticks != 246810 {
 		t.Fatalf("wrong /proc field: %d %v", ticks, err)
 	}
+	if ticks, err := javaStartTicks([]byte(strings.ReplaceAll(javaProcessFixture, "java", "Main Thread")), 42); err != nil || ticks != 246810 {
+		t.Fatal("JVM thread naming changed process start identity")
+	}
 	for _, raw := range []string{"", strings.Replace(javaProcessFixture, "java\n", "shell\n", 1), strings.Replace(javaProcessFixture, "42 (java)", "43 (java)", 1), strings.Replace(javaProcessFixture, " S ", " Z ", 1), "java\n42 (java) S 1", strings.Replace(javaProcessFixture, "246810", "-1", 1), strings.Replace(javaProcessFixture, "246810", "0", 1)} {
 		if _, err := javaStartTicks([]byte(raw), 42); err == nil {
 			t.Fatal("unqualified process status accepted")
@@ -24,7 +27,7 @@ func TestJavaProcessStartTime(t *testing.T) {
 }
 
 func TestProcessObservationRequiresOwnershipAndContainment(t *testing.T) {
-	for _, scenario := range []string{"valid", "unowned", "closed", "foreign", "wrong id", "stopped", "restarted", "config", "kernel", "pid"} {
+	for _, scenario := range []string{"valid", "unowned", "closed", "foreign", "wrong id", "stopped", "restarted", "config", "kernel", "pid", "executable"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := &fakeDocker{t: t, owner: "owner"}
 			s := &Session{ID: fixtureID, ImageID: fixtureImageID, owner: "owner", created: true}
@@ -56,12 +59,21 @@ func TestProcessObservationRequiresOwnershipAndContainment(t *testing.T) {
 					}
 					return json.Marshal(map[string]any{"id": id, "owner": owner, "running": running, "restarts": restarts, "startedAt": "2026-09-06T00:00:00Z"})
 				}
+				if args[0] == "exec" && args[2] == "readlink" {
+					if args[1] != fixtureID || len(args) != 4 || args[3] != "/proc/42/exe" {
+						t.Fatal("executable lookup exceeded the owned read scope")
+					}
+					if scenario == "executable" {
+						return []byte("/usr/bin/sh\n"), nil
+					}
+					return []byte("/opt/java/bin/java\n"), nil
+				}
 				if args[0] == "exec" && args[3] == "/proc/42/comm" {
 					if args[1] != fixtureID || len(args) != 5 || args[2] != "cat" || args[4] != "/proc/42/stat" {
 						t.Fatal("process observation exceeded the owned read scope")
 					}
 					procReads++
-					return []byte(javaProcessFixture), nil
+					return []byte(strings.ReplaceAll(javaProcessFixture, "java", "Main Thread")), nil
 				}
 				return f.run(ctx, input, args...)
 			}

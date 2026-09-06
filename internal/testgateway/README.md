@@ -30,12 +30,17 @@ Only the Java Gateway process is restarted through the advertised API.
 
 Before and after that command, `ObserveJavaProcess` verifies the exact owned
 container, image, loopback binding, Docker limits, and running cgroup limits.
-It reads the API-reported PID's `comm` and `stat` inside that container, requiring
+It checks the API-reported PID's `exe` link and reads its `comm` and `stat`, requiring
 a Java process with a later start time after restart. The start counter is
 [Linux `/proc/PID/stat` field 22](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html).
 No environment or command line is captured. The container ID/start time must
 remain unchanged and its Docker restart count must remain zero. No Docker,
 Docker Desktop, or WSL restart/recovery command is used.
+
+The executable identifies Java; `comm` is a thread name and can change while
+the process remains Java. The first restart qualification attempt exposed this
+harness assumption during its independent baseline check. It stopped before
+any restart POST and cleaned up; that failed receipt remains historical.
 
 `restart.json` retains projected CLI evidence, hashed node identity, pending
 task counts, actual request counts, exact-confirmation counts, process evidence,
