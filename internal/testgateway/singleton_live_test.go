@@ -117,11 +117,6 @@ func TestLiveSingletonResources(t *testing.T) {
 		}
 	}
 	before := s.run("get-before", nil, "resource", "get", kind)
-	if !before.OK && inputHTTPStatus(before) == 404 && s.last().OperationRequests == 1 {
-		preview(s.run("initial-create-preview", nil, "resource", "create", kind, "--body", metadata, "--dry-run"), "create")
-		completed(s.run("initial-create", nil, "resource", "create", kind, "--body", metadata, "--yes"), "create")
-		before = get("created-baseline")
-	}
 	baseline := state(before)
 	preview(s.run("update-preview", nil, "resource", "update", kind, "--body", changed, "--dry-run"), "update")
 	afterPreview := state(get("update-preview-unchanged"))
@@ -186,13 +181,28 @@ func TestLiveSingletonResources(t *testing.T) {
 	// independent verification. The original config request remains above.
 	completed(s.run("metadata-recreate-delete", nil, "resource", "delete", kind, "--if-signature", signature(recreated), "--yes"), "delete")
 	preview(s.run("metadata-create-preview", nil, "resource", "create", kind, "--body", metadata, "--dry-run"), "create")
-	completed(s.run("metadata-create", nil, "resource", "create", kind, "--body", metadata, "--yes"), "create")
-	final := state(get("metadata-readback"))
-	_ = json.Unmarshal([]byte(metadata), &submitted)
-	for _, field := range []string{"description", "enabled"} {
-		if !jsonvalue.Equivalent(submitted[field], final[field], false) {
-			t.Fatal("singleton metadata creation did not preserve requested fields")
+	metadataResult := s.run("metadata-create", nil, "resource", "create", kind, "--body", metadata, "--yes")
+	if metadataResult.OK {
+		completed(metadataResult, "create")
+		final := state(get("metadata-readback"))
+		_ = json.Unmarshal([]byte(metadata), &submitted)
+		for _, field := range []string{"description", "enabled"} {
+			if !jsonvalue.Equivalent(submitted[field], final[field], false) {
+				t.Fatal("singleton metadata creation did not preserve requested fields")
+			}
 		}
+	} else {
+		// The selected 8.3.0 Gateway rejects creation without config. Retain
+		// that negative result and independently establish continued absence.
+		e := s.last().Resource
+		if metadataResult.Outcome != "failed" || metadataResult.Error == nil || metadataResult.Error.Kind != "resource_rejected" || metadataResult.Error.Code != 7 || s.last().OperationRequests != 3 || e == nil || e.State != "unchanged" || e.Checks == nil || e.Checks.Acknowledged || e.Checks.MatchingChanges != 0 || !e.Checks.ReadbackValid {
+			t.Fatal("unexpected metadata-only singleton creation outcome")
+		}
+		absent := get("metadata-rejection-readback")
+		if absent.OK || inputHTTPStatus(absent) != 404 || s.last().OperationRequests != 1 {
+			t.Fatal("rejected metadata creation did not preserve absence")
+		}
+		t.Log("metadata-only singleton creation rejected; complete translations creation is not qualified")
 	}
 	s.completed = true
 }

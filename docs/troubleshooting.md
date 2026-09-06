@@ -72,3 +72,14 @@ corrections. Do not infer undocumented state or permissions from a schema.
 Generic raw requests remain available with explicit confirmation but do not
 claim schema validation. Verification failures retain their stated evidence
 and limits; see `docs/catalog.md` and `docs/compatibility-matrix.md`.
+
+## Translations singleton qualification limit
+
+On the pinned 8.3.0 Gateway, translations creation with `config` was acknowledged,
+but both workflow and independent readback omitted `config`, despite its presence
+in the advertised schema. The CLI reports `uncertain` and exit 7. Metadata-only
+creation was rejected. Neither observation proves whether configuration was
+stored or applied. Do not replay an uncertain write automatically. Metadata
+update, stale-signature refusal, and deletion were verified; complete translations
+creation is not qualified. See the retained
+[original attempts](../internal/testgateway/testdata/singleton/attempts/README.md).
