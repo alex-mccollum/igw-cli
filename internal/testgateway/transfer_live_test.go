@@ -162,6 +162,7 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 	if json.Unmarshal(discovered.Data, &capabilities) != nil || discovered.Meta.Catalog == nil || synced.Meta.Catalog == nil || discovered.Meta.Catalog.ContractSHA256 != synced.Meta.Catalog.ContractSHA256 {
 		t.Fatal("tag capabilities were not derived from the synchronized catalog")
 	}
+	capabilities = qualificationTagCapabilities(t, capabilities)
 	tagsAvailable, err := reference.TagRoundTripAvailable(capabilities)
 	if err != nil {
 		t.Fatal(err)

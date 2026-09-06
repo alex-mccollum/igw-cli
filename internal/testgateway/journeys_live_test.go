@@ -181,7 +181,7 @@ func TestLiveWorkflowJourneys(t *testing.T) {
 	if json.Unmarshal(capabilities.Data, &assessed) != nil {
 		t.Fatal("invalid capabilities")
 	}
-	tagsAvailable, err := reference.TagRoundTripAvailable(assessed)
+	tagsAvailable, err := reference.TagRoundTripAvailable(qualificationTagCapabilities(t, assessed))
 	if err != nil {
 		t.Fatal(err)
 	}
