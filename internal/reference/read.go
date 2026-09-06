@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/jsonvalue"
-	"github.com/alex-mccollum/igw-cli/internal/moduleprofile"
 )
 
 var hashPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -31,100 +29,74 @@ func Read(ctx context.Context, dir string) (Manifest, error) {
 	return Directory(dir).Read(ctx)
 }
 
-func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
+// readManifest supports cheap listing. Payload integrity is checked when a
+// reference is inspected, exported, or opened, never inferred from listing.
+func readManifest(ctx context.Context, read fileReader) (Manifest, error) {
 	b, err := read(ctx, "reference.json", MaxManifestBytes)
 	if err != nil {
 		return Manifest{}, err
 	}
 	var m Manifest
-	if jsonvalue.Validate(b) != nil || json.Unmarshal(b, &m) != nil || m.Version != Version || !namePattern.MatchString(m.Name) || m.CreatedAt.IsZero() || m.ParserVersion == "" || !catalog.SupportedContractPolicy(m.Catalog.ContractPolicy) || !hashPattern.MatchString(m.Catalog.RawSHA256) || !hashPattern.MatchString(m.Catalog.DocumentSHA256) || !hashPattern.MatchString(m.Catalog.ContractSHA256) || !hashPattern.MatchString(m.ModuleInventorySHA256) {
-		return Manifest{}, errors.New("invalid or unsupported reference manifest")
+	if jsonvalue.Validate(b) != nil || json.Unmarshal(b, &m) != nil {
+		return Manifest{}, errors.New("invalid reference manifest")
 	}
-	if err := m.Qualification.validate(); err != nil {
-		return Manifest{}, err
+	if m.Version != Version {
+		return Manifest{}, errors.New("unsupported reference format; export a current bundled reference or import the raw OpenAPI document")
+	}
+	if !namePattern.MatchString(m.Name) || m.CreatedAt.IsZero() || m.ParserVersion == "" || m.Catalog.ContractPolicy != catalog.ContractPolicy || !validIdentity(m.Catalog) || !hashPattern.MatchString(m.ModuleInventorySHA256) {
+		return Manifest{}, errors.New("invalid reference identity or provenance")
+	}
+	q := m.Qualification
+	if q.Policy == "" || q.ParserVersion == "" || !validIdentity(q.Catalog) || !hashPattern.MatchString(q.TestBinarySHA256) || !hashPattern.MatchString(q.Evidence.SHA256) || q.Evidence.URI == "" || len(q.Evidence.URI) > 4096 || len(q.Scopes) == 0 {
+		return Manifest{}, errors.New("invalid reference qualification summary")
+	}
+	if !imagePattern.MatchString(m.Image.Reference) || !imageIDPattern.MatchString(m.Image.ConfigurationDigest) || m.Image.Platform != "linux/amd64" || m.Image.GatewayVersion == "" || len(m.Modules) == 0 || len(m.Modules) > 2000 {
+		return Manifest{}, errors.New("invalid reference image or module provenance")
 	}
 	if m.ModuleProfile != nil {
 		if err := m.ModuleProfile.Validate(); err != nil {
 			return Manifest{}, err
 		}
 	}
-	if !imagePattern.MatchString(m.Image.Reference) || !imageIDPattern.MatchString(m.Image.ConfigurationDigest) || m.Image.Platform != "linux/amd64" || m.Image.GatewayVersion == "" || m.Comparison.AfterIdentity != m.Catalog || m.Comparison.BeforeIdentity.ContractPolicy != m.Catalog.ContractPolicy || m.Comparison.ContractEqual != (m.Comparison.BeforeIdentity.ContractSHA256 == m.Catalog.ContractSHA256) || m.Comparison.DocumentEqual != (m.Comparison.BeforeIdentity.DocumentSHA256 == m.Catalog.DocumentSHA256) {
-		return Manifest{}, errors.New("inconsistent reference provenance or qualification scope")
-	}
-	compatibility := "requires_review"
-	if m.Comparison.ContractEqual {
-		compatibility = "unchanged_under_policy"
-	}
-	if m.Comparison.Compatibility != compatibility || len(m.Modules) == 0 || len(m.Modules) > 2000 {
-		return Manifest{}, errors.New("invalid reference comparison or module profile")
-	}
 	last := ""
 	for _, module := range m.Modules {
-		if !strings.HasPrefix(module.ID, "com.inductiveautomation.") || module.ID <= last || len(module.ID) > 256 || module.Version == "" || len(module.Version) > 256 || (m.ModuleProfile == nil && module.State != "ACTIVE") || module.Collection != "healthy" {
-			return Manifest{}, errors.New("invalid qualified reference module profile")
+		if !strings.HasPrefix(module.ID, "com.inductiveautomation.") || module.ID <= last || len(module.ID) > 256 || module.Version == "" || len(module.Version) > 256 || module.Collection != "healthy" || (module.State != "ACTIVE" && module.State != "INACTIVE") {
+			return Manifest{}, errors.New("invalid reference module summary")
 		}
 		last = module.ID
 	}
-	expected := map[string]bool{}
-	for _, path := range RequiredFiles() {
-		expected[path] = true
-	}
-	if len(m.Files) != len(expected) {
-		return Manifest{}, errors.New("reference has an incomplete payload list")
-	}
-	for _, file := range m.Files {
-		if !expected[file.Path] || file.Bytes <= 0 || file.Bytes > fileLimit(file.Path) || !hashPattern.MatchString(file.SHA256) {
-			return Manifest{}, errors.New("reference contains an invalid or duplicate payload descriptor")
-		}
-		delete(expected, file.Path)
-		b, err := read(ctx, file.Path, fileLimit(file.Path))
-		if err != nil {
-			return Manifest{}, err
-		}
-		sum := sha256.Sum256(b)
-		if int64(len(b)) != file.Bytes || hex.EncodeToString(sum[:]) != file.SHA256 {
-			return Manifest{}, fmt.Errorf("reference payload checksum mismatch: %s", file.Path)
-		}
-		if file.Path == "capture.json" {
-			if err := m.validateCapturedProfile(b); err != nil {
-				return Manifest{}, err
-			}
-		}
+	if len(m.Files) != 1 || m.Files[0].Path != "openapi.json.gz" || m.Files[0].Bytes <= 0 || m.Files[0].Bytes > fileLimit("openapi.json.gz") || !hashPattern.MatchString(m.Files[0].SHA256) {
+		return Manifest{}, errors.New("reference requires one bounded OpenAPI payload")
 	}
 	return m, nil
 }
 
-func (m Manifest) validateCapturedProfile(raw []byte) error {
-	var c struct {
-		Whitelist []string                 `json:"moduleWhitelist"`
-		Inventory *moduleprofile.Inventory `json:"moduleInventory"`
+func validIdentity(id catalog.Identity) bool {
+	return hashPattern.MatchString(id.RawSHA256) && hashPattern.MatchString(id.DocumentSHA256) && hashPattern.MatchString(id.ContractSHA256) && id.ContractPolicy != ""
+}
+
+func readBundle(ctx context.Context, read fileReader) (Manifest, error) {
+	m, err := readManifest(ctx, read)
+	if err != nil {
+		return Manifest{}, err
 	}
-	if jsonvalue.Validate(raw) != nil || json.Unmarshal(raw, &c) != nil {
-		return errors.New("invalid captured module profile")
+	if _, err := readDocument(ctx, read, m); err != nil {
+		return Manifest{}, err
 	}
-	// Historical qualification required every observed module to be active,
-	// without limiting the recorded whitelist. Preserve that rule, while still
-	// checking the complete inventory so inactive modules cannot be filtered out.
-	profile, _ := moduleprofile.Select("image-defaults")
-	if m.ModuleProfile != nil {
-		var err error
-		profile, err = moduleprofile.FromWhitelist(c.Whitelist)
-		if err != nil || profile.Name != m.ModuleProfile.Name {
-			return errors.New("reference profile differs from the captured selection")
-		}
+	return m, nil
+}
+
+func readDocument(ctx context.Context, read fileReader, m Manifest) ([]byte, error) {
+	file := m.Files[0]
+	b, err := read(ctx, file.Path, fileLimit(file.Path))
+	if err != nil {
+		return nil, err
 	}
-	if err := profile.ValidateInventory(c.Inventory); err != nil {
-		return err
+	sum := sha256.Sum256(b)
+	if int64(len(b)) != file.Bytes || hex.EncodeToString(sum[:]) != file.SHA256 {
+		return nil, errors.New("reference OpenAPI payload checksum mismatch")
 	}
-	if c.Inventory.SHA256 != m.ModuleInventorySHA256 || len(c.Inventory.Modules) != len(m.Modules) {
-		return errors.New("reference module inventory differs from the capture")
-	}
-	for i, module := range c.Inventory.Modules {
-		if m.Modules[i] != (Module{ID: module.ID, Version: module.Version, State: module.State, Collection: module.Collection}) {
-			return errors.New("reference module metadata differs from its captured observation")
-		}
-	}
-	return nil
+	return b, nil
 }
 
 // OpenCatalog verifies a complete reference, then parses its exact vendor JSON
@@ -135,19 +107,16 @@ func OpenCatalog(ctx context.Context, dir string) (Manifest, *catalog.Catalog, e
 }
 
 func (bundle Bundle) OpenCatalog(ctx context.Context) (Manifest, *catalog.Catalog, error) {
-	m, err := bundle.Read(ctx)
+	if bundle.read == nil || bundle.selector == "" {
+		return Manifest{}, nil, errors.New("reference selector is required")
+	}
+	m, err := readManifest(ctx, bundle.read)
 	if err != nil {
 		return Manifest{}, nil, err
 	}
-	b, err := bundle.read(ctx, "openapi.json.gz", fileLimit("openapi.json.gz"))
+	b, err := readDocument(ctx, bundle.read, m)
 	if err != nil {
 		return Manifest{}, nil, err
-	}
-	sum := sha256.Sum256(b)
-	for _, file := range m.Files {
-		if file.Path == "openapi.json.gz" && (int64(len(b)) != file.Bytes || hex.EncodeToString(sum[:]) != file.SHA256) {
-			return Manifest{}, nil, errors.New("reference document changed before parsing")
-		}
 	}
 	raw, err := gunzip(b)
 	if err != nil {
@@ -160,14 +129,9 @@ func (bundle Bundle) OpenCatalog(ctx context.Context) (Manifest, *catalog.Catalo
 	if err != nil {
 		return Manifest{}, nil, err
 	}
-	original, err := c.IdentityForPolicy(m.Catalog.ContractPolicy)
-	if err != nil || original != m.Catalog {
+	if c.Identity() != m.Catalog {
 		c.Close()
 		return Manifest{}, nil, errors.New("reference catalog identity does not match its manifest")
-	}
-	if err := m.Qualification.validateCatalog(c); err != nil {
-		c.Close()
-		return Manifest{}, nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		c.Close()

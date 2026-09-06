@@ -102,7 +102,7 @@ func fixtureInputsForDocument(t *testing.T, document string) Inputs {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tags, err := reference.TagRoundTripAvailable(capabilities)
+	tags, err := testgateway.TagRoundTripAvailable(capabilities)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,8 +135,16 @@ func TestBuildPreservesEvidenceAndLoadsOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !m.Comparison.ContractEqual || m.Comparison.DocumentEqual || len(m.Files) != 9 || len(m.Modules) != 1 {
+	if len(m.Files) != 1 || m.Qualification.Evidence.URI != "evidence/qualification.json" || len(m.Modules) != 1 {
 		t.Fatalf("incorrect qualification: %+v", m)
+	}
+	evidenceRaw, err := os.ReadFile(filepath.Join(in.Out, "evidence", "qualification.json"))
+	var evidence struct {
+		Comparison catalog.Comparison `json:"comparison"`
+		Files      []reference.File   `json:"files"`
+	}
+	if err != nil || json.Unmarshal(evidenceRaw, &evidence) != nil || digest(evidenceRaw) != m.Qualification.Evidence.SHA256 || !evidence.Comparison.ContractEqual || evidence.Comparison.DocumentEqual || len(evidence.Files) != 8 {
+		t.Fatal("runtime summary lost its audit packet or comparison")
 	}
 	loaded, c, err := reference.OpenCatalog(context.Background(), in.Out)
 	if err != nil {
@@ -148,7 +156,7 @@ func TestBuildPreservesEvidenceAndLoadsOffline(t *testing.T) {
 	}
 	for _, pair := range [][2]string{{in.Resources, "resource-workflows.json"}, {in.Lifecycle, "lifecycle.json"}, {filepath.Join(in.CaptureDir, "capture.json"), "capture.json"}} {
 		a, _ := os.ReadFile(pair[0])
-		b, _ := os.ReadFile(filepath.Join(in.Out, pair[1]))
+		b, _ := os.ReadFile(filepath.Join(in.Out, "evidence", pair[1]))
 		if string(a) != string(b) {
 			t.Fatal("original evidence changed")
 		}

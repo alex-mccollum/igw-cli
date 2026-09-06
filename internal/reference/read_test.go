@@ -3,58 +3,66 @@ package reference
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 )
 
-func TestQualifiedReferenceRetainsCompleteEvidence(t *testing.T) {
-	m, err := Read(context.Background(), "bundles/ignition-8.3.9-defaults")
+func TestCompactReferencePreservesHistoricalProvenance(t *testing.T) {
+	bundle := Select("ignition-8.3.9-defaults")
+	m, c, err := bundle.OpenCatalog(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(m.Modules) != 32 || len(m.Files) != 9 || m.Image.GatewayVersion != "8.3.9 (b2026082511)" || m.Catalog.ContractSHA256 != "fce0593c41f1d0ae31c0647c34bb10ccebf6f44958c3c55913c887654ff9ccbc" {
-		t.Fatal("qualified reference scope or identity changed without review")
+	defer c.Close()
+	if len(m.Modules) != 32 || len(m.Files) != 1 || m.Catalog != c.Identity() || m.Catalog.ContractPolicy != catalog.ContractPolicy || m.Qualification.Catalog.ContractPolicy != "igw-contract/1" || m.Qualification.ParserVersion == catalog.ParserVersion || !strings.Contains(m.Qualification.Evidence.URI, "65e643d") {
+		t.Fatal("format conversion relabeled qualification or lost original provenance")
 	}
 }
 
-func TestHistoricalReferenceRejectsPolicyRelabeling(t *testing.T) {
-	ctx := context.Background()
-	bundle := Select("ignition-8.3.9-defaults")
-	m, err := bundle.Read(ctx)
+func TestManifestListingDoesNotReadPayload(t *testing.T) {
+	bundle := Select("ignition-8.3.0-core")
+	_, err := readManifest(context.Background(), func(ctx context.Context, name string, limit int64) ([]byte, error) {
+		if name != "reference.json" {
+			t.Fatalf("listing read payload %s", name)
+		}
+		return bundle.read(ctx, name, limit)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, policy := range []string{"unknown-policy", catalog.ContractPolicy} {
+}
+
+func TestReferenceRejectsOldFormatsAndRelabeledIdentity(t *testing.T) {
+	bundle := Select("ignition-8.3.0-core")
+	m, err := bundle.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"old format", "old policy", "changed hash"} {
 		changed := m
-		changed.Catalog.ContractPolicy = policy
-		changed.Comparison.AfterIdentity = changed.Catalog
-		changed.Comparison.BeforeIdentity.ContractPolicy = policy
-		b, err := json.Marshal(changed)
-		if err != nil {
-			t.Fatal(err)
+		switch kind {
+		case "old format":
+			changed.Version = "igw/reference/v1"
+		case "old policy":
+			changed.Catalog.ContractPolicy = "igw-contract/1"
+		case "changed hash":
+			changed.Catalog.ContractSHA256 = strings.Repeat("0", 64)
 		}
+		raw, _ := json.Marshal(changed)
 		modified := bundle
 		modified.read = func(ctx context.Context, name string, limit int64) ([]byte, error) {
 			if name == "reference.json" {
-				return b, nil
+				return raw, nil
 			}
 			return bundle.read(ctx, name, limit)
 		}
-		if _, c, err := modified.OpenCatalog(ctx); err == nil {
+		if _, c, err := modified.OpenCatalog(context.Background()); err == nil {
 			c.Close()
-			t.Fatal("historical hash was accepted under a different identity policy")
+			t.Fatalf("accepted %s", kind)
+		} else if kind == "old format" && !strings.Contains(err.Error(), "import the raw OpenAPI") {
+			t.Fatal("missing recovery instruction")
 		}
-	}
-	// Comparison flags cannot legitimize hashes calculated under two policies.
-	m.Comparison.BeforeIdentity.ContractPolicy = catalog.ContractPolicy
-	b, _ := json.Marshal(m)
-	if _, err := readBundle(ctx, func(ctx context.Context, name string, limit int64) ([]byte, error) {
-		if name == "reference.json" {
-			return b, nil
-		}
-		return bundle.read(ctx, name, limit)
-	}); err == nil {
-		t.Fatal("cross-policy comparison was accepted as qualification evidence")
 	}
 }

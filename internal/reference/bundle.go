@@ -16,7 +16,7 @@ import (
 
 // Only reviewed bundle payloads are included; the contributor README is not.
 //
-//go:embed bundles/*/*
+//go:embed bundles/*/reference.json bundles/*/openapi.json.gz
 var bundled embed.FS
 
 type fileReader func(context.Context, string, int64) ([]byte, error)
@@ -62,7 +62,7 @@ func (b Bundle) Summary(m Manifest) Summary {
 	return Summary{Selector: b.selector, SourceKind: "reference", Origin: b.origin,
 		Version: m.Version, Name: m.Name, CreatedAt: m.CreatedAt, Image: m.Image,
 		ModuleInventorySHA256: m.ModuleInventorySHA256, ModuleProfile: m.ModuleProfile, ModuleCount: len(m.Modules), ActiveModuleCount: active,
-		Catalog: m.Catalog, ParserVersion: m.ParserVersion, Qualification: m.Qualification}
+		Catalog: m.Catalog, ParserVersion: m.Qualification.ParserVersion, Qualification: m.Qualification}
 }
 
 func Directory(dir string) Bundle {
@@ -98,7 +98,7 @@ func (b Bundle) Read(ctx context.Context) (Manifest, error) {
 	return readBundle(ctx, b.read)
 }
 
-// List returns sorted embedded selectors with verified payload integrity.
+// List reads sorted embedded manifests without decompressing or reading payloads.
 func List(ctx context.Context) ([]Summary, error) {
 	entries, err := bundled.ReadDir("bundles")
 	if err != nil {
@@ -110,7 +110,7 @@ func List(ctx context.Context) ([]Summary, error) {
 			continue
 		}
 		bundle := Select(entry.Name())
-		m, err := bundle.Read(ctx)
+		m, err := readManifest(ctx, bundle.read)
 		if err != nil {
 			return nil, err
 		}

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
-	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
 
@@ -100,8 +99,8 @@ func validateWorkflow(raw []byte, kind string, capture testgateway.Evidence, bin
 	tags := false
 	if kind == "project-tag-workflows" {
 		var err error
-		tags, err = reference.TagRoundTripAvailable(capabilities)
-		if err != nil || !reference.SameCapabilities(r.Capabilities, capabilities) {
+		tags, err = testgateway.TagRoundTripAvailable(capabilities)
+		if err != nil || !testgateway.SameCapabilities(r.Capabilities, capabilities) {
 			return errors.New("workflow capability evidence does not match the captured catalog")
 		}
 	}

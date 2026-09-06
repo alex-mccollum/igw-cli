@@ -22,7 +22,6 @@ import (
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/cli"
 	"github.com/alex-mccollum/igw-cli/internal/config"
-	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/result"
 	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
@@ -163,7 +162,7 @@ func testLiveProjectTag(t *testing.T, workflows bool) {
 		t.Fatal("tag capabilities were not derived from the synchronized catalog")
 	}
 	capabilities = qualificationTagCapabilities(t, capabilities)
-	tagsAvailable, err := reference.TagRoundTripAvailable(capabilities)
+	tagsAvailable, err := testgateway.TagRoundTripAvailable(capabilities)
 	if err != nil {
 		t.Fatal(err)
 	}

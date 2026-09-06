@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
-	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/resource"
+	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 )
 
 type journeyExecutable struct {
@@ -181,7 +181,7 @@ func TestLiveWorkflowJourneys(t *testing.T) {
 	if json.Unmarshal(capabilities.Data, &assessed) != nil {
 		t.Fatal("invalid capabilities")
 	}
-	tagsAvailable, err := reference.TagRoundTripAvailable(qualificationTagCapabilities(t, assessed))
+	tagsAvailable, err := testgateway.TagRoundTripAvailable(qualificationTagCapabilities(t, assessed))
 	if err != nil {
 		t.Fatal(err)
 	}

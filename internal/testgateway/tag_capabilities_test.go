@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
-	"github.com/alex-mccollum/igw-cli/internal/reference"
+	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
@@ -20,7 +20,7 @@ func qualificationTagCapabilities(t *testing.T, all []catalog.CapabilityAssessme
 			}
 		}
 	}
-	if _, err := reference.TagRoundTripAvailable(tags); err != nil {
+	if _, err := testgateway.TagRoundTripAvailable(tags); err != nil {
 		t.Fatal(err)
 	}
 	return tags
@@ -39,11 +39,11 @@ func TestQualificationTagCapabilitiesFromDiscovery(t *testing.T) {
 	if len(all) <= len(workflow.TagRequirements()) {
 		t.Fatal("fixture does not include operational capabilities")
 	}
-	if _, err := reference.TagRoundTripAvailable(all); err == nil {
+	if _, err := testgateway.TagRoundTripAvailable(all); err == nil {
 		t.Fatal("tag policy accepted unrelated capabilities")
 	}
 	tags := qualificationTagCapabilities(t, all)
-	available, err := reference.TagRoundTripAvailable(tags)
+	available, err := testgateway.TagRoundTripAvailable(tags)
 	if err != nil || available {
 		t.Fatal("absent tag routes not recognized")
 	}

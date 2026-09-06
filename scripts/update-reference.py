@@ -197,7 +197,7 @@ class Update:
             if manifest.get("moduleProfile", {}).get("name") != self.module_profile:
                 raise StageFailure("qualified reference differs from the requested module profile")
             self.receipt.update(status="qualified", reference=manifest["name"],
-                                catalog=manifest["catalog"], comparison=manifest["comparison"],
+                                catalog=manifest["catalog"], comparison=read_json(self.out / "reference/evidence/qualification.json")["comparison"],
                                 moduleProfileEvidence=manifest["moduleProfile"],
                                 testBinarySha256=manifest["qualification"]["testBinarySha256"])
         except BaseException as error:

@@ -105,7 +105,7 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 	if err != nil {
 		return reference.Manifest{}, err
 	}
-	qualification, err := reference.NewQualification(binaryHash, capabilities)
+	qualification, err := testgateway.NewQualification(binaryHash, capabilities)
 	if err != nil {
 		return reference.Manifest{}, err
 	}
@@ -151,11 +151,27 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		ModuleProfile:         &profile,
 		Catalog:               after.Identity(), ParserVersion: catalog.ParserVersion,
 		Qualification: qualification,
-		Comparison:    comparison,
 	}
 	for _, module := range capture.ModuleInventory.Modules {
 		m.Modules = append(m.Modules, reference.Module{ID: module.ID, Version: module.Version, State: module.State, Collection: module.Collection})
 	}
+	qualification.ParserVersion, qualification.Catalog = catalog.ParserVersion, after.Identity()
+	evidence := struct {
+		Version    string             `json:"version"`
+		Comparison catalog.Comparison `json:"comparison"`
+		Files      []reference.File   `json:"files"`
+	}{Version: "igw/reference-evidence/v1", Comparison: comparison}
+	names := []string{"capture.json", "lifecycle.json", "operational-workflows.json", "project-tag-workflows.json", "registry-index.json", "registry-manifest.json", "resolution.json", "resource-workflows.json"}
+	for _, name := range names {
+		data := payloads[name]
+		evidence.Files = append(evidence.Files, reference.File{Path: name, Bytes: int64(len(data)), SHA256: digest(data)})
+	}
+	evidenceBytes, err := json.MarshalIndent(evidence, "", "  ")
+	if err != nil {
+		return reference.Manifest{}, err
+	}
+	qualification.Evidence = reference.Evidence{URI: "evidence/qualification.json", SHA256: digest(evidenceBytes)}
+	m.Qualification = qualification
 	for _, name := range reference.RequiredFiles() {
 		b := payloads[name]
 		m.Files = append(m.Files, reference.File{Path: name, Bytes: int64(len(b)), SHA256: digest(b)})
@@ -168,6 +184,17 @@ func Build(ctx context.Context, in Inputs) (reference.Manifest, error) {
 		return reference.Manifest{}, errors.New("reference manifest exceeds size limit")
 	}
 	if err := os.Mkdir(in.Out, 0700); err != nil {
+		return reference.Manifest{}, err
+	}
+	if err := os.Mkdir(filepath.Join(in.Out, "evidence"), 0700); err != nil {
+		return reference.Manifest{}, err
+	}
+	for _, name := range names {
+		if err := publish(filepath.Join(in.Out, "evidence", name), payloads[name]); err != nil {
+			return reference.Manifest{}, err
+		}
+	}
+	if err := publish(filepath.Join(in.Out, "evidence", "qualification.json"), evidenceBytes); err != nil {
 		return reference.Manifest{}, err
 	}
 	for _, file := range m.Files {

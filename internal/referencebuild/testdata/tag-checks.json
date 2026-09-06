@@ -1,0 +1,156 @@
+{
+  "checks": [
+    {
+      "name": "catalog",
+      "outcome": "completed"
+    },
+    {
+      "name": "project-create",
+      "outcome": "accepted"
+    },
+    {
+      "name": "project-export",
+      "outcome": "completed"
+    },
+    {
+      "name": "project-preview",
+      "outcome": "preview"
+    },
+    {
+      "name": "project-preview-absence",
+      "outcome": "failed"
+    },
+    {
+      "name": "project-import",
+      "outcome": "accepted"
+    },
+    {
+      "name": "project-get",
+      "outcome": "completed"
+    },
+    {
+      "name": "project-reexport",
+      "outcome": "completed"
+    },
+    {
+      "name": "project-existing-refused",
+      "outcome": "failed"
+    },
+    {
+      "name": "tag-import",
+      "outcome": "accepted"
+    },
+    {
+      "name": "tag-export",
+      "outcome": "completed"
+    },
+    {
+      "name": "tag-overwrite",
+      "outcome": "accepted"
+    },
+    {
+      "name": "tag-reexport",
+      "outcome": "completed"
+    },
+    {
+      "name": "tag-abort-conflict",
+      "outcome": "accepted"
+    },
+    {
+      "name": "workflow-project-list",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-get",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-export",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-inspect",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-preview",
+      "outcome": "preview"
+    },
+    {
+      "name": "workflow-project-preview-absence",
+      "outcome": "failed"
+    },
+    {
+      "name": "workflow-project-import",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-change",
+      "outcome": "accepted"
+    },
+    {
+      "name": "workflow-project-replace-preview",
+      "outcome": "preview"
+    },
+    {
+      "name": "workflow-project-stale-digest",
+      "outcome": "failed"
+    },
+    {
+      "name": "workflow-project-replace",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-preview",
+      "outcome": "preview"
+    },
+    {
+      "name": "workflow-tag-preview-absence",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-import",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-export",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-overwrite-preview",
+      "outcome": "preview"
+    },
+    {
+      "name": "workflow-tag-preview-unchanged",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-overwrite",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-overwrite-export",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-tag-abort",
+      "outcome": "partial"
+    },
+    {
+      "name": "workflow-tag-abort-unchanged",
+      "outcome": "completed"
+    },
+    {
+      "name": "workflow-project-delete",
+      "outcome": "accepted"
+    },
+    {
+      "name": "project-delete-igw-transfer-source",
+      "outcome": "accepted"
+    },
+    {
+      "name": "project-delete-igw-transfer-copy",
+      "outcome": "accepted"
+    }
+  ]
+}

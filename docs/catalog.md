@@ -207,7 +207,7 @@ numbers and avoiding redundant full-document copies.
 
 ### Qualified reference assembly
 
-`igw-capture qualify` assembles a local `igw/reference/v1` directory from a
+`igw-capture qualify` assembles a local `igw/reference/v2` directory from a
 capture, saved registry resolution, lifecycle receipt, and the three dedicated
 workflow receipts. It hashes the supplied test executable and requires every
 receipt to identify that exact binary and image configuration. Workflow
@@ -235,60 +235,38 @@ the shared catalog comparison. Its versioned policy currently qualifies ACTIVE
 first-party modules that are enabled on startup without pending upgrades.
 Other deployment states require separate evidence and a reviewed policy change.
 
-The output preserves the exact vendor document in `openapi.json.gz`, original
-capture/workflow/lifecycle receipts, and exact registry manifests. The decoded
-resolution receipt is canonically re-encoded from the same validated input.
-`reference.json` records identities, image/module metadata, parser version,
-comparison, explicit qualification scopes, and each payload's size/SHA-256.
-All inputs must qualify before the new output directory is created. Payloads
-are published atomically and the manifest is last; incomplete directories have
-no usable manifest. Existing bundles are never replaced. The completed bundle
-is read back through its public loader before assembly reports success.
+The runtime reference contains only `reference.json` and `openapi.json.gz`.
+The manifest records current catalog identities, image/module provenance,
+original qualification scope, and an evidence pointer with its SHA-256. The
+contributor output additionally contains `evidence/`: original capture and
+workflow receipts, registry manifests, and `qualification.json` with the detailed
+comparison and file checksums. All inputs must qualify before output is created.
+The runtime manifest is published last; existing output directories are refused.
 
-`internal/reference.Read` verifies the complete fixed payload list and checksums
-offline. `OpenCatalog` also checks gzip integrity, the decompression bound, and
-the exact vendor identities after parsing with the current parser. Checksums
-establish integrity, not publisher authenticity; use a trusted repository or
-release channel. A reference never establishes a live target's contract or
-authorizes writes. Parser work retains the bounded-runner requirement.
+The four bundled selectors remain `ignition-8.3.0-core`,
+`ignition-8.3.0-defaults`, `ignition-8.3.9-core`, and `ignition-8.3.9-defaults`.
+`spec references list` reads their manifests only. `inspect` and `export` verify
+the compressed payload; export produces an independent two-file reference.
+`api list`, `api describe`, and `api capabilities --reference REFERENCE` additionally
+parse the document once and verify its current identities. None of these paths
+loads Gateway configuration, credentials, target cache, or network clients.
 
-The first retained bundle is
-`internal/reference/bundles/ignition-8.3.9-defaults`. It contains 32 observed
-modules, the 687-operation contract, and 98 recorded checks from one binary:
-10 lifecycle, 27 resource, 38 project/tag, and 23 operational checks. It is about
-792 KiB. Qualification covers the recorded basic-schedule, disabled-project,
-memory-JSON-tag, and backup/log/diagnostics workflows; it does not qualify every
-request schema or prove general backward compatibility.
+`meta.reference.catalog` uses current policy `igw-contract/2`; pins compare this
+identity. `qualification.catalog` and `qualification.parserVersion` preserve
+what the original live evidence actually qualified. The summary's `parserVersion`
+identifies that historical qualification; `inspectionParserVersion` and
+`inspectionCatalog` are populated only after current parsing. `createdAt` retains
+the original assembly date and is never a live-target verification timestamp.
+Core references retain all 32 installed module records, including inactive ones.
 
-The development CLI preserves that complete bundle and adds exact qualified
-bundles for `ignition-8.3.0-defaults`, `ignition-8.3.0-core`, and
-`ignition-8.3.9-core`. The [qualification matrix](compatibility-matrix.md)
-identifies each version/profile's observed workflow coverage.
-`spec references list` exposes
-the available selectors; `inspect REFERENCE` checks every payload and reports
-the full manifest; `export REFERENCE --out NEW_DIRECTORY` preserves all ten
-original files. A selector can be a bundled name or an explicit local directory.
-`api list`, `api describe`, and `api capabilities --reference REFERENCE` use the
-same current parser
-and operation model as Gateway discovery, after checksum and identity checks.
-All reference paths work without Gateway configuration, credentials, cache, or
-network. They return `meta.reference` with explicit source kind, origin, image,
-module inventory hash, qualification scope, and contract identities. Summaries
-also report `moduleCount` and `activeModuleCount` from the verified observations,
-with the explicit `moduleProfile` when recorded. Core references retain all 32
-installed module records, including 31 inactive ones. Assembly
-time is `createdAt`; it is not a current Gateway verification timestamp.
-API discovery additionally reports `inspectionParserVersion` and
-`inspectionCatalog`, distinguishing current parsing and identity policy from
-the recorded qualification. Historical bundles verify against their recorded
-supported policy. Their manifest, receipts, and `catalog` identity remain
-unchanged; current inspection is not renewed live workflow qualification.
-Human output identifies
-the reference before listing operations. The `--spec-pin` check applies to
-inspection, export, and API discovery using the manifest's recorded contract
-hash and policy. A reference pin never becomes a live-target pin implicitly.
-Export verifies the reviewed identity
-again before publishing and refuses existing directories.
+Format conversion does not renew workflow qualification. Converted built-ins
+point to their original full manifests in Git at commit `65e643d`. The evidence
+URI is a provenance locator, never an instruction for the CLI to fetch files.
+For new contributor output, `evidence/qualification.json` is relative to the
+original contributor artifact; retain that artifact when promoting a reference.
+Checksums establish integrity, not publisher authenticity. Choose a trusted
+source. Old development reference formats are rejected with recovery guidance;
+export a current built-in or import the raw OpenAPI document instead.
 
 `api capabilities` currently derives tag workflow prerequisites from exact
 operation keys in the selected document. It reports `advertised` or `unavailable`

@@ -51,7 +51,7 @@ func TestBundledReferenceExportPreservesExactEvidence(t *testing.T) {
 				t.Fatalf("export changed manifest: %v", err)
 			}
 			for _, name := range append(RequiredFiles(), "reference.json") {
-				want, err := bundle.read(ctx, name, MaxManifestBytes)
+				want, err := bundle.read(ctx, name, fileLimit(name))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -68,7 +68,7 @@ func TestBundledReferenceExportPreservesExactEvidence(t *testing.T) {
 			if _, err := bundle.Export(ctx, dir, m.Catalog); !errors.Is(err, os.ErrExist) {
 				t.Fatalf("existing directory was not preserved: %v", err)
 			}
-			if err := os.WriteFile(filepath.Join(dir, "capture.json"), []byte("tampered"), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "openapi.json.gz"), []byte("tampered"), 0600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := local.Read(ctx); err == nil {

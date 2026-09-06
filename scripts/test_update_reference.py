@@ -91,7 +91,8 @@ class CoordinatorTests(unittest.TestCase):
             (self.out / "resolution").mkdir()
             (self.out / "resolution/resolution.json").write_text(json.dumps({"image": IMAGE}))
         if name == "qualify" and self.failure != name:
-            (self.out / "reference").mkdir()
+            (self.out / "reference/evidence").mkdir(parents=True)
+            (self.out / "reference/evidence/qualification.json").write_text(json.dumps({"comparison": {"contractEqual": True}}))
             (self.out / "reference/reference.json").write_text(json.dumps({
                 "name": "fixture-reference", "catalog": {"contractSha256": "c" * 64},
                 "comparison": {"contractEqual": True},

@@ -73,18 +73,19 @@ support is recorded separately as `unavailableScopes: ["tags/memory-json"]`.
 An unavailable workflow is never counted as a passing round trip. The assembler
 cross-checks capability evidence against the original captured document and
 requires the exact applicable check set. Partially advertised tag APIs require
-additional qualification coverage and fail this policy explicitly. Historical
-policy-1 bundles remain readable with their original scope and receipts.
+additional qualification coverage and fail this policy explicitly. Historical qualification summaries keep their original scope; old development
+portable bundles must be regenerated in runtime format `igw/reference/v2`.
 
 New manifests separately record module policy `igw-module-profile/1`, its
 profile name, and explicit enabled-module identifiers in `moduleProfile`.
 The complete inventory is retained, including disabled modules. Qualification
 rejects missing selected modules, unexpected active modules, faults, quarantine,
 pending upgrades, or different whitelist values across capture and any receipt.
-Reference readers compare manifest module metadata with the original captured
-inventory and its checksum. Historical manifests without this field retain
-their all-active image-defaults interpretation and must match their capture;
-omitting a field or filtering inactive modules cannot relabel a core reference.
+These cross-checks run in the contributor assembler. Runtime readers verify the
+compact manifest and compressed document; they do not replay the qualification
+packet. The two-file runtime reference points by URI and SHA-256 to the detailed
+`evidence/qualification.json` manifest. Preserve the full contributor artifact
+when promoting a new reference. Listing reads only compact manifests.
 
 Every nonzero stage result stops the pipeline. There is no retry, image fallback,
 automatic module substitution, host recovery, or budget increase. An outer

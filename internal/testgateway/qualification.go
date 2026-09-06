@@ -1,4 +1,4 @@
-package reference
+package testgateway
 
 import (
 	"errors"
@@ -6,10 +6,9 @@ import (
 	"sort"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
+	"github.com/alex-mccollum/igw-cli/internal/reference"
 	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
-
-const legacyQualificationPolicy = "igw-reference-workflows/1"
 
 // TagRoundTripAvailable validates policy 2's two reviewed capability shapes:
 // both transfer routes advertised, or both absent. Partial API surfaces require
@@ -36,54 +35,17 @@ func TagRoundTripAvailable(assessments []catalog.CapabilityAssessment) (bool, er
 	return status == "advertised", nil
 }
 
-func NewQualification(binaryHash string, capabilities []catalog.CapabilityAssessment) (Qualification, error) {
+func NewQualification(binaryHash string, capabilities []catalog.CapabilityAssessment) (reference.Qualification, error) {
 	available, err := TagRoundTripAvailable(capabilities)
 	if err != nil {
-		return Qualification{}, err
+		return reference.Qualification{}, err
 	}
-	q := Qualification{Policy: QualificationPolicy, TestBinarySHA256: binaryHash, Scopes: QualificationScopes(), Capabilities: capabilities}
+	q := reference.Qualification{Policy: reference.QualificationPolicy, TestBinarySHA256: binaryHash, Scopes: reference.QualificationScopes(), Capabilities: capabilities}
 	if !available {
 		q.Scopes = slices.DeleteFunc(q.Scopes, func(scope string) bool { return scope == "tags/memory-json" })
 		q.UnavailableScopes = []string{"tags/memory-json"}
 	}
 	return q, nil
-}
-
-func (q Qualification) validate() error {
-	if !hashPattern.MatchString(q.TestBinarySHA256) {
-		return errors.New("invalid qualification binary identity")
-	}
-	if q.Policy == legacyQualificationPolicy {
-		if !slices.Equal(q.Scopes, QualificationScopes()) || len(q.UnavailableScopes) != 0 || len(q.Capabilities) != 0 {
-			return errors.New("inconsistent historical qualification scope")
-		}
-		return nil
-	}
-	if q.Policy != QualificationPolicy {
-		return errors.New("unsupported reference qualification policy")
-	}
-	want, err := NewQualification(q.TestBinarySHA256, q.Capabilities)
-	if err != nil {
-		return err
-	}
-	if !slices.Equal(q.Scopes, want.Scopes) || !slices.Equal(q.UnavailableScopes, want.UnavailableScopes) {
-		return errors.New("qualification scope does not match advertised capabilities")
-	}
-	return nil
-}
-
-func (q Qualification) validateCatalog(c *catalog.Catalog) error {
-	if q.Policy == legacyQualificationPolicy {
-		return nil
-	}
-	want, err := workflow.AssessTags(c)
-	if err != nil {
-		return err
-	}
-	if !SameCapabilities(q.Capabilities, want) {
-		return errors.New("qualification capabilities do not match the captured catalog")
-	}
-	return nil
 }
 
 // SameCapabilities compares prerequisite evidence; descriptive wording is not

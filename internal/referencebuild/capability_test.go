@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 
-	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/reference"
+	"github.com/alex-mccollum/igw-cli/internal/testgateway"
 	"github.com/alex-mccollum/igw-cli/internal/workflow"
 )
 
@@ -41,7 +40,7 @@ func TestBuildRecordsUnavailableScopeFromCatalog(t *testing.T) {
 	}
 	defer c.Close()
 	caps, err := workflow.AssessTags(c)
-	if err != nil || !reference.SameCapabilities(caps, m.Qualification.Capabilities) {
+	if err != nil || !testgateway.SameCapabilities(caps, m.Qualification.Capabilities) {
 		t.Fatal("offline reference lost capability evidence")
 	}
 }
@@ -100,37 +99,8 @@ func TestBuildRejectsUnprovenTagRefusals(t *testing.T) {
 	}
 }
 
-func TestReferenceChecksCapabilityClaimsAgainstDocument(t *testing.T) {
-	in := fixtureInputs(t)
-	m, err := Build(context.Background(), in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	c, err := catalog.Parse([]byte(withoutTagRoutes(t)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	caps, _ := workflow.AssessTags(c)
-	m.Qualification, err = reference.NewQualification(m.Qualification.TestBinarySHA256, caps)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, _ := json.Marshal(m)
-	if err := os.WriteFile(filepath.Join(in.Out, "reference.json"), b, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reference.Read(context.Background(), in.Out); err != nil {
-		t.Fatalf("fixture should have internally consistent metadata: %v", err)
-	}
-	if _, c, err := reference.OpenCatalog(context.Background(), in.Out); err == nil {
-		c.Close()
-		t.Fatal("manifest mislabeled advertised routes as unavailable")
-	}
-}
-
 func TestQualificationRetainsAllHistoricalTagChecks(t *testing.T) {
-	b, err := os.ReadFile("../reference/bundles/ignition-8.3.9-defaults/project-tag-workflows.json")
+	b, err := os.ReadFile("testdata/tag-checks.json")
 	if err != nil {
 		t.Fatal(err)
 	}

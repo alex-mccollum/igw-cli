@@ -23,7 +23,7 @@ func (f forbiddenReferenceTransport) RoundTrip(*http.Request) (*http.Response, e
 }
 
 const builtinReference = "ignition-8.3.9-defaults"
-const builtinContract = "fce0593c41f1d0ae31c0647c34bb10ccebf6f44958c3c55913c887654ff9ccbc"
+const builtinContract = "17b4ace179c02c79f4af74485773cb5afc4c35b179f7fe020c4326cb0dacceea"
 
 // All offline paths must tolerate missing/broken configuration, credentials,
 // cache, and Gateway connectivity, including negative command paths.
@@ -116,9 +116,10 @@ func TestAPIDiscoveryUsesQualifiedReferenceWithoutTarget(t *testing.T) {
 		if ref == nil || ref.SourceKind != "reference" || ref.Catalog.ContractSHA256 != builtinContract || ref.InspectionParserVersion != catalog.ParserVersion || r.Meta.Catalog != nil || r.Meta.Target != nil || r.Meta.Stale {
 			t.Fatalf("reference was confused with live target evidence: %+v", r.Meta)
 		}
-		if ref.Catalog.ContractPolicy != "igw-contract/1" || ref.InspectionCatalog == nil || ref.InspectionCatalog.ContractPolicy != catalog.ContractPolicy || ref.InspectionCatalog.ContractSHA256 == ref.Catalog.ContractSHA256 || ref.InspectionCatalog.RawSHA256 != ref.Catalog.RawSHA256 || ref.InspectionCatalog.DocumentSHA256 != ref.Catalog.DocumentSHA256 {
+		if ref.Catalog.ContractPolicy != catalog.ContractPolicy || ref.InspectionCatalog == nil || *ref.InspectionCatalog != ref.Catalog || ref.Qualification.Catalog.ContractPolicy != "igw-contract/1" || ref.ParserVersion == ref.InspectionParserVersion {
 			t.Fatal("historical qualification and current inspection identities were conflated")
 		}
+
 		if args[1] == "list" {
 			items := r.Data.([]any)
 			if len(items) != 1 || items[0].(map[string]any)["key"] != "GET /data/api/v1/gateway-info" {
