@@ -1,6 +1,6 @@
 # Workflow candidate qualification
 
-The [release plan](plans/rebuild-v1.md) defines six task journeys. The opt-in
+The [release plan](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/plans/rebuild-v1.md) defines six task journeys. The opt-in
 `TestLiveWorkflowJourneys` harness runs the prebuilt Linux `igw` executable as
 separate processes against one fresh owned Gateway. It covers profile setup,
 discovery, resource preview/change/conflict, project ZIP transfer, applicable
@@ -66,7 +66,7 @@ historical when a later commit changes code.
 
 ## Recorded candidate
 
-The [completed candidate record](qualification/workflow-v1/README.md) retains
+The [completed candidate record](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/qualification/workflow-v1/README.md) retains
 passing 8.3.0 and 8.3.9 native journeys and their exact build identities. Run
 long local gates as separate serial bounded jobs: normal tests, race package
 groups, performance, and individual platform builds. Do not combine an entire

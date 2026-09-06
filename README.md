@@ -4,8 +4,8 @@
 Gateway: inspect its actual API contract, preview a change, apply it explicitly,
 and verify the outcome.
 
-The rebuilt CLI now uses the single `cmd/igw` entrypoint. V1 qualification is
-still in progress; see the [implementation status](docs/rebuild-preview.md).
+The CLI uses one `cmd/igw` entrypoint. See the
+[current qualification status](docs/qualification/README.md) for verified scope.
 Existing 0.x users should read the [migration guide](docs/migration-v1.md).
 
 ## Start here
@@ -52,7 +52,7 @@ its final state, and a disconnected write can be uncertain. Exit codes remain
 non-auth HTTP, artifact, or verification failure).
 
 The target's OpenAPI document supplies its documented wire contract. The CLI
-preserves exact vendor bytes with provenance, immutable snapshots, freshness,
+preserves exact vendor bytes with provenance, bounded snapshots, freshness,
 pins, and explicit offline references. Bundled references remain available
 without connectivity and do not silently authorize writes to another Gateway.
 See the [catalog design](docs/catalog.md) and [update pipeline](docs/reference-updates.md).
@@ -66,7 +66,7 @@ See the [catalog design](docs/catalog.md) and [update pipeline](docs/reference-u
 - [Architecture](docs/architecture.md): package boundaries and design decisions.
 - [Troubleshooting](docs/troubleshooting.md): configuration, API, and transport failures.
 - [Releasing](docs/releasing.md): version, artifact, and verification contracts.
-- [Rebuild plan](docs/plans/rebuild-v1.md): complete goal, remaining gates, and evidence.
+- [Qualification](docs/qualification/README.md): current checks and remaining limits.
 
 Run contributor tests through the bounded runner, one job at a time:
 

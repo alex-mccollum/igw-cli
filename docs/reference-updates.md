@@ -159,7 +159,7 @@ The coordinator supports both reviewed module profiles. The initial minimum/
 latest matrix has complete local qualification for both profiles; selecting an
 additional tag alone does not prove that release is supported. Read the progress
 evidence in
-`docs/plans/rebuild-v1.md` before making compatibility or schedule-activation
+[current qualification status](qualification/README.md) before making compatibility or schedule-activation
 claims.
 
 Coordinator failure/ordering tests run without Docker or Go compilation:
@@ -171,79 +171,11 @@ python3 -m unittest discover -s scripts -p 'test_update_reference.py'
 These tests verify orchestration, not real Gateway behavior. Real pipeline
 receipts provide the separate acceptance evidence.
 
-## Recorded real run
+## Historical qualification
 
-The complete coordinator passed on 2026-09-05 from clean commit `4734207` using
-Go 1.27.1 on Linux amd64. It resolved and pulled the official `8.3` image, observed
-Gateway 8.3.9 with 32 modules, and passed all 18 stages in 755.43 seconds including
-cold builds. The lifecycle/resource/project-tag/operational receipts cover
-10/27/38/23 checks respectively, with cleanup verified and no remaining
-qualification container in an independent query.
-
-The original run receipt and complete candidate are retained in
-`internal/referencebuild/testdata/ignition-8.3.9-update/`. Their contract and module
-inventory hashes match the earlier reference; the changed document bytes retain
-their own checksums. This verifies the local end-to-end pipeline. The remote
-scheduled job remains a separate activation and execution check.
-
-The 8.3.0 attempt from clean commit `40a8502` passed containment, current-parser
-capture, and all 27 resource checks, then stopped in the transfer suite. Its
-project API round trip passed, but the captured Gateway advertises neither tag
-import nor tag export. No operational suite or reference assembly ran. Original
-receipts and transfer output are retained in
-`internal/referencebuild/testdata/ignition-8.3.0-incomplete/`; this is incomplete
-qualification evidence, not an offline reference. Every disposable container
-was removed, with no host recovery or automatic retry.
-
-Two captures of that same image/module profile also exposed a policy-1 identity
-defect: unresolved keyboard references preserve the entire document, including
-changing examples and unordered schema arrays. Contract policy 2 now uses the
-reviewed keyboard reference scopes; both minimum captures produce the same
-current hash while their original policy-1 hashes remain verifiable. This
-parser inspection does not renew live workflow qualification.
-
-A subsequent clean run from `ef55762` passed all 18 stages for 8.3.0 under
-contract policy 2 and workflow qualification policy 2. It ran from 18:44:21 to
-18:53:49 UTC on 2026-09-05 in 568.08 seconds, using Go 1.27.1 and the same pinned
-image. The 672-operation capture and all 10/27/27/23 lifecycle/resource/transfer/
-operational checks passed. Tag import, preview, and export each refused with
-`capability`/2 and zero observed operation requests; all project checks ran.
-The manifest records five successful scopes and unavailable tag round trips.
-Every container was removed, and an independent query found none remaining.
-
-The original run and qualified candidate are retained in
-`internal/referencebuild/testdata/ignition-8.3.0-policy2/`. This establishes the
-minimum default-module workflow cell, without changing the embedded default or
-claiming full version/module compatibility.
-
-The fresh 8.3.9 policy-2 run from clean `f5993f9` also passed all 18 stages, from
-18:55:58 to 19:04:46 UTC on 2026-09-05 (528.63 seconds). Its
-10/27/39/23 lifecycle/resource/project-tag/operational checks passed, preserving
-all historical tag checks and adding capability discovery. The 687-operation
-catalog retains the same current contract identity as the earlier 8.3.9
-captures. All six scopes are qualified, with no unavailable scope. Cleanup and
-an independent empty-container query passed. Original evidence is retained in
-`internal/referencebuild/testdata/ignition-8.3.9-policy2/`.
-
-Both default-module cells have current-policy evidence. The subsequent core
-qualification completes the initial module matrix; remote schedule activation
-remains unverified. The [compatibility matrix](compatibility-matrix.md) distinguishes these boundaries
-from general API and version support.
-
-The `core-opcua` pipelines both passed from clean `28d7334` using acceptance
-executable SHA-256
-`9c1013b4c4afb5eca02a171c0ab4e02e979172b5c3005a0cb3121fff9cee6ded`.
-On 2026-09-05, 8.3.9 ran from 19:27:41 to 19:37:18 UTC (576.77 seconds),
-and 8.3.0 from 19:38:51 to 19:45:51 UTC (420.24 seconds). Each passed all
-18 stages and recorded the same whitelist in capture, lifecycle, and every
-workflow receipt. The inventories contain one active/enabled OPC UA module and
-31 inactive/disabled modules; all 32 observations remain in each reference.
-
-The core catalogs contain 454 operations on 8.3.9 and 446 on 8.3.0. Their
-10/27/39/23 and 10/27/27/23 check sets respectively qualify the same available
-workflow scopes as each version's default profile. The three absent-tag checks
-on 8.3.0 record `capability`/2 and zero operation requests. Both runs verified
-cleanup; independent Docker queries found no remaining qualification container.
-No host recovery or limit changes occurred. Exact original run receipts and
-complete candidates are retained under
-`internal/referencebuild/testdata/ignition-8.3.{0,9}-core/`.
+The four version/profile cells were qualified on 2026-09-05 using the earlier
+parser. Their original pipeline runs and audit packets remain in
+[Git history](https://github.com/alex-mccollum/igw-cli/blob/65e643d/docs/reference-updates.md#recorded-real-run).
+Current-format built-ins retain those dates and qualified identities separately
+from present parsing. Consult [current status](qualification/README.md) before
+claiming that a new source revision passed live qualification.

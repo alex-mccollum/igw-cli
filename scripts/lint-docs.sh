@@ -67,7 +67,7 @@ while IFS= read -r ref; do
     echo "  - $ref"
     missing_refs=1
   fi
-done < <(rg -o --no-filename 'docs/[A-Za-z0-9._/-]+\.md' "${DOC_FILES[@]}" | sort -u)
+done < <(rg -o --no-filename --replace '$1' '(?:^|[^A-Za-z0-9_./-])(docs/[A-Za-z0-9._/-]+\.md)' "${DOC_FILES[@]}" | sort -u)
 if [[ $missing_refs -ne 0 ]]; then
   exit 1
 fi

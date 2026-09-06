@@ -3,8 +3,8 @@
 ## Command discovery
 
 This file is the canonical command example reference for the v1 command tree
-in `cmd/igw`. The source is still completing the gates in
-`docs/rebuild-preview.md`; cutover does not imply a published v1 release.
+in `cmd/igw`. [Qualification status](qualification/README.md) records the
+verified scope; local checks do not imply a published release.
 Examples assume `igw` is on PATH; use `bin/igw` after a local build.
 
 ```bash

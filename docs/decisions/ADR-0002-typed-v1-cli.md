@@ -31,4 +31,4 @@ The v1 interface intentionally breaks 0.x argv and JSON shapes; the migration
 guide makes these changes explicit. Complete schema inspection and real Gateway
 qualification of the selected release workflows remain required. Additional
 serialization coverage is deferred unless those workflows need it; the current
-release criteria are in `docs/plans/rebuild-v1.md`.
+release criteria are in `docs/qualification/README.md`.

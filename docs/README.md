@@ -14,9 +14,7 @@
 - `docs/reference-updates.md`: reproducible captures, distribution, and update automation.
 - `docs/compatibility-matrix.md`: real Gateway evidence and qualification limits.
 - `docs/performance.md`: captured-catalog and artifact performance observations.
-- `docs/qualification/README.md`: retained local cutover and artifact evidence.
-- `docs/rebuild-preview.md`: current implementation status and remaining work.
-- `docs/plans/rebuild-v1.md`: complete goal, decisions, gates, and evidence.
+- `docs/qualification/README.md`: current candidate checks and known limits.
 - `docs/development-safety.md`: workstation limits and host lifecycle safeguards.
 - `docs/releasing.md`: version, packaging, and release contracts.
 - `docs/decisions/`: architecture decision records.

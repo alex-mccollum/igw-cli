@@ -19,10 +19,6 @@ func TestKeyboardIdentitySeparatesPolicyAndPreservesAssertions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			legacy, err := contractDigestForPolicy(root, legacyContractPolicy)
-			if err != nil || legacy != digest(append([]byte("igw-contract/1\n"), before...)) {
-				t.Fatal("policy 1 no longer retains its original frozen-document behavior")
-			}
 			after, _ := json.Marshal(root)
 			if !bytes.Equal(before, after) {
 				t.Fatal("hashing mutated original evidence")
@@ -31,8 +27,7 @@ func TestKeyboardIdentitySeparatesPolicyAndPreservesAssertions(t *testing.T) {
 			choices[0], choices[1] = choices[1], choices[0]
 			schema["examples"] = []any{"new"}
 			changedCurrent, _ := contractDigest(root)
-			changedLegacy, _ := contractDigestForPolicy(root, legacyContractPolicy)
-			if changedCurrent != current || changedLegacy == legacy {
+			if changedCurrent != current {
 				t.Fatal("reviewed reference scopes did not isolate documentation drift")
 			}
 			for path, rawItem := range paths {

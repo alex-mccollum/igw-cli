@@ -59,7 +59,7 @@ func TestCapturedTagCapabilities(t *testing.T) {
 	// Parser evidence from actual vendor documents, not live-workflow acceptance.
 	for _, version := range []string{"8.3.0", "8.3.9"} {
 		t.Run(version, func(t *testing.T) {
-			path := filepath.Join("..", "catalog", "testdata", "ignition-"+version+"-defaults", "openapi.json.gz")
+			path := filepath.Join("..", "reference", "bundles", "ignition-"+version+"-defaults", "openapi.json.gz")
 			f, err := os.Open(path)
 			if err != nil {
 				t.Fatal(err)

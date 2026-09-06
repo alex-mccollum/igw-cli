@@ -22,7 +22,7 @@ import (
 func TestCapturedSingletonRequests(t *testing.T) {
 	for _, version := range []string{"8.3.0", "8.3.9"} {
 		t.Run(version, func(t *testing.T) {
-			file, err := os.Open(filepath.Join("..", "catalog", "testdata", "ignition-"+version+"-defaults", "openapi.json.gz"))
+			file, err := os.Open(filepath.Join("..", "reference", "bundles", "ignition-"+version+"-defaults", "openapi.json.gz"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,9 +1,7 @@
 package catalog
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"net/url"
 	"sort"
 	"strconv"
@@ -11,13 +9,6 @@ import (
 )
 
 const ContractPolicy = "igw-contract/2"
-
-// Policy 1 remains available solely to verify original receipts and references.
-const legacyContractPolicy = "igw-contract/1"
-
-func SupportedContractPolicy(policy string) bool {
-	return policy == ContractPolicy || policy == legacyContractPolicy
-}
 
 // Identity separates original bytes, canonical documentation, and the reviewed
 // contract projection. It does not claim general JSON Schema equivalence.
@@ -32,31 +23,6 @@ func (c *Catalog) Identity() Identity {
 	return Identity{c.rawHash, c.documentHash, c.contractHash, ContractPolicy}
 }
 
-// IdentityForPolicy verifies history without relabeling it as a current pin.
-// Decoding the already validated original bytes avoids retaining another large
-// document tree in every Catalog. It never reads the adjusted parser model.
-func (c *Catalog) IdentityForPolicy(policy string) (Identity, error) {
-	if !SupportedContractPolicy(policy) {
-		return Identity{}, errors.New("unsupported contract identity policy")
-	}
-	id := c.Identity()
-	if policy == ContractPolicy {
-		return id, nil
-	}
-	d := json.NewDecoder(bytes.NewReader(c.raw))
-	d.UseNumber()
-	var value any
-	if err := d.Decode(&value); err != nil {
-		return Identity{}, err
-	}
-	hash, err := contractDigestForPolicy(value, policy)
-	if err != nil {
-		return Identity{}, err
-	}
-	id.ContractSHA256, id.ContractPolicy = hash, policy
-	return id, nil
-}
-
 func (c *Catalog) DocumentHash() string { return c.documentHash }
 
 type contractProjection struct {
@@ -65,25 +31,15 @@ type contractProjection struct {
 }
 
 func contractDigest(value any) (string, error) {
-	return contractDigestForPolicy(value, ContractPolicy)
-}
-
-func contractDigestForPolicy(value any, policy string) (string, error) {
-	if !SupportedContractPolicy(policy) {
-		return "", errors.New("unsupported contract identity policy")
-	}
-	p := contractProjection{frozen: make(map[string]bool)}
-	if policy == ContractPolicy {
-		p.scopes = keyboardIdentityScopes(value)
-	}
+	p := contractProjection{frozen: make(map[string]bool), scopes: keyboardIdentityScopes(value)}
 	p.references(value, value, "", "")
-	return canonicalDigest(p.project(value, "document", ""), policy+"\n")
+	return canonicalDigest(p.project(value, "document", ""), ContractPolicy+"\n")
 }
 
 // Only the reviewed vendor embedding establishes these additional local
 // scopes. A generic nested $defs is not a JSON Schema resource boundary.
 // Broadening the shared matcher changes identity semantics and requires a new
-// contract policy with the previous matcher retained for historical verification.
+// contract policy and explicit pin review.
 func keyboardIdentityScopes(value any) map[string]bool {
 	root, _ := value.(map[string]any)
 	if !ignitionGenerator(root) || !keyboardDialect(root) {

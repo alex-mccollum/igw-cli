@@ -40,7 +40,8 @@ flowchart TD
 | `internal/resource`, `project`, `tag`, `operations` | Workflow inputs, preconditions, readback, and honest verification boundaries |
 | `internal/workflow` | Reviewed route prerequisites for advertised capabilities |
 | `internal/result` | `igw/v1` envelope, outcomes, redacted errors, exit codes |
-| `internal/reference`, `referencebuild`, `testgateway` | Offline reference distribution and reproducible real-Gateway qualification |
+| `internal/reference` | Two-file offline references and compact provenance |
+| `internal/referencebuild`, `testgateway` | Contributor evidence validation and real-Gateway qualification |
 
 Keep Go and standard-library transport/filesystem primitives. Cobra removes
 separate registries for help, parser, completion, and schemas. The catalog uses one decoded JSON contract and compiles selected schemas
@@ -66,7 +67,7 @@ Qualified reference bundles include the original compressed document, checksums,
 version/module/image provenance, and qualification scope. They are embedded for
 offline availability and can be exported independently. Scheduled capture/update
 code exists; remote activation and final-source qualification remain governed
-by `docs/reference-updates.md` and the full rebuild plan.
+by `docs/reference-updates.md` and current qualification status.
 
 ## Execution and safety contracts
 
@@ -93,14 +94,8 @@ Exit codes remain 0/2/6/7. Every mutation requires `--yes`.
 
 ## Scope and evidence
 
-Release readiness follows the six workflow journeys in
-`docs/plans/rebuild-v1.md`: setup/discovery, resource configuration, project and
-tag transfer, troubleshooting, and complete evidence artifacts. Additional
-serialization or workflow coverage is deferred unless those journeys need it.
-Final-source Gateway and artifact checks remain required. Historical receipts
-retain their original source, parser, image, and timestamps; recompiling or
-renaming a package does not renew their qualification.
-
-Persistent RPC, MCP, fleet control, and desired-state orchestration are excluded.
-Host tools spawn a bounded CLI process or use explicit sequential batches.
-No repository workflow repairs WSL/Docker Desktop or changes host memory.
+The supported journeys are setup/discovery, resource configuration, project/tag
+transfer, troubleshooting, explicit changes, and complete evidence downloads.
+Current validation and limitations live in [qualification status](qualification/README.md).
+Reference maintenance lives in [the updater guide](reference-updates.md).
+Superseded design and qualification records remain in Git history.
