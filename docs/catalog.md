@@ -75,6 +75,15 @@ bundled references cannot silently authorize writes. Gateway version and module
 metadata remain absent until verified; the API document's info.version is not
 assumed to be the Gateway version.
 
+Every store load validates the retained bytes with the current parser. A
+conditional [HTTP 304](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5)
+can reuse that model only when the request sent its Gateway validator; an
+identical fresh response can also reuse it. Different bytes always reparse.
+Reuse transfers ownership after the new immutable receipt is saved, so failed
+publication leaves the fallback usable. It does not skip write verification,
+trust imported validators, or substitute contract equality for byte identity.
+See [revalidation measurements](performance.md#unchanged-catalog-revalidation).
+
 Library dependencies are pinned in go.mod/go.sum. The selected parser and
 validator require Go 1.25.7. The package boundary keeps vendor models out of the
 CLI and workflow contracts.

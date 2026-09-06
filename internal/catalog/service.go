@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -83,6 +84,8 @@ func checkPin(snapshot *Snapshot, pin string) (*Snapshot, error) {
 	return snapshot, nil
 }
 
+// fetch preserves cached on failure. After successful publication it may
+// transfer cached.Catalog into the returned snapshot, leaving cached consumed.
 func (s Service) fetch(ctx context.Context, target Target, token string, cached *Snapshot) (*Snapshot, error) {
 	endpoint, err := target.Endpoint("/openapi.json")
 	if err != nil {
@@ -104,14 +107,21 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 	var metadata Metadata
 	var parsed *Catalog
 	var status *igwerr.StatusError
+	reused := false
 	if errors.As(err, &status) && status.StatusCode == http.StatusNotModified && conditional {
 		// A 304 only verifies a document when we sent that cached representation's
-		// validator. Parse a fresh owned catalog so callers can close either one.
-		parsed, err = Parse(cached.Catalog.Raw())
+		// validator. Store.Load already validated its bytes with the current parser.
+		parsed, err, reused = cached.Catalog, nil, true
 		metadata = cached.Metadata
 		metadata.VerifiedAt = s.now()
 	} else if err == nil {
-		parsed, err = Parse(resp.Body)
+		// Equal contract hashes can conceal documentation or representation
+		// changes. Reuse requires identical vendor bytes from this fresh response.
+		if cached != nil && bytes.Equal(cached.Catalog.raw, resp.Body) {
+			parsed, reused = cached.Catalog, true
+		} else {
+			parsed, err = Parse(resp.Body)
+		}
 		metadata = Metadata{Version: SnapshotVersion, Target: target, Source: endpoint, SourceKind: "gateway",
 			FetchedAt: s.now(), VerifiedAt: s.now(), ETag: resp.Headers.Get("ETag"), LastModified: resp.Headers.Get("Last-Modified")}
 	}
@@ -122,8 +132,13 @@ func (s Service) fetch(ctx context.Context, target Target, token string, cached 
 	metadata.ParserVersion = ParserVersion
 	snapshot := &Snapshot{Metadata: metadata, Catalog: parsed}
 	if err := s.Store.Save(snapshot); err != nil {
-		snapshot.Close()
+		if !reused {
+			snapshot.Close()
+		}
 		return nil, err
+	}
+	if reused {
+		cached.Catalog = nil
 	}
 	return snapshot, nil
 }

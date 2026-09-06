@@ -1,5 +1,15 @@
 # Local qualification evidence
 
+`catalog-revalidation.json` records the subsequent unchanged-catalog refresh
+optimization, based on a precommit worktree at `e306eec`. The before/after
+benchmark measures disk load, current-parser validation, conditional HTTP
+verification against a fixture, receipt publication, and model cleanup. The
+receipt identifies full unit/33 smoke checks, focused race checks, and both Go
+toolchains' performance gates. Its initial baseline transcript includes a test
+fixture correction; the separate regression transcript then reproduces only
+the four expected missing-reuse cases. Production code changed after that
+regression. This adds no live-Gateway or host-lifecycle evidence.
+
 `catalog-parser20.json` records the subsequent catalog optimization. It binds
 production/reference inputs and the native executable to exact retained logs
 for the full suite, 33 smoke checks, catalog race checks, both Go toolchains'

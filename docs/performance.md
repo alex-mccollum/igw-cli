@@ -1,8 +1,8 @@
 # Performance qualification
 
 The v1 cutover replaces legacy call/RPC microbenchmarks with command-schema,
-typed HTTP request, actual captured-catalog, loaded-operation lookup, and
-streamed-artifact benchmarks.
+typed HTTP request, actual captured-catalog, loaded-operation lookup, conditional
+catalog revalidation, and streamed-artifact benchmarks.
 Run `scripts/perf-gate.sh` through the bounded runner. It uses three iterations
 of each benchmark, checks every expected metric, and refuses missing results.
 It does not contact a Gateway or run concurrent heavy jobs.
@@ -82,8 +82,38 @@ used the same 8 GiB/two-CPU limits; none needed a larger allocation.
 
 The checked-in thresholds are regression ceilings with headroom for shared CI,
 not portable performance guarantees. Final completed-source acceptance remains
-part of the full v1 goal. Catalog revalidation still reparses unchanged documents
-after an HTTP 304; removing that duplicate work is the next measured slice.
+part of the full v1 goal.
+
+## Unchanged catalog revalidation
+
+The refresh service now reuses the catalog already validated by `Store.Load`
+when the selected Gateway confirms its conditional request with HTTP 304, or
+returns exactly identical document bytes. It still verifies each write invocation
+and publishes a new immutable receipt. Catalog ownership transfers only after
+publication succeeds, preserving the fallback model and metadata on error.
+Different bytes require a full parse even when their contract hash is equal.
+Unsolicited 304 responses and validators from imported catalogs cannot establish
+fresh verification. Parser and contract-policy identities do not change.
+
+`BenchmarkCatalogRevalidation` uses the complete retained 687-operation catalog,
+an isolated on-disk store, and a loopback HTTP fixture. Each measured iteration
+loads and validates the snapshot, makes one conditional verification request,
+publishes the receipt, and closes the returned catalog. Initial reference open
+and store setup are outside the timer. This is a service-path measurement, not
+a live-Gateway or separate-process measurement.
+
+The three-iteration Go 1.27.1 baseline observed 2.422 s and 1,238,138,594 B/op.
+The final gate observed 1.293 s and 646,838,037 B/op, about 47% less time and
+48% fewer allocated bytes. Go 1.25.7 observed 1.626 s and 718,034,120 B/op.
+Both toolchains pass the new 1 GiB allocation ceiling, which would reject the
+baseline's duplicate parsing cost. The same gate retains the independent
+full-reference, loaded-lookup, request, schema, and 32 MiB artifact checks.
+
+[The revalidation receipt](qualification/catalog-revalidation.json) retains
+source/binary identities, before/after measurements, regression results, full
+unit/smoke checks, focused race checks, and minimum-Go checks. The ownership
+tests also exercise precise referenced request constraints after transfer and
+after failed publication. No historical Gateway qualification is renewed.
 
 The artifact allocation ceiling is 1 MiB for a 32 MiB payload, so buffering the
 whole payload fails the gate. Its elapsed-time ceiling includes filesystem sync

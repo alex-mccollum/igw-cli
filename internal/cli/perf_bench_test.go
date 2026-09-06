@@ -7,7 +7,9 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alex-mccollum/igw-cli/internal/catalog"
 	"github.com/alex-mccollum/igw-cli/internal/config"
@@ -87,6 +89,55 @@ func BenchmarkLoadedOperationLookup(b *testing.B) {
 		}
 	}
 	b.StopTimer()
+}
+
+func BenchmarkCatalogRevalidation(b *testing.B) {
+	_, c, err := reference.Select("ignition-8.3.9-defaults").OpenCatalog(context.Background())
+	if err != nil {
+		b.Fatal(err)
+	}
+	var calls atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Method != "GET" || r.URL.Path != "/openapi.json" || r.Header.Get("If-None-Match") != `"captured"` {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNotModified)
+	}))
+	defer srv.Close()
+	target, err := catalog.NewTarget("benchmark", srv.URL)
+	if err != nil {
+		c.Close()
+		b.Fatal(err)
+	}
+	svc := catalog.Service{Store: catalog.Store{Dir: b.TempDir()}, HTTP: srv.Client()}
+	now := time.Now().UTC()
+	err = svc.Store.Save(&catalog.Snapshot{Catalog: c, Metadata: catalog.Metadata{
+		Version: catalog.SnapshotVersion, Target: target, SourceKind: "gateway", Source: target.URL + "/openapi.json",
+		FetchedAt: now, VerifiedAt: now, ETag: `"captured"`, RawSHA256: c.RawHash(), ContractSHA256: c.ContractHash(),
+	}})
+	c.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		snapshot, err := svc.Acquire(context.Background(), target, "benchmark-token", catalog.Policy{ForWrite: true})
+		if err != nil {
+			b.Fatal(err)
+		}
+		valid := !snapshot.Stale && snapshot.Catalog.OperationCount() == 687
+		snapshot.Close()
+		if !valid {
+			b.Fatal("revalidation did not return the full fresh captured catalog")
+		}
+	}
+	b.StopTimer()
+	if calls.Load() != int64(b.N) {
+		b.Fatal("writes did not revalidate once per invocation")
+	}
 }
 
 type zeroStream struct{}

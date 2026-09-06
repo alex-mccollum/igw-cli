@@ -25,14 +25,25 @@ observed peak RSS. Loaded lookup and 32 MiB streamed artifacts are separately
 measured. [Evidence and limits](../performance.md) preserve the historical
 baseline and original Gateway receipts. Resource caps stayed unchanged.
 
-Next verifiable slice: reuse the already validated catalog when the selected
-Gateway returns a conditional 304 or exactly identical document bytes. Keep
-invocation-time verification for writes, immutable receipt publication,
-fallback behavior, and catalog ownership intact. Test changed documents,
-publication failures, and pins, then measure the complete revalidation path.
-The remaining structured-input/workflow/performance and final completed-source
-Gateway and release acceptance gates stay active; this optimization alone is
-not v1 readiness.
+Unchanged-catalog revalidation is also implemented and locally verified. A
+conditional 304 or identical fresh response reuses the already validated model
+after the new receipt is saved. Changed bytes reparse, errors retain the
+fallback, and writes still verify every invocation. Full unit/33 smoke checks,
+focused ownership/freshness/pin/publication race checks, and both toolchains'
+performance gates passed. The complete local conditional-revalidation path
+fell from 2.422 s/1.238 GB allocation to 1.293 s/647 MB on Go 1.27.1; Go 1.25.7
+uses 718 MB, within the new 1 GiB ceiling. Source and before/after evidence are
+retained separately; parser 20 and all original receipts remain unchanged.
+
+Next verifiable slice: support JSON and UTF-8 text `content` parameters in
+query and path locations, sharing the proven header decoder and exact schema
+validation. Preserve literal input and URL encoding, enforce size/uniqueness/
+presence constraints, and keep filter ownership unambiguous. Verify nested
+values, references, null, exact numbers, local refusal, and actual prepared wire
+requests before broadening other structured encodings. The remaining full
+structured-input/workflow/performance and final completed-source Gateway and
+release acceptance gates stay active; these optimizations alone are not v1
+readiness.
 
 Previous slice: profile setup and explicit reversible migration is implemented
 and locally verified. A separate versioned file preserves legacy defaults,

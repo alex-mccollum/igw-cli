@@ -59,6 +59,7 @@ func TestFreshnessRequiresEveryWriteToRevalidate(t *testing.T) {
 	if gets.Load() != 2 || write.Metadata.VerifiedAt != now || write.Metadata.FetchedAt != first.Metadata.FetchedAt {
 		t.Fatal("write did not conditionally revalidate")
 	}
+	assertRevalidatedCatalogUsable(t, write.Catalog)
 	unavailable.Store(true)
 	if snapshot, err := svc.Acquire(context.Background(), target, "secret", Policy{ForWrite: true}); err == nil {
 		snapshot.Close()
