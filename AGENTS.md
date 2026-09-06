@@ -37,6 +37,9 @@ Project-local operating notes for `igw-cli`.
 
 ## Delivery Rules
 - Keep changes small and commit in logical slices.
+- Leave Git authentication, pushes, and release publication to the user unless
+  they explicitly delegate that specific action. Completing local work or
+  preparing for a push is not authorization to publish or request credentials.
 - Maintain stable exit codes for automation.
 - Avoid secret leakage in logs and output.
 
@@ -45,8 +48,7 @@ Project-local operating notes for `igw-cli`.
 - If you change command docs or command shapes, run `./scripts/check-command-docs.sh` and `./scripts/lint-docs.sh`.
 - If you change auth, network handling, exit codes, or machine-readable output behavior, run `go test ./...` and `./scripts/smoke.sh`.
 - If you change release flow, packaging, or version metadata behavior, run `./scripts/release/dry-run.sh vX.Y.Z`.
-- Release tag creation and push should use `./scripts/release/cut.sh vX.Y.Z` so release safety gates run in-order.
-- If you push semver tags manually, install repo hooks with `./scripts/install-git-hooks.sh` so `pre-push` enforces `./scripts/release/checklist.sh`.
+- Maintainer-managed release and hook procedures are documented in `docs/releasing.md`; they are not automatic task-completion steps.
 
 ## Project Contracts
 - Exit codes are part of the automation contract:

@@ -201,7 +201,8 @@ runner leaves qualification queued, the status job waits for it; use the
 read-only script to see the pending run. An entirely missed schedule needs an
 external status check because a workflow that never starts cannot report itself.
 
-Activate in this order:
+Activation is maintainer-managed, separate from local implementation and
+verification. When the maintainer chooses to publish and enable the updater:
 
 1. Publish the reviewed workflow and scripts on the repository's default branch.
 2. Verify the dedicated runner's labels, admission controls, available memory,

@@ -39,7 +39,11 @@ and checksums unambiguous.
 
 ## Cut and publish
 
-Once the selected candidate is ready and publication is intended:
+Publication is maintainer-managed. Agents stop after local preparation unless
+the user explicitly delegates publication; a completed task or pre-push review
+does not authorize authentication setup, pushing, or release creation.
+
+For a maintainer explicitly initiating publication of the selected candidate:
 
 ```bash
 bash scripts/bounded-run.sh -- bash scripts/release/cut.sh v1.0.0
