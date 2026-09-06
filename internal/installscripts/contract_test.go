@@ -9,24 +9,33 @@ import (
 	"testing"
 )
 
+type installerPlatform struct {
+	os, arch, kernel, machine string
+}
+
+var installerPlatforms = []installerPlatform{
+	{"linux", "amd64", "Linux", "x86_64"},
+	{"linux", "arm64", "Linux", "aarch64"},
+	{"darwin", "amd64", "Darwin", "x86_64"},
+	{"darwin", "arm64", "Darwin", "arm64"},
+}
+
 func TestInstallShLatestChannelContract(t *testing.T) {
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		t.Skip("shell installer contract test is only supported on unix hosts")
 	}
 
-	arch, ok := installerArch()
-	if !ok {
-		t.Skipf("unsupported test architecture: %s", runtime.GOARCH)
-	}
-
 	root := repoRoot(t)
-	expectedArchive := "igw_linux_" + arch + ".tar.gz"
-	expectedBase := "https://github.com/example/repo/releases/latest/download"
-	expectedExtractDir := "igw_v9.9.9_linux_" + arch
-
-	runInstallShContract(t, root, []string{
-		"--repo", "example/repo",
-	}, expectedArchive, expectedBase, expectedExtractDir)
+	for _, platform := range installerPlatforms {
+		t.Run(platform.os+"/"+platform.arch, func(t *testing.T) {
+			expectedArchive := "igw_" + platform.os + "_" + platform.arch + ".tar.gz"
+			expectedBase := "https://github.com/example/repo/releases/latest/download"
+			expectedExtractDir := "igw_v9.9.9_" + platform.os + "_" + platform.arch
+			runInstallShContract(t, root, platform, []string{
+				"--repo", "example/repo",
+			}, expectedArchive, expectedBase, expectedExtractDir)
+		})
+	}
 }
 
 func TestInstallShPinnedVersionContract(t *testing.T) {
@@ -34,21 +43,19 @@ func TestInstallShPinnedVersionContract(t *testing.T) {
 		t.Skip("shell installer contract test is only supported on unix hosts")
 	}
 
-	arch, ok := installerArch()
-	if !ok {
-		t.Skipf("unsupported test architecture: %s", runtime.GOARCH)
-	}
-
 	root := repoRoot(t)
 	version := "v1.2.3"
-	expectedArchive := "igw_" + version + "_linux_" + arch + ".tar.gz"
-	expectedBase := "https://github.com/example/repo/releases/download/" + version
-	expectedExtractDir := "igw_" + version + "_linux_" + arch
-
-	runInstallShContract(t, root, []string{
-		"--repo", "example/repo",
-		"--version", version,
-	}, expectedArchive, expectedBase, expectedExtractDir)
+	for _, platform := range installerPlatforms {
+		t.Run(platform.os+"/"+platform.arch, func(t *testing.T) {
+			expectedArchive := "igw_" + version + "_" + platform.os + "_" + platform.arch + ".tar.gz"
+			expectedBase := "https://github.com/example/repo/releases/download/" + version
+			expectedExtractDir := "igw_" + version + "_" + platform.os + "_" + platform.arch
+			runInstallShContract(t, root, platform, []string{
+				"--repo", "example/repo",
+				"--version", version,
+			}, expectedArchive, expectedBase, expectedExtractDir)
+		})
+	}
 }
 
 func TestInstallPowerShellNamingContract(t *testing.T) {
@@ -74,7 +81,7 @@ func TestInstallPowerShellNamingContract(t *testing.T) {
 	}
 }
 
-func runInstallShContract(t *testing.T, root string, args []string, expectedArchive string, expectedBase string, expectedExtractDir string) {
+func runInstallShContract(t *testing.T, root string, platform installerPlatform, args []string, expectedArchive string, expectedBase string, expectedExtractDir string) {
 	t.Helper()
 
 	mockBin := filepath.Join(t.TempDir(), "bin")
@@ -83,6 +90,15 @@ func runInstallShContract(t *testing.T, root string, args []string, expectedArch
 	}
 	urlLog := filepath.Join(t.TempDir(), "urls.log")
 	installDir := filepath.Join(t.TempDir(), "install-dir")
+
+	writeMockScript(t, filepath.Join(mockBin, "uname"), `#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  -s) echo "$MOCK_KERNEL" ;;
+  -m) echo "$MOCK_MACHINE" ;;
+  *) exit 1 ;;
+esac
+`)
 
 	writeMockScript(t, filepath.Join(mockBin, "curl"), `#!/usr/bin/env bash
 set -euo pipefail
@@ -161,6 +177,8 @@ chmod 0755 "$dst"
 	env := append([]string{}, os.Environ()...)
 	env = append(env,
 		"PATH="+mockBin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"MOCK_KERNEL="+platform.kernel,
+		"MOCK_MACHINE="+platform.machine,
 		"MOCK_URL_LOG="+urlLog,
 		"MOCK_SHA=abc123",
 		"MOCK_ARCHIVE="+expectedArchive,
@@ -212,15 +230,4 @@ func repoRoot(t *testing.T) string {
 		t.Fatalf("resolve test file path")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
-}
-
-func installerArch() (string, bool) {
-	switch runtime.GOARCH {
-	case "amd64":
-		return "amd64", true
-	case "arm64":
-		return "arm64", true
-	default:
-		return "", false
-	}
 }

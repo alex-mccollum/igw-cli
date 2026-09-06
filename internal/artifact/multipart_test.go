@@ -17,7 +17,7 @@ import (
 )
 
 func TestMultipartSnapshotPreservesOrderedParts(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
+	spoolDir := isolateMultipartSpools(t)
 	path := filepath.Join(t.TempDir(), "local-private-name.bin")
 	original := []byte("\x00\xffbinary\n")
 	if err := os.WriteFile(path, original, 0600); err != nil {
@@ -93,14 +93,17 @@ func TestMultipartSnapshotPreservesOrderedParts(t *testing.T) {
 	if _, err := os.Stat(spool); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("multipart snapshot was not removed")
 	}
-	entries, _ := os.ReadDir(os.TempDir())
+	entries, err := os.ReadDir(spoolDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(entries) != 0 {
 		t.Fatal("source or final snapshot leaked")
 	}
 }
 
 func TestMultipartRejectsInvalidPartsLimitsAndCancellation(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
+	spoolDir := isolateMultipartSpools(t)
 	text, nonASCII, invalid := "private-text", "日本", "\xff"
 	path := filepath.Join(t.TempDir(), "source")
 	if err := os.WriteFile(path, []byte("binary"), 0600); err != nil {
@@ -126,7 +129,10 @@ func TestMultipartRejectsInvalidPartsLimitsAndCancellation(t *testing.T) {
 		} else if strings.Contains(err.Error(), path) || strings.Contains(err.Error(), text) {
 			t.Fatal("multipart error exposes input")
 		}
-		entries, _ := os.ReadDir(os.TempDir())
+		entries, err := os.ReadDir(spoolDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(entries) != 0 {
 			t.Fatal("refused multipart upload leaked a snapshot")
 		}
@@ -141,8 +147,25 @@ func TestMultipartRejectsInvalidPartsLimitsAndCancellation(t *testing.T) {
 	if _, err := SnapshotMultipart(ctx, []MultipartPart{{Name: "name", Text: &text}}, 4096); !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled multipart construction succeeded")
 	}
-	entries, _ := os.ReadDir(os.TempDir())
+	entries, err := os.ReadDir(spoolDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(entries) != 0 {
 		t.Fatal("failed upload leaked a snapshot")
 	}
+}
+
+// os.TempDir uses TMPDIR on Unix and the Windows temporary-directory API on
+// Windows. Set all three variables before creating or checking any spool.
+func isolateMultipartSpools(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, dir)
+	}
+	if filepath.Clean(os.TempDir()) != filepath.Clean(dir) {
+		t.Fatal("multipart spool directory was not isolated")
+	}
+	return dir
 }

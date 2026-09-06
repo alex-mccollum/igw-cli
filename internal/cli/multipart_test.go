@@ -25,7 +25,7 @@ import (
 const multipartSpec = `{"openapi":"3.1.0","info":{"title":"Synthetic multipart CLI","version":"test"},"paths":{"/upload":{"put":{"requestBody":{"required":true,"content":{"multipart/form-data":{}}},"responses":{"200":{"description":"OK"}}}}}}`
 
 func TestMultipartCLIStreamsLargeOrderedParts(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
+	spoolDir := isolateMultipartSpools(t)
 	const size int64 = 40 << 20
 	path := filepath.Join(t.TempDir(), "private-local-name.bin")
 	f, err := os.Create(path)
@@ -107,14 +107,17 @@ func TestMultipartCLIStreamsLargeOrderedParts(t *testing.T) {
 	if !got.OK || got.Meta.Validation != "declared_transport" || writes.Load() != 1 || !reflect.DeepEqual(details.Parts, observed.Load()) {
 		t.Fatal("multipart execution changed reviewed part bytes, ordering, or headers")
 	}
-	entries, _ := os.ReadDir(os.TempDir())
+	entries, err := os.ReadDir(spoolDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(entries) != 0 {
 		t.Fatal("multipart CLI leaked a spool")
 	}
 }
 
 func TestMultipartCLIRefusesInvalidInputsBeforeDispatch(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
+	spoolDir := isolateMultipartSpools(t)
 	path := filepath.Join(t.TempDir(), "private-source")
 	if err := os.WriteFile(path, []byte("private-file-content"), 0600); err != nil {
 		t.Fatal(err)
@@ -161,7 +164,10 @@ func TestMultipartCLIRefusesInvalidInputsBeforeDispatch(t *testing.T) {
 			if igwerr.ExitCode(err) != 2 || got.OK || got.Error == nil || got.Error.Code != 2 || writes.Load() != 0 {
 				t.Fatalf("invalid multipart input accepted or dispatched: %+v %v", got, err)
 			}
-			entries, _ := os.ReadDir(os.TempDir())
+			entries, err := os.ReadDir(spoolDir)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if len(entries) != 0 {
 				t.Fatal("multipart refusal leaked a snapshot")
 			}
@@ -260,4 +266,18 @@ func TestMultipartInputSchemaIsDiscoverableOffline(t *testing.T) {
 	if found != 2 {
 		t.Fatal("both request commands must expose the multipart contract")
 	}
+}
+
+// os.TempDir uses TMPDIR on Unix and the Windows temporary-directory API on
+// Windows. Set all three variables before creating or checking any spool.
+func isolateMultipartSpools(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, dir)
+	}
+	if filepath.Clean(os.TempDir()) != filepath.Clean(dir) {
+		t.Fatal("multipart spool directory was not isolated")
+	}
+	return dir
 }
